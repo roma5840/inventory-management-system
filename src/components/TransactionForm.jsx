@@ -7,7 +7,7 @@ export default function TransactionForm() {
   const [formData, setFormData] = useState({
     barcode: "",
     qty: 1,
-    type: "OUT" // Default to Sale
+    type: "ISSUANCE" // Default to the most common action (Selling/Issuing)
   });
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -23,7 +23,6 @@ export default function TransactionForm() {
 
     if (success) {
       setSuccessMsg(`Success: ${formData.type} processed.`);
-      // Clear barcode to get ready for next scan, keep type same
       setFormData(prev => ({ ...prev, barcode: "", qty: 1 })); 
     }
   };
@@ -33,28 +32,22 @@ export default function TransactionForm() {
       <h2 className="card-title mb-4">Inventory Movement</h2>
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Transaction Type Selector */}
-        <div className="flex gap-4">
-          <label className="label cursor-pointer gap-2">
-            <span className="label-text font-bold">SALE (Out)</span> 
-            <input 
-              type="radio" 
-              name="type" 
-              className="radio radio-primary" 
-              checked={formData.type === 'OUT'} 
-              onChange={() => setFormData({...formData, type: 'OUT'})} 
-            />
+        
+        {/* Transaction Type Selector (Dropdown for 4 types) */}
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text">Transaction Type</span>
           </label>
-          <label className="label cursor-pointer gap-2">
-            <span className="label-text font-bold">RECEIVE (In)</span> 
-            <input 
-              type="radio" 
-              name="type" 
-              className="radio radio-secondary" 
-              checked={formData.type === 'IN'} 
-              onChange={() => setFormData({...formData, type: 'IN'})} 
-            />
-          </label>
+          <select 
+            className="select select-bordered w-full" 
+            value={formData.type}
+            onChange={(e) => setFormData({...formData, type: e.target.value})}
+          >
+            <option value="ISSUANCE">Issuance / Shipment (Out)</option>
+            <option value="RECEIVING">Receiving (In)</option>
+            <option value="ISSUANCE_RETURN">Issuance Return (In)</option>
+            <option value="PULL_OUT">Return / Pull Out (Out)</option>
+          </select>
         </div>
 
         {/* Barcode Input - Auto-focus this for scanners */}

@@ -17,7 +17,7 @@ This is a Real-Time Inventory Management System designed to replace legacy manua
 The system enforces the **Perpetual Inventory Formula**:
 
 ```math
-Ending Inventory = (Beginning Inventory + Receipts + Customer Returns) - (Sales + Vendor Returns)
+Ending Inventory = Beginning Inventory + Receiving - Return/Pull Out - Issuance/Shipments + Issuance Returns
 ```
 
 ### Transaction Types

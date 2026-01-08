@@ -20,11 +20,9 @@ export const useInventory = () => {
     try {
       await runTransaction(db, async (transaction) => {
         const productRef = doc(db, "products", barcode);
-        const transactionRef = doc(collection(db, "transactions")); // Auto ID for log
+        const transactionRef = doc(collection(db, "transactions"));
 
-        // READ: Get current state (Must come before writes)
         const productDoc = await transaction.get(productRef);
-
         if (!productDoc.exists()) {
           throw "Product not found! Please register the item first.";
         }
@@ -32,16 +30,21 @@ export const useInventory = () => {
         const currentStock = productDoc.data().currentStock || 0;
         const productName = productDoc.data().name;
         let newStock = 0;
-
-        // LOGIC: Calculate based on formula
-        // Formula: End = Beg + In - Out
-        if (type === 'IN' || type === 'RETURN') {
+        
+        // Formula: Beginning + Receiving - Return/Pull Out - Issuance + Issuance Returns
+        
+        // ADDITIONS (Stock In)
+        if (type === 'RECEIVING' || type === 'ISSUANCE_RETURN') {
           newStock = currentStock + Number(qty);
-        } else if (type === 'OUT' || type === 'VENDOR_RETURN') {
+        } 
+        // SUBTRACTIONS (Stock Out)
+        else if (type === 'ISSUANCE' || type === 'PULL_OUT') {
           if (currentStock < qty) {
             throw `Insufficient stock! Current: ${currentStock}, Requested: ${qty}`;
           }
           newStock = currentStock - Number(qty);
+        } else {
+          throw "Invalid Transaction Type";
         }
 
         // WRITE: Update Product (Atomic Step 1)
