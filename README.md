@@ -1,4 +1,4 @@
-# University Bookstore - Perpetual Inventory System
+# Real-Time Perpetual Inventory Management System
 
 **Client:** Finance Department / Bookstore
 
