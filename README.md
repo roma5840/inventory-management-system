@@ -43,8 +43,8 @@ Ending Inventory = Beginning Inventory + Receiving - Return/Pull Out - Issuance/
 ### Installation
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/roma5840/inventory-system.git
-    cd inventory-system
+    git clone https://github.com/roma5840/inventory-management-system.git
+    cd inventory-management-system
     ```
 2.  Install dependencies:
     ```bash
