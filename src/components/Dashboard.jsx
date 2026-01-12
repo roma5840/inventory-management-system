@@ -13,9 +13,21 @@ export default function Dashboard({ products }) {
     p.id.includes(filter)
   );
 
-  const handleDelete = async (id) => {
-    if(window.confirm("Are you sure you want to delete this product?")) {
-      await deleteDoc(doc(db, "products", id));
+  const handleDelete = async (product) => {
+    // Prevent deleting items with stock
+    if (product.currentStock > 0) {
+      alert(`ACTION DENIED:\n\nYou cannot delete "${product.name}" because it still has ${product.currentStock} units in stock.\n\nTo remove this item, please process a "PULL OUT" transaction first to zero out the inventory. This ensures the audit trail is preserved.`);
+      return;
+    }
+
+    // Confirmation
+    if(window.confirm(`Are you sure you want to delete "${product.name}" from the masterlist?\n\n(This cannot be undone, but past transaction logs will remain).`)) {
+      try {
+        await deleteDoc(doc(db, "products", product.id));
+      } catch (error) {
+        console.error("Error deleting:", error);
+        alert("Failed to delete. Check console.");
+      }
     }
   }
 
@@ -80,7 +92,7 @@ export default function Dashboard({ products }) {
                     {userRole === 'ADMIN' && (
                       <td className="text-right">
                         <button 
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => handleDelete(p)}
                           className="btn btn-ghost btn-xs text-red-500"
                         >
                           Delete
