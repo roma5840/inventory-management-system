@@ -9,6 +9,7 @@ import Stats from "./components/Stats";
 import TransactionForm from "./components/TransactionForm";
 import AdminInvite from "./components/AdminInvite";
 import Dashboard from "./components/Dashboard";
+import TransactionHistory from "./components/TransactionHistory";
 import Login from "./components/Login";
 import Register from "./components/Register";
 
@@ -99,7 +100,12 @@ export default function App() {
                 <span className="loading loading-spinner loading-lg text-primary"></span>
               </div>
             ) : (
-              <Dashboard products={products} />
+              <>
+                <Dashboard products={products} />
+                
+                {/* Transaction History Table */}
+                <TransactionHistory /> 
+              </>
             )}
           </div>
 
