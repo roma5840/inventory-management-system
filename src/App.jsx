@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { query, collection, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "./lib/firebase";
 import { useAuth } from "./context/AuthContext";
+import ProductManager from "./components/ProductManager"; 
 
 import Navbar from "./components/Navbar";
 import Stats from "./components/Stats";
@@ -66,10 +67,17 @@ export default function App() {
           {/* LEFT COLUMN */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
+               
+               {/* 1. Transaction Form (Visible to All Staff) */}
                <TransactionForm />
 
-               {/* Only Admins can see the Invite Form */}
-               {userRole === 'ADMIN' && <AdminInvite />}
+               {/* 2. Admin Modules (Visible only to Admin) */}
+               {userRole === 'ADMIN' && (
+                 <>
+                   <ProductManager />
+                   <AdminInvite />
+                 </>
+               )}
                
                {/* Instructions Card */}
                <div className="card bg-base-100 shadow mt-6 p-4">
@@ -77,8 +85,8 @@ export default function App() {
                  <ul className="text-sm list-disc list-inside text-gray-600 space-y-1">
                    <li>Click "Scan Barcode" input.</li>
                    <li>Use handheld scanner or type ID.</li>
-                   <li>"Sale" reduces stock.</li>
-                   <li>"Receive" increases stock.</li>
+                   <li>"Issuance" reduces stock.</li>
+                   <li>"Receiving" increases stock.</li>
                  </ul>
                </div>
             </div>

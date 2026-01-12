@@ -1,6 +1,10 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { db } from "../lib/firebase";
+import { doc, deleteDoc } from "firebase/firestore";
 
 export default function Dashboard({ products }) {
+  const { userRole } = useAuth();
   const [filter, setFilter] = useState("");
 
   // Simple client-side search
@@ -9,10 +13,16 @@ export default function Dashboard({ products }) {
     p.id.includes(filter)
   );
 
+  const handleDelete = async (id) => {
+    if(window.confirm("Are you sure you want to delete this product?")) {
+      await deleteDoc(doc(db, "products", id));
+    }
+  }
+
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-0">
-        {/* Table Header with Search */}
+        {/* Table Header with Search (No changes needed here) */}
         <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
           <h2 className="card-title text-xl">Current Inventory</h2>
           <input 
@@ -34,12 +44,13 @@ export default function Dashboard({ products }) {
                 <th className="text-right">Price</th>
                 <th className="text-center">Stock</th>
                 <th className="text-center">Status</th>
+                {userRole === 'ADMIN' && <th></th>}
               </tr>
             </thead>
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-8 text-gray-400">
+                  <td colSpan="6" className="text-center py-8 text-gray-400">
                     No products found matching "{filter}"
                   </td>
                 </tr>
@@ -65,6 +76,17 @@ export default function Dashboard({ products }) {
                          <div className="badge badge-success text-white text-xs">OK</div>
                       )}
                     </td>
+
+                    {userRole === 'ADMIN' && (
+                      <td className="text-right">
+                        <button 
+                          onClick={() => handleDelete(p.id)}
+                          className="btn btn-ghost btn-xs text-red-500"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
