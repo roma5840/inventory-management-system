@@ -78,14 +78,15 @@ export default function App() {
                  </>
                )}
                
-               {/* Instructions Card - Updated Style */}
+               {/* Instructions Card */}
                <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
                  <h3 className="card-title text-gray-700 mb-2">Instructions</h3>
                  <ul className="text-sm list-disc list-inside text-gray-600 space-y-2">
                    <li>Click <strong>"Scan Barcode"</strong> to start.</li>
-                   <li>Use handheld scanner or type ISBN.</li>
-                   <li><strong>Issuance:</strong> Reduces stock (Sale).</li>
-                   <li><strong>Receiving:</strong> Adds stock (Delivery).</li>
+                   <li><strong>Receiving:</strong> New stock from Supplier (+).</li>
+                   <li><strong>Issuance:</strong> Sale/Distribution to Student (-).</li>
+                   <li><strong>Issuance Return:</strong> Return to Shelf (+).</li>
+                   <li><strong>Pull Out:</strong> Defective/Vendor Return (-).</li>
                  </ul>
                </div>
             </div>
