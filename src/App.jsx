@@ -59,8 +59,8 @@ export default function App() {
       <Navbar />
       
       <main className="container mx-auto px-4">
-        {/* Top Section: Statistics */}
-        <Stats products={products} />
+        {/* Top Section: Statistics (Fetches own data) */}
+        <Stats />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
@@ -93,20 +93,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: DATA AREA */}
+          {/* RIGHT COLUMN: DATA AREA (Fetches own data) */}
           <div className="lg:col-span-2">
-            {isLoading ? (
-              <div className="flex justify-center p-10">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-              </div>
-            ) : (
-              <>
-                <Dashboard products={products} />
-                
-                {/* Transaction History Table */}
-                <TransactionHistory /> 
-              </>
-            )}
+            <Dashboard />
+            <TransactionHistory /> 
           </div>
 
         </div>

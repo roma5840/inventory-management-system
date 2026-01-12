@@ -1,43 +1,74 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
-import { doc, deleteDoc } from "firebase/firestore";
+import { doc, deleteDoc, collection, query, orderBy, limit, startAfter, getDocs, where } from "firebase/firestore";
 
-export default function Dashboard({ products }) {
+export default function Dashboard() {
   const { userRole } = useAuth();
-  const [filter, setFilter] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [products, setProducts] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Filter products
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(filter.toLowerCase()) || 
-    p.id.includes(filter)
-  );
+  // Initial Fetch & Search Handler
+  const fetchProducts = async (isNextPage = false) => {
+    setLoading(true);
+    try {
+      const collectionRef = collection(db, "products");
+      let q;
 
-  // Reset to page 1 when search changes
+      if (searchTerm.trim()) {
+        // SEARCH MODE: exact word match in array
+        const term = searchTerm.toLowerCase().trim();
+        q = query(collectionRef, where("searchKeywords", "array-contains", term), limit(20));
+        if (isNextPage && lastDoc) {
+             q = query(collectionRef, where("searchKeywords", "array-contains", term), startAfter(lastDoc), limit(20));
+        }
+      } else {
+        // DEFAULT MODE: recent items
+        q = query(collectionRef, orderBy("name"), limit(20));
+        if (isNextPage && lastDoc) {
+             q = query(collectionRef, orderBy("name"), startAfter(lastDoc), limit(20));
+        }
+      }
+
+      const snapshot = await getDocs(q);
+      const newItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      if (snapshot.docs.length > 0) {
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+      }
+
+      if (isNextPage) {
+        setProducts(prev => [...prev, ...newItems]);
+      } else {
+        setProducts(newItems);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Debounce search or trigger on Enter
   useEffect(() => {
-    setCurrentPage(1);
-  }, [filter]);
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentData = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+    const timer = setTimeout(() => {
+        setLastDoc(null); // Reset pagination on new search
+        fetchProducts(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleDelete = async (product) => {
-    // Prevent deleting items with stock
     if (product.currentStock > 0) {
-      alert(`ACTION DENIED:\nCannot delete "${product.name}" with existing stock (${product.currentStock}).\nPlease process a "PULL OUT" transaction first to zero out the inventory.`);
+      alert(`ACTION DENIED: Stock exists.`);
       return;
     }
     if(window.confirm(`Delete "${product.name}"?`)) {
-      try {
-        await deleteDoc(doc(db, "products", product.id));
-      } catch (error) {
-        console.error("Error deleting:", error);
-        alert("Failed to delete. Check console.");
-      }
+      await deleteDoc(doc(db, "products", product.id));
+      fetchProducts(false); // Refresh
     }
   }
 
@@ -49,17 +80,17 @@ export default function Dashboard({ products }) {
           <h2 className="card-title text-xl">Current Inventory</h2>
           <input 
             type="text" 
-            placeholder="Search name or ID..." 
+            placeholder="Search keyword (e.g. 'Math')" 
             className="input input-bordered input-sm w-full max-w-xs"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-96">
           <table className="table w-full">
-            <thead className="bg-gray-100 text-gray-600">
+            <thead className="bg-gray-100 text-gray-600 sticky top-0 z-10">
               <tr>
                 <th>Barcode</th>
                 <th>Product Name</th>
@@ -70,25 +101,23 @@ export default function Dashboard({ products }) {
               </tr>
             </thead>
             <tbody>
-              {currentData.length === 0 ? (
+              {products.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="text-center py-8 text-gray-400">
-                    No products found.
+                    {loading ? "Loading..." : "No products found."}
                   </td>
                 </tr>
               ) : (
-                currentData.map((p) => (
+                products.map((p) => (
                   <tr key={p.id} className="hover">
                     <td className="font-mono text-xs font-bold text-gray-500">{p.id}</td>
                     <td className="font-semibold text-gray-700">{p.name}</td>
                     <td className="text-right font-mono">${p.price}</td>
-                    
                     <td className="text-center">
                       <span className={`font-bold ${p.currentStock <= p.minStockLevel ? 'text-red-600' : 'text-gray-700'}`}>
                         {p.currentStock}
                       </span>
                     </td>
-                    
                     <td className="text-center">
                       {p.currentStock <= 0 ? (
                          <div className="badge badge-error text-white text-xs">OUT OF STOCK</div>
@@ -98,15 +127,9 @@ export default function Dashboard({ products }) {
                          <div className="badge badge-success text-white text-xs">OK</div>
                       )}
                     </td>
-
                     {userRole === 'ADMIN' && (
                       <td className="text-right">
-                        <button 
-                          onClick={() => handleDelete(p)}
-                          className="btn btn-ghost btn-xs text-red-500"
-                        >
-                          Delete
-                        </button>
+                        <button onClick={() => handleDelete(p)} className="btn btn-ghost btn-xs text-red-500">Delete</button>
                       </td>
                     )}
                   </tr>
@@ -116,30 +139,15 @@ export default function Dashboard({ products }) {
           </table>
         </div>
 
-        {/* Pagination Controls */}
-        <div className="p-4 border-t flex justify-between items-center bg-gray-50 rounded-b-xl">
-           <span className="text-xs text-gray-500">
-             Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredProducts.length)} of {filteredProducts.length} entries
-           </span>
-           <div className="join">
+        {/* Load More */}
+        <div className="p-2 border-t text-center">
              <button 
-               className="join-item btn btn-sm" 
-               disabled={currentPage === 1}
-               onClick={() => setCurrentPage(prev => prev - 1)}
+               className="btn btn-sm btn-ghost text-primary"
+               onClick={() => fetchProducts(true)}
+               disabled={loading}
              >
-               «
+               {loading ? "Loading..." : "Load More"}
              </button>
-             <button className="join-item btn btn-sm pointer-events-none bg-white">
-               Page {currentPage}
-             </button>
-             <button 
-               className="join-item btn btn-sm" 
-               disabled={currentPage === totalPages || totalPages === 0}
-               onClick={() => setCurrentPage(prev => prev + 1)}
-             >
-               »
-             </button>
-           </div>
         </div>
       </div>
     </div>

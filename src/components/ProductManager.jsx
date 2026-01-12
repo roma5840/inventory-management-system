@@ -45,16 +45,57 @@ export default function ProductManager() {
     setMsg("");
 
     try {
-      await setDoc(doc(db, "products", formData.id), {
-        id: formData.id,
-        name: formData.name,
-        price: Number(formData.price),
-        minStockLevel: Number(formData.minStockLevel),
-        currentStock: Number(formData.currentStock),
-        lastUpdated: serverTimestamp()
-      }, { merge: true });
+      await import("firebase/firestore").then(async ({ runTransaction }) => {
+        await runTransaction(db, async (transaction) => {
+          const productRef = doc(db, "products", formData.id);
+          const statsRef = doc(db, "stats", "summary");
+          
+          const productDoc = await transaction.get(productRef);
+          const statsDoc = await transaction.get(statsRef);
 
-      setMsg("Success: Product Saved!");
+          let oldStock = 0;
+          let oldPrice = 0;
+
+          if (productDoc.exists()) {
+            const data = productDoc.data();
+            oldStock = data.currentStock || 0;
+            oldPrice = data.price || 0;
+          }
+
+          // Prepare Keyword Array for Search
+          const searchKeywords = formData.name.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+
+          // Update Product
+          transaction.set(productRef, {
+            id: formData.id,
+            name: formData.name,
+            price: Number(formData.price),
+            minStockLevel: Number(formData.minStockLevel),
+            currentStock: Number(formData.currentStock),
+            searchKeywords: searchKeywords, // NEW: Indexing
+            lastUpdated: serverTimestamp()
+          }, { merge: true });
+
+          // Update Stats
+          let currentTotalValue = 0;
+          let currentTotalItems = 0;
+          if (statsDoc.exists()) {
+             currentTotalValue = statsDoc.data().totalInventoryValue || 0;
+             currentTotalItems = statsDoc.data().totalItemsCount || 0;
+          }
+
+          const oldValueVal = oldStock * oldPrice;
+          const newValueVal = Number(formData.currentStock) * Number(formData.price);
+          const stockDiff = Number(formData.currentStock) - oldStock;
+
+          transaction.set(statsRef, {
+            totalInventoryValue: currentTotalValue - oldValueVal + newValueVal,
+            totalItemsCount: currentTotalItems + stockDiff
+          }, { merge: true });
+        });
+      });
+
+      setMsg("Success: Product Saved & Stats Updated!");
       setFormData({
         id: "",
         name: "",
