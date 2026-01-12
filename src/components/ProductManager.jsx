@@ -30,7 +30,7 @@ export default function ProductManager() {
           minStockLevel: data.minStockLevel,
           currentStock: data.currentStock
         }));
-        setMsg("Product found. Editing mode.");
+        setMsg("Found existing item. Switching to Edit Mode.");
       }
     } catch (error) {
       console.error("Error checking product:", error);
@@ -45,18 +45,16 @@ export default function ProductManager() {
     setMsg("");
 
     try {
-      // We use the Barcode (formData.id) as the Firestore Document ID
       await setDoc(doc(db, "products", formData.id), {
         id: formData.id,
         name: formData.name,
         price: Number(formData.price),
         minStockLevel: Number(formData.minStockLevel),
-        currentStock: Number(formData.currentStock), // Initial stock
+        currentStock: Number(formData.currentStock),
         lastUpdated: serverTimestamp()
-      }, { merge: true }); // Merge true allows updating existing fields without wiping others
+      }, { merge: true });
 
       setMsg("Success: Product Saved!");
-      // Reset form
       setFormData({
         id: "",
         name: "",
@@ -73,43 +71,43 @@ export default function ProductManager() {
   };
 
   return (
-    <div className="card bg-white shadow p-4 mb-6">
-      <h3 className="font-bold text-gray-700 mb-2 border-b pb-2">Product Manager (Admin)</h3>
+    <div className="card w-full bg-base-200 shadow-xl mb-6 p-6">
+      <h2 className="card-title mb-4 text-gray-700">Product Manager</h2>
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        {/* Barcode - The Key Identifier */}
+        {/* Barcode */}
         <div className="form-control">
-          <label className="label py-0"><span className="label-text text-xs">Barcode / ISBN</span></label>
+          <label className="label py-1"><span className="label-text">Barcode / ISBN</span></label>
           <input 
             type="text" 
-            className="input input-bordered input-sm font-mono" 
+            className="input input-bordered w-full font-mono" 
             value={formData.id} 
             onChange={e => setFormData({...formData, id: e.target.value})}
-            onBlur={handleBarcodeBlur} // checks DB when user leaves this field
-            placeholder="Scan here..."
+            onBlur={handleBarcodeBlur}
+            placeholder="Scan to add or edit..."
             required 
           />
         </div>
 
         {/* Product Name */}
         <div className="form-control">
-          <label className="label py-0"><span className="label-text text-xs">Book Title</span></label>
+          <label className="label py-1"><span className="label-text">Book Title</span></label>
           <input 
             type="text" 
-            className="input input-bordered input-sm" 
+            className="input input-bordered w-full" 
             value={formData.name} 
             onChange={e => setFormData({...formData, name: e.target.value})}
             required 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {/* Price */}
           <div className="form-control">
-            <label className="label py-0"><span className="label-text text-xs">Price</span></label>
+            <label className="label py-1"><span className="label-text">Price</span></label>
             <input 
               type="number" 
-              className="input input-bordered input-sm" 
+              className="input input-bordered w-full" 
               value={formData.price} 
               onChange={e => setFormData({...formData, price: e.target.value})}
               required 
@@ -118,10 +116,10 @@ export default function ProductManager() {
           
           {/* Min Stock */}
           <div className="form-control">
-            <label className="label py-0"><span className="label-text text-xs">Min. Alert</span></label>
+            <label className="label py-1"><span className="label-text">Min. Alert</span></label>
             <input 
               type="number" 
-              className="input input-bordered input-sm" 
+              className="input input-bordered w-full" 
               value={formData.minStockLevel} 
               onChange={e => setFormData({...formData, minStockLevel: e.target.value})}
               required 
@@ -129,23 +127,27 @@ export default function ProductManager() {
           </div>
         </div>
 
-        {/* Initial Stock - Only used for new items or manual override */}
+        {/* Initial Stock */}
         <div className="form-control">
-            <label className="label py-0"><span className="label-text text-xs">Initial/Current Stock</span></label>
+            <label className="label py-1"><span className="label-text">Set Stock Level</span></label>
             <input 
               type="number" 
-              className="input input-bordered input-sm" 
+              className="input input-bordered w-full" 
               value={formData.currentStock} 
               onChange={e => setFormData({...formData, currentStock: e.target.value})}
               required 
             />
           </div>
 
-        <button disabled={loading} type="submit" className="btn btn-sm btn-accent text-white mt-2">
-          {loading ? "Saving..." : "Save Product"}
+        <button 
+          disabled={loading} 
+          type="submit" 
+          className="btn btn-secondary w-full text-white mt-4 shadow-sm"
+        >
+          {loading ? "Saving..." : "Save Product Details"}
         </button>
         
-        {msg && <span className={`text-xs text-center ${msg.includes('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</span>}
+        {msg && <div className={`text-sm text-center font-bold mt-2 ${msg.includes('Error') ? 'text-error' : 'text-success'}`}>{msg}</div>}
       </form>
     </div>
   );

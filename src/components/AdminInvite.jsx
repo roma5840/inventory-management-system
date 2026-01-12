@@ -18,8 +18,6 @@ export default function AdminInvite() {
     setMsg("");
 
     try {
-      // 1. Add to Database Whitelist
-      // We use the email as the Document ID for easy lookup later
       await setDoc(doc(db, "authorized_users", email), {
         email: email,
         fullName: name,
@@ -29,58 +27,62 @@ export default function AdminInvite() {
         invitedAt: serverTimestamp()
       });
 
-      // 2. Send Email via EmailJS
-      // REPLACE THE STRINGS BELOW WITH YOUR COPIED KEYS FROM PHASE 3
       const templateParams = {
         to_name: name,
         to_email: email,
-        invite_link: window.location.origin, // Gets your current URL (e.g., localhost:5173)
+        invite_link: window.location.origin, 
         message: "You have been authorized to access the Bookstore IMS."
       };
 
       await emailjs.send(
-        'service_vgbev8k',    // e.g., "service_x29s"
-        'template_qhp0o09',   // e.g., "template_v83k"
+        'service_vgbev8k',    
+        'template_qhp0o09',   
         templateParams, 
-        'TiKR5JvOcEky675Gx'     // e.g., "A9S_dks83j..."
+        'TiKR5JvOcEky675Gx'     
       );
       
-      setMsg(`Success: Invite sent to ${name}`);
+      setMsg(`Invite sent to ${name}`);
       setEmail("");
       setName("");
     } catch (error) {
       console.error(error);
-      setMsg("Error sending invite. Check console.");
+      setMsg("Error sending invite.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="card bg-white shadow p-4 mt-6">
-      <h3 className="font-bold text-gray-700 mb-2">Invite New Staff</h3>
-      <form onSubmit={handleInvite} className="flex flex-col gap-2">
-        <input 
-          type="email" placeholder="Staff Email" className="input input-bordered input-sm" 
-          value={email} onChange={e => setEmail(e.target.value)} required 
-        />
-        <input 
-          type="text" placeholder="Full Name" className="input input-bordered input-sm" 
-          value={name} onChange={e => setName(e.target.value)} required 
-        />
-        <select 
-          className="select select-bordered select-sm"
-          value={role} onChange={e => setRole(e.target.value)}
-        >
-          <option value="EMPLOYEE">Employee</option>
-          <option value="ADMIN">Admin</option>
-        </select>
+    <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
+      <h3 className="card-title mb-4 text-gray-700">Invite Staff</h3>
+      <form onSubmit={handleInvite} className="flex flex-col gap-3">
+        <div className="form-control">
+          <input 
+            type="email" placeholder="Staff Email Address" className="input input-bordered w-full" 
+            value={email} onChange={e => setEmail(e.target.value)} required 
+          />
+        </div>
+        <div className="form-control">
+          <input 
+            type="text" placeholder="Full Name" className="input input-bordered w-full" 
+            value={name} onChange={e => setName(e.target.value)} required 
+          />
+        </div>
+        <div className="form-control">
+          <select 
+            className="select select-bordered w-full"
+            value={role} onChange={e => setRole(e.target.value)}
+          >
+            <option value="EMPLOYEE">Role: Employee</option>
+            <option value="ADMIN">Role: Admin</option>
+          </select>
+        </div>
 
-        <button disabled={loading} type="submit" className="btn btn-sm btn-outline btn-primary mt-2">
-          {loading ? "Sending..." : "Authorize & Send Email"}
+        <button disabled={loading} type="submit" className="btn btn-accent w-full text-white mt-2 shadow-sm">
+          {loading ? "Sending..." : "Send Authorization Email"}
         </button>
         
-        {msg && <span className={`text-xs ${msg.includes('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</span>}
+        {msg && <div className={`text-sm text-center mt-2 ${msg.includes('Error') ? 'text-error' : 'text-success'}`}>{msg}</div>}
       </form>
     </div>
   );
