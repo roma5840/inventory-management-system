@@ -1,18 +1,30 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { query, collection, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "./lib/firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useAuth } from "./context/AuthContext";
+
 import Navbar from "./components/Navbar";
 import Stats from "./components/Stats";
 import TransactionForm from "./components/TransactionForm";
+import AdminInvite from "./components/AdminInvite";
 import Dashboard from "./components/Dashboard";
+import Login from "./components/Login";
+import Register from "./components/Register";
 
-function App() {
+export default function App() {
+  const { currentUser, userRole } = useAuth(); 
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRegistering, setIsRegistering] = useState(false);
 
-  // GLOBAL DATA FETCHING
-  // Fetch here so both the Stats card and the Table share the exact same data
+  // --- FIX: USEEFFECT MOVED TO TOP (Before any return statements) ---
   useEffect(() => {
+    // Only fetch data if the user is actually logged in
+    if (!currentUser) {
+      setProducts([]); // Clear data if logged out
+      return;
+    }
+
     const q = query(collection(db, "products"), orderBy("name"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -22,11 +34,25 @@ function App() {
       }));
       setProducts(items);
       setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]); // Dependency ensures this re-runs when login state changes
 
+
+  // --- AUTH PROTECTION (Now safe to return early) ---
+  if (!currentUser) {
+    if (isRegistering) {
+      return <Register onSwitchToLogin={() => setIsRegistering(false)} />;
+    } else {
+      return <Login onSwitchToRegister={() => setIsRegistering(true)} />;
+    }
+  }
+
+  // --- MAIN APP UI ---
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
       <Navbar />
@@ -35,13 +61,15 @@ function App() {
         {/* Top Section: Statistics */}
         <Stats products={products} />
 
-        {/* Main Grid: Input on Left (or Top on mobile), Data on Right */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* LEFT COLUMN: ACTION AREA */}
+          {/* LEFT COLUMN */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
                <TransactionForm />
+
+               {/* Only Admins can see the Invite Form */}
+               {userRole === 'ADMIN' && <AdminInvite />}
                
                {/* Instructions Card */}
                <div className="card bg-base-100 shadow mt-6 p-4">
@@ -72,5 +100,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

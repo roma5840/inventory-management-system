@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { db } from '../lib/firebase';
 import { doc, runTransaction, serverTimestamp, collection } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext'; // Import context
 
 export const useInventory = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { currentUser } = useAuth(); // Get current user
 
-  /**
-   * Processes an inventory movement.
-   * @param {string} barcode - Scanned barcode (acts as Doc ID)
-   * @param {string} type - 'IN' | 'OUT' | 'RETURN'
-   * @param {number} qty - Quantity to move
-   * @param {string} userId - Who performed the action
-   */
-  const processTransaction = async (barcode, type, qty, userId = 'admin') => {
+  const processTransaction = async (barcode, type, qty) => {
+    // Check if user is logged in
+    if (!currentUser) {
+      setError("Unauthorized: Please login.");
+      return false;
+    }
+    
+    // Pass currentUser.uid instead of hardcoded 'admin'
+    const userId = currentUser.uid; 
+
     setLoading(true);
     setError(null);
 
@@ -31,14 +35,10 @@ export const useInventory = () => {
         const productName = productDoc.data().name;
         let newStock = 0;
         
-        // Formula: Beginning + Receiving - Return/Pull Out - Issuance + Issuance Returns
-        
-        // ADDITIONS (Stock In)
+        // Formula Logic...
         if (type === 'RECEIVING' || type === 'ISSUANCE_RETURN') {
           newStock = currentStock + Number(qty);
-        } 
-        // SUBTRACTIONS (Stock Out)
-        else if (type === 'ISSUANCE' || type === 'PULL_OUT') {
+        } else if (type === 'ISSUANCE' || type === 'PULL_OUT') {
           if (currentStock < qty) {
             throw `Insufficient stock! Current: ${currentStock}, Requested: ${qty}`;
           }
@@ -47,21 +47,17 @@ export const useInventory = () => {
           throw "Invalid Transaction Type";
         }
 
-        // WRITE: Update Product (Atomic Step 1)
-        transaction.update(productRef, {
-          currentStock: newStock
-        });
+        transaction.update(productRef, { currentStock: newStock });
 
-        // WRITE: Create Audit Log (Atomic Step 2)
         transaction.set(transactionRef, {
           type,
           productId: barcode,
-          productName, // Denormalize name for easier reading in logs
+          productName,
           qty: Number(qty),
           previousStock: currentStock,
           newStock: newStock,
-          timestamp: serverTimestamp(), // Server-side time is source of truth
-          userId
+          timestamp: serverTimestamp(),
+          userId // This now uses the real UID
         });
       });
 
