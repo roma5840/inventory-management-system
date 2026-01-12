@@ -78,7 +78,11 @@ export default function AdminInvite() {
           </select>
         </div>
 
-        <button disabled={loading} type="submit" className="btn btn-accent w-full text-white mt-2 shadow-sm">
+        <button 
+          disabled={loading} 
+          type="submit" 
+          className={`btn btn-primary w-full mt-2 shadow-sm ${loading ? 'loading' : ''}`}
+        >
           {loading ? "Sending..." : "Send Authorization Email"}
         </button>
         

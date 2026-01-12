@@ -142,7 +142,7 @@ export default function ProductManager() {
         <button 
           disabled={loading} 
           type="submit" 
-          className="btn btn-secondary w-full text-white mt-4 shadow-sm"
+          className={`btn btn-primary w-full mt-4 shadow-sm ${loading ? 'loading' : ''}`}
         >
           {loading ? "Saving..." : "Save Product Details"}
         </button>
