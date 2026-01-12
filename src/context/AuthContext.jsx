@@ -31,12 +31,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // 1. User has a valid Firebase JWT = PROOF OF JWT
+        // PROOF OF JWT
         const token = await user.getIdToken(); 
         console.log("JWT Token:", token);
 
-        // 2. CHECK WHITELIST (Authorization)
-        // We check if this email exists in 'authorized_users' collection
+        // CHECK WHITELIST (Authorization)
+        // check if this email exists in authorized_users collection
         const docRef = doc(db, "authorized_users", user.email);
         const docSnap = await getDoc(docRef);
 
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
           setCurrentUser({ ...user, ...userData }); // Merge Auth data with Firestore Role
           setUserRole(userData.role); 
         } else {
-          // User registered but NOT in whitelist (Security Block)
+          // User registered but NOT in whitelist
           alert("Access Denied: You are not in the authorized personnel list.");
           await signOut(auth);
           setCurrentUser(null);

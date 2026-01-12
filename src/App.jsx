@@ -18,7 +18,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // --- FIX: USEEFFECT MOVED TO TOP (Before any return statements) ---
   useEffect(() => {
     // Only fetch data if the user is actually logged in
     if (!currentUser) {
@@ -41,10 +40,10 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [currentUser]); // Dependency ensures this re-runs when login state changes
+  }, [currentUser]); // Dependency ensures this reruns when login state changes
 
 
-  // --- AUTH PROTECTION (Now safe to return early) ---
+  // --- AUTH PROTECTION ---
   if (!currentUser) {
     if (isRegistering) {
       return <Register onSwitchToLogin={() => setIsRegistering(false)} />;
@@ -68,10 +67,10 @@ export default function App() {
           <div className="lg:col-span-1">
             <div className="sticky top-6">
                
-               {/* 1. Transaction Form (Visible to All Staff) */}
+               {/* Transaction Form (Visible to All Staff) */}
                <TransactionForm />
 
-               {/* 2. Admin Modules (Visible only to Admin) */}
+               {/* Admin Modules (Visible only to Admin) */}
                {userRole === 'ADMIN' && (
                  <>
                    <ProductManager />

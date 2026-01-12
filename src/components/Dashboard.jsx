@@ -22,7 +22,7 @@ export default function Dashboard({ products }) {
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-0">
-        {/* Table Header with Search (No changes needed here) */}
+        {/* Table Header with Search */}
         <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
           <h2 className="card-title text-xl">Current Inventory</h2>
           <input 

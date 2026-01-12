@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext"; // We need to add signup to context
-import { db, auth } from "../lib/firebase"; // Direct auth import needed for creation
+import { useAuth } from "../context/AuthContext";
+import { db, auth } from "../lib/firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
@@ -16,7 +16,7 @@ export default function Register({ onSwitchToLogin }) {
 
     const { email, password, confirmPass } = formData;
 
-    // 1. Basic Validation
+    // Basic Validation
     if (password !== confirmPass) {
       setError("Passwords do not match.");
       setLoading(false);
@@ -24,8 +24,8 @@ export default function Register({ onSwitchToLogin }) {
     }
 
     try {
-      // 2. THE SECURITY CHECK (Whitelist Verification)
-      // We check if this email exists in 'authorized_users' BEFORE creating account
+      // Whitelist Verification
+      // check if this email exists in authorized_users before creating account
       const userRef = doc(db, "authorized_users", email);
       const userSnap = await getDoc(userRef);
 
@@ -39,27 +39,27 @@ export default function Register({ onSwitchToLogin }) {
         throw new Error("This account is already registered. Please Login.");
       }
 
-      // 3. Create Firebase Auth Account (Only happens if Step 2 passes)
+      // Create firebase auth account
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 4. Update the Firestore Whitelist Status
-      // We link the new Firebase UID to the existing email record
+      // update firestore whitelist status
+      // link the new firebase uid to the existing email record
       await updateDoc(userRef, {
         status: "REGISTERED",
-        uid: user.uid, // Important: Link the Auth UID to this doc
+        uid: user.uid, // Important: link the auth id to this doc
         registeredAt: serverTimestamp()
       });
 
-      // 5. Create the public user profile (Optional, but good practice)
-      // You can also just rely on 'authorized_users' for roles
+      // Create the public user profile
+      // or just rely on authorized_users for roles
       
       alert("Registration Successful! Welcome to the Finance System.");
-      // The AuthContext will automatically detect login and redirect to Dashboard
+      // authcontext will automatically detect login and redirect to dashboard
 
     } catch (err) {
       console.error(err);
-      // Clean up Firebase error messages for the user
+      // clean up firebase error messages for the user
       if(err.code === 'auth/email-already-in-use') {
         setError("Account already exists. Please login.");
       } else {

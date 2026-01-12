@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { db } from '../lib/firebase';
 import { doc, runTransaction, serverTimestamp, collection } from 'firebase/firestore';
-import { useAuth } from '../context/AuthContext'; // Import context
+import { useAuth } from '../context/AuthContext';
 
 export const useInventory = () => {
   const [loading, setLoading] = useState(false);
@@ -57,7 +57,7 @@ export const useInventory = () => {
           previousStock: currentStock,
           newStock: newStock,
           timestamp: serverTimestamp(),
-          userId // This now uses the real UID
+          userId
         });
       });
 
