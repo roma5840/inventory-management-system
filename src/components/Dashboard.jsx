@@ -152,10 +152,24 @@ export default function Dashboard() {
 
         {/* Pagination Controls */}
         <div className="p-4 border-t flex justify-between items-center bg-gray-50 rounded-b-xl">
-           <span className="text-xs text-gray-500">Page {currentPage}</span>
-           <div className="join">
-             <button className="join-item btn btn-sm" onClick={handlePrev} disabled={currentPage === 1 || loading}>« Prev</button>
-             <button className="join-item btn btn-sm" onClick={handleNext} disabled={products.length < ITEMS_PER_PAGE || loading}>Next »</button>
+           <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+             Page {currentPage}
+           </span>
+           <div className="flex gap-2">
+             <button 
+               className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
+               onClick={handlePrev} 
+               disabled={currentPage === 1 || loading}
+             >
+               « Previous
+             </button>
+             <button 
+               className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
+               onClick={handleNext} 
+               disabled={products.length < ITEMS_PER_PAGE || loading}
+             >
+               Next »
+             </button>
            </div>
         </div>
       </div>
