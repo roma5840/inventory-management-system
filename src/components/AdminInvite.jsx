@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { db } from "../lib/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import emailjs from '@emailjs/browser'; 
 
@@ -18,7 +18,19 @@ export default function AdminInvite() {
     setMsg("");
 
     try {
-      await setDoc(doc(db, "authorized_users", email), {
+      // Check if user already exists in whitelist
+      const userRef = doc(db, "authorized_users", email);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const currentStatus = userSnap.data().status;
+        // Stop execution and notify admin
+        setMsg(`Error: This email is already ${currentStatus}.`);
+        return; 
+      }
+
+      // Add to authorized_users only if new
+      await setDoc(userRef, {
         email: email,
         fullName: name,
         role: role,
