@@ -94,9 +94,9 @@ export default function App() {
           </div>
 
           {/* RIGHT COLUMN: DATA AREA (Fetches own data) */}
-          <div className="lg:col-span-2">
-            <Dashboard />
+          <div className="lg:col-span-2 flex flex-col gap-8">
             <TransactionHistory /> 
+            <Dashboard />
           </div>
 
         </div>
