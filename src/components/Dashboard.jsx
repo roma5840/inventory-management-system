@@ -1,65 +1,44 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
-import { doc, deleteDoc, collection, query, orderBy, limit, startAfter, getDocs, where } from "firebase/firestore";
+import { doc, deleteDoc, collection, query, orderBy, limit, onSnapshot, where } from "firebase/firestore";
 
 export default function Dashboard() {
   const { userRole } = useAuth();
   const [products, setProducts] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [limitCount, setLimitCount] = useState(20); // Control how many docs to listen to
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
 
-  // Initial Fetch & Search Handler
-  const fetchProducts = async (isNextPage = false) => {
-    setLoading(true);
-    try {
-      const collectionRef = collection(db, "products");
-      let q;
-
-      if (searchTerm.trim()) {
-        // SEARCH MODE: exact word match in array
-        const term = searchTerm.toLowerCase().trim();
-        q = query(collectionRef, where("searchKeywords", "array-contains", term), limit(20));
-        if (isNextPage && lastDoc) {
-             q = query(collectionRef, where("searchKeywords", "array-contains", term), startAfter(lastDoc), limit(20));
-        }
-      } else {
-        // DEFAULT MODE: recent items
-        q = query(collectionRef, orderBy("name"), limit(20));
-        if (isNextPage && lastDoc) {
-             q = query(collectionRef, orderBy("name"), startAfter(lastDoc), limit(20));
-        }
-      }
-
-      const snapshot = await getDocs(q);
-      const newItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      if (snapshot.docs.length > 0) {
-        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      }
-
-      if (isNextPage) {
-        setProducts(prev => [...prev, ...newItems]);
-      } else {
-        setProducts(newItems);
-      }
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Debounce search or trigger on Enter
+  // Real-time Listener
   useEffect(() => {
-    const timer = setTimeout(() => {
-        setLastDoc(null); // Reset pagination on new search
-        fetchProducts(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+    setLoading(true);
+    const collectionRef = collection(db, "products");
+    let q;
+
+    if (searchTerm.trim()) {
+      // SEARCH MODE (Real-time)
+      const term = searchTerm.toLowerCase().trim();
+      q = query(collectionRef, where("searchKeywords", "array-contains", term), limit(limitCount));
+    } else {
+      // DEFAULT MODE (Real-time)
+      q = query(collectionRef, orderBy("name"), limit(limitCount));
+    }
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      }));
+      setProducts(items);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [searchTerm, limitCount]); // Re-subscribe when Search or Limit changes
 
   const handleDelete = async (product) => {
     if (product.currentStock > 0) {
@@ -67,8 +46,12 @@ export default function Dashboard() {
       return;
     }
     if(window.confirm(`Delete "${product.name}"?`)) {
-      await deleteDoc(doc(db, "products", product.id));
-      fetchProducts(false); // Refresh
+      try {
+        await deleteDoc(doc(db, "products", product.id));
+        // No need to manually refresh, onSnapshot handles it
+      } catch (e) {
+        console.error("Delete failed", e);
+      }
     }
   }
 
@@ -83,7 +66,10 @@ export default function Dashboard() {
             placeholder="Search keyword (e.g. 'Math')" 
             className="input input-bordered input-sm w-full max-w-xs"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setLimitCount(20); // Reset limit on new search
+            }}
           />
         </div>
 
@@ -101,10 +87,10 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {products.length === 0 ? (
+              {products.length === 0 && !loading ? (
                 <tr>
                   <td colSpan="6" className="text-center py-8 text-gray-400">
-                    {loading ? "Loading..." : "No products found."}
+                    No products found.
                   </td>
                 </tr>
               ) : (
@@ -143,7 +129,7 @@ export default function Dashboard() {
         <div className="p-2 border-t text-center">
              <button 
                className="btn btn-sm btn-ghost text-primary"
-               onClick={() => fetchProducts(true)}
+               onClick={() => setLimitCount(prev => prev + 20)}
                disabled={loading}
              >
                {loading ? "Loading..." : "Load More"}
