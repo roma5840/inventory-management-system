@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../lib/firebase";
-import { doc, deleteDoc, collection, query, orderBy, limit, onSnapshot, where, startAfter } from "firebase/firestore";
+import { doc, deleteDoc, collection, query, orderBy, limit, onSnapshot, where, startAfter, runTransaction, serverTimestamp } from "firebase/firestore";
 
 export default function Dashboard() {
   const { userRole } = useAuth();
@@ -12,66 +12,74 @@ export default function Dashboard() {
   // Pagination State
   const ITEMS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageStack, setPageStack] = useState([]); // Stores the lastDoc of every previous page
-  const [lastVisible, setLastVisible] = useState(null); // The last doc of the CURRENT page
+  const [pageStack, setPageStack] = useState([]); 
+  const [lastVisible, setLastVisible] = useState(null);
 
-  // Real-time Listener
+  // Edit Modal State
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", price: "", minStockLevel: "" });
+  const [updateLoading, setUpdateLoading] = useState(false);
+
+  // REAL-TIME LISTENER WITH DEBOUNCE OPTIMIZATION
   useEffect(() => {
-    setLoading(true);
-    const collectionRef = collection(db, "products");
-    let q;
+    // 1. Debounce: Wait 600ms after typing stops before querying Firestore
+    // This dramatically reduces "Reads" from the free tier quota.
+    const delayQuery = setTimeout(() => {
+        setLoading(true);
+        const collectionRef = collection(db, "products");
+        let q;
 
-    // Determine Base Query (Search vs Normal)
-    let baseConstraints = [];
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      baseConstraints = [where("searchKeywords", "array-contains", term)];
-    } else {
-      baseConstraints = [orderBy("name")];
-    }
+        let baseConstraints = [];
+        if (searchTerm.trim()) {
+            const term = searchTerm.toLowerCase().trim();
+            // This relies on the 'searchKeywords' array created in ProductManager
+            baseConstraints = [where("searchKeywords", "array-contains", term)];
+        } else {
+            baseConstraints = [orderBy("name")];
+        }
 
-    // Add Pagination Cursor
-    if (currentPage > 1 && pageStack[currentPage - 2]) {
-      // If we are on Page 2, we start after the last doc of Page 1 (index 0)
-      baseConstraints.push(startAfter(pageStack[currentPage - 2]));
-    }
+        if (currentPage > 1 && pageStack[currentPage - 2]) {
+            baseConstraints.push(startAfter(pageStack[currentPage - 2]));
+        }
 
-    // Apply Limit
-    q = query(collectionRef, ...baseConstraints, limit(ITEMS_PER_PAGE));
+        q = query(collectionRef, ...baseConstraints, limit(ITEMS_PER_PAGE));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      }));
-      
-      setProducts(items);
-      
-      // Store the last visible doc of THIS page to enable the "Next" button
-      if (snapshot.docs.length > 0) {
-        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-      } else {
-        setLastVisible(null);
-      }
-      
-      setLoading(false);
-    }, (error) => {
-      console.error("Error:", error);
-      setLoading(false);
-    });
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const items = snapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data() 
+            }));
+            
+            setProducts(items);
+            
+            if (snapshot.docs.length > 0) {
+                setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+            } else {
+                setLastVisible(null);
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Error:", error);
+            setLoading(false);
+        });
 
-    return () => unsubscribe();
-  }, [searchTerm, currentPage]); // Only re-run if Page # or Search changes
+        // Cleanup listener on unmount or re-run
+        return () => unsubscribe();
+
+    }, 600); // 600ms delay
+
+    return () => clearTimeout(delayQuery); // Cleanup timeout
+  }, [searchTerm, currentPage]); 
 
   const handleNext = () => {
     if (!lastVisible) return;
-    setPageStack(prev => [...prev, lastVisible]); // Save current cursor
+    setPageStack(prev => [...prev, lastVisible]);
     setCurrentPage(prev => prev + 1);
   };
 
   const handlePrev = () => {
     if (currentPage === 1) return;
-    setPageStack(prev => prev.slice(0, -1)); // Pop the last cursor
+    setPageStack(prev => prev.slice(0, -1));
     setCurrentPage(prev => prev - 1);
   };
 
@@ -82,10 +90,88 @@ export default function Dashboard() {
     setLastVisible(null);
   }
 
+  // PREPARE EDIT MODAL
+  const openEditModal = (product) => {
+    setEditingProduct(product);
+    setEditForm({
+        name: product.name,
+        price: product.price,
+        minStockLevel: product.minStockLevel
+    });
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setUpdateLoading(true);
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const productRef = doc(db, "products", editingProduct.id);
+            const statsRef = doc(db, "stats", "summary");
+            
+            // Re-fetch to ensure data consistency
+            const pDoc = await transaction.get(productRef);
+            const sDoc = await transaction.get(statsRef);
+            
+            if (!pDoc.exists()) throw "Product does not exist!";
+            
+            const currentData = pDoc.data();
+            const newPrice = Number(editForm.price);
+            const currentStock = currentData.currentStock || 0;
+            
+            // AUDIT LOGIC: 
+            // If Price changes, the Total Inventory Value in Stats must be adjusted.
+            // Value Diff = (Stock * NewPrice) - (Stock * OldPrice)
+            let valueAdjustment = 0;
+            if (currentData.price !== newPrice) {
+                const oldVal = currentStock * currentData.price;
+                const newVal = currentStock * newPrice;
+                valueAdjustment = newVal - oldVal;
+            }
+
+            // Update Search Keywords (in case name changed)
+            const newKeywords = editForm.name.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+
+            // Update Product
+            transaction.update(productRef, {
+                name: editForm.name,
+                price: newPrice,
+                minStockLevel: Number(editForm.minStockLevel),
+                searchKeywords: newKeywords,
+                lastUpdated: serverTimestamp()
+            });
+
+            // Update Stats if price changed
+            if (valueAdjustment !== 0 && sDoc.exists()) {
+                const currentTotalVal = sDoc.data().totalInventoryValue || 0;
+                transaction.update(statsRef, {
+                    totalInventoryValue: currentTotalVal + valueAdjustment
+                });
+            }
+        });
+        
+        setEditingProduct(null); // Close Modal
+        alert("Product Details Updated Successfully.");
+
+    } catch (err) {
+        console.error(err);
+        alert("Update failed: " + err.message);
+    } finally {
+        setUpdateLoading(false);
+    }
+  };
+
   const handleDelete = async (product) => {
-    if (product.currentStock > 0) return alert("Error: Stock must be 0 to delete.");
-    if(window.confirm(`Delete "${product.name}"?`)) {
-        await deleteDoc(doc(db, "products", product.id));
+    // Audit Check: Prevent deleting items that still have stock
+    if (product.currentStock > 0) return alert("Error: Stock must be 0 to delete item.");
+    
+    if(window.confirm(`Are you sure you want to delete "${product.name}" permanently?`)) {
+        try {
+            await deleteDoc(doc(db, "products", product.id));
+        } catch (error) {
+            console.error("Delete failed:", error);
+            alert("Failed to delete item.");
+        }
     }
   }
 
@@ -124,23 +210,44 @@ export default function Dashboard() {
                 <tr><td colSpan="6" className="text-center py-8 text-gray-400">No products found.</td></tr>
               ) : (
                 products.map((p) => (
-                  <tr key={p.id} className="hover">
+                  <tr key={p.id} className="hover group border-b border-gray-100">
                     <td className="font-mono text-xs font-bold text-gray-500">{p.id}</td>
                     <td className="font-semibold text-gray-700">{p.name}</td>
-                    <td className="text-right font-mono">${p.price}</td>
+                    <td className="text-right font-mono">${p.price.toLocaleString()}</td>
                     <td className="text-center">
                       <span className={`font-bold ${p.currentStock <= p.minStockLevel ? 'text-red-600' : 'text-gray-700'}`}>
                         {p.currentStock}
                       </span>
                     </td>
                     <td className="text-center">
-                      {p.currentStock <= 0 ? <div className="badge badge-error text-white text-xs">OUT</div> : 
-                       p.currentStock <= p.minStockLevel ? <div className="badge badge-warning text-xs">LOW</div> : 
-                       <div className="badge badge-success text-white text-xs">OK</div>}
+                      {p.currentStock <= 0 ? <div className="badge badge-error text-white text-xs font-bold">OUT</div> : 
+                       p.currentStock <= p.minStockLevel ? <div className="badge badge-warning text-xs font-bold">LOW</div> : 
+                       <div className="badge badge-success text-white text-xs font-bold">OK</div>}
                     </td>
+                    
+                    {/* ACTION BUTTONS */}
                     {userRole === 'ADMIN' && (
                       <td className="text-right">
-                        <button onClick={() => handleDelete(p)} className="btn btn-ghost btn-xs text-red-500">Del</button>
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                                onClick={() => openEditModal(p)} 
+                                className="btn btn-square btn-xs btn-ghost text-blue-600 hover:bg-blue-50 tooltip tooltip-left"
+                                data-tip="Edit Details"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                </svg>
+                            </button>
+                            <button 
+                                onClick={() => handleDelete(p)} 
+                                className="btn btn-square btn-xs btn-ghost text-red-500 hover:bg-red-50 tooltip tooltip-left"
+                                data-tip="Delete Item"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -172,6 +279,77 @@ export default function Dashboard() {
              </button>
            </div>
         </div>
+        {/* EDIT MODAL (Pop-up) */}
+      {editingProduct && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg text-gray-700 mb-4">
+                Update Item Details
+            </h3>
+            
+            <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+                
+                {/* READ ONLY FIELDS (For Audit Safety) */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-400">Barcode / ISBN</label>
+                        <input type="text" value={editingProduct.id} disabled className="input input-bordered input-sm bg-gray-100" />
+                    </div>
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-400">Current Stock</label>
+                        <input type="text" value={editingProduct.currentStock} disabled className="input input-bordered input-sm bg-gray-100 font-bold text-gray-700" />
+                        <label className="label text-[10px] text-orange-500">
+                            *Stock cannot be edited here. Use Transaction Form.
+                        </label>
+                    </div>
+                </div>
+
+                {/* EDITABLE FIELDS */}
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Book Title</label>
+                    <input 
+                        type="text" 
+                        className="input input-bordered w-full" 
+                        value={editForm.name}
+                        onChange={e => setEditForm({...editForm, name: e.target.value})}
+                        required
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Price</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            className="input input-bordered w-full" 
+                            value={editForm.price}
+                            onChange={e => setEditForm({...editForm, price: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Alert Level</label>
+                        <input 
+                            type="number" 
+                            className="input input-bordered w-full" 
+                            value={editForm.minStockLevel}
+                            onChange={e => setEditForm({...editForm, minStockLevel: e.target.value})}
+                            required
+                        />
+                    </div>
+                </div>
+
+                <div className="modal-action">
+                    <button type="button" className="btn btn-ghost" onClick={() => setEditingProduct(null)}>Cancel</button>
+                    <button type="submit" className={`btn btn-primary ${updateLoading ? 'loading' : ''}`}>
+                        {updateLoading ? "Updating..." : "Save Changes"}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
