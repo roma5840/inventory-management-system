@@ -1,81 +1,43 @@
 import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
-import { collection, query, orderBy, limit, getDocs, startAfter, where, Timestamp } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 
 export default function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [isEmpty, setIsEmpty] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Initial Fetch (Defaults to Today's data)
   useEffect(() => {
-    fetchTransactions(true);
-  }, []);
+    // Real-time listener for the last 10 transactions
+    const q = query(
+      collection(db, "transactions"),
+      orderBy("timestamp", "desc"),
+      limit(10)
+    );
 
-  const fetchTransactions = async (isInitial = false) => {
-    setLoading(true);
-    try {
-      const collectionRef = collection(db, "transactions");
-      
-      // Calculate start of today for filtering
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayTimestamp = Timestamp.fromDate(today);
-
-      let q;
-
-      if (isInitial) {
-        // Query: Get transactions from today onwards, ordered by newest first, limit 10
-        q = query(
-          collectionRef,
-          where("timestamp", ">=", todayTimestamp),
-          orderBy("timestamp", "desc"),
-          limit(10)
-        );
-      } else {
-        // Pagination query using the last document cursor
-        q = query(
-          collectionRef,
-          where("timestamp", ">=", todayTimestamp),
-          orderBy("timestamp", "desc"),
-          startAfter(lastDoc),
-          limit(10)
-        );
-      }
-
-      const snapshot = await getDocs(q);
-      
-      if (snapshot.empty) {
-        setIsEmpty(true);
-      } else {
-        const newTrans = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-
-        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-        setTransactions(prev => isInitial ? newTrans : [...prev, ...newTrans]);
-      }
-
-    } catch (error) {
-      console.error("Error fetching history:", error);
-    } finally {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const trans = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setTransactions(trans);
       setLoading(false);
-    }
-  };
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "Pending...";
+    // Convert Firestore Timestamp to JS Date
     return new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const getBadgeColor = (type) => {
     switch (type) {
-      case 'RECEIVING': return 'badge-success text-white'; // Stock Up
-      case 'ISSUANCE_RETURN': return 'badge-info text-white'; // Stock Up
-      case 'ISSUANCE': return 'badge-error text-white'; // Stock Down
-      case 'PULL_OUT': return 'badge-warning'; // Stock Down
+      case 'RECEIVING': return 'badge-success text-white'; 
+      case 'ISSUANCE_RETURN': return 'badge-info text-white'; 
+      case 'ISSUANCE': return 'badge-error text-white'; 
+      case 'PULL_OUT': return 'badge-warning'; 
       default: return 'badge-ghost';
     }
   };
@@ -83,36 +45,24 @@ export default function TransactionHistory() {
   return (
     <div className="card bg-base-100 shadow-xl mt-8">
       <div className="card-body p-0">
-        <div className="p-4 border-b bg-gray-50 rounded-t-xl flex justify-between items-center">
-          <h2 className="card-title text-lg text-gray-700">
-            Transaction History (Today)
-          </h2>
-          <button 
-            onClick={() => fetchTransactions(true)} 
-            className="btn btn-xs btn-ghost"
-          >
-            Refresh
-          </button>
+        <div className="p-4 border-b bg-gray-50 rounded-t-xl">
+          <h2 className="card-title text-lg text-gray-700">Recent Transactions</h2>
         </div>
 
-        <div className="overflow-x-auto max-h-96">
+        <div className="overflow-x-auto">
           <table className="table table-xs w-full">
-            <thead className="bg-base-200 sticky top-0 z-10">
+            <thead className="bg-base-200">
               <tr>
                 <th>Time</th>
                 <th>Type</th>
                 <th>Product</th>
                 <th className="text-center">Qty</th>
-                <th className="text-right">Stock Impact</th>
+                <th className="text-right">History</th>
               </tr>
             </thead>
             <tbody>
               {transactions.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center py-6 text-gray-400">
-                    No transactions recorded today.
-                  </td>
-                </tr>
+                <tr><td colSpan="5" className="text-center py-6 text-gray-400">No recent activity.</td></tr>
               ) : (
                 transactions.map((t) => (
                   <tr key={t.id} className="hover">
@@ -135,19 +85,6 @@ export default function TransactionHistory() {
             </tbody>
           </table>
         </div>
-
-        {/* Load More Button */}
-        {!isEmpty && transactions.length > 0 && (
-          <div className="p-2 border-t text-center">
-            <button 
-              onClick={() => fetchTransactions(false)} 
-              className={`btn btn-sm btn-ghost text-primary w-full ${loading ? 'loading' : ''}`}
-              disabled={loading}
-            >
-              Load Older Transactions
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
