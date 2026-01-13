@@ -3,8 +3,10 @@ import { useAuth } from "../context/AuthContext";
 import { db, auth } from "../lib/firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { Link, useNavigate } from "react-router-dom";
 
-export default function Register({ onSwitchToLogin }) {
+export default function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "", confirmPass: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export default function Register({ onSwitchToLogin }) {
       // or just rely on authorized_users for roles
       
       alert("Registration Successful! Welcome to the Finance System.");
-      // authcontext will automatically detect login and redirect to dashboard
+      navigate("/"); 
 
     } catch (err) {
       console.error(err);
@@ -110,9 +112,9 @@ export default function Register({ onSwitchToLogin }) {
           </form>
 
           <div className="divider">OR</div>
-          <button onClick={onSwitchToLogin} className="btn btn-link btn-sm">
+          <Link to="/login" className="btn btn-link btn-sm">
             Already registered? Login here
-          </button>
+          </Link>
         </div>
       </div>
     </div>

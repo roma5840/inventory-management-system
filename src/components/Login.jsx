@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
 
-export default function Login({ onSwitchToRegister }) {
-  const { login } = useAuth();
+export default function Login() {
+  const { login, currentUser } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (currentUser) navigate("/");
+  }, [currentUser, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -15,6 +22,7 @@ export default function Login({ onSwitchToRegister }) {
 
     try {
       await login(email, password);
+      navigate("/"); // Navigate to Dashboard on success
     } catch (err) {
       setError("Failed to sign in. Check email/password.");
     }
@@ -53,10 +61,10 @@ export default function Login({ onSwitchToRegister }) {
           </form>
 
           <div className="divider">OR</div>
-          {/* Link to Registration */}
-          <button onClick={onSwitchToRegister} className="btn btn-link btn-sm text-gray-600">
+          {/* Link to Registration using React Router */}
+          <Link to="/register" className="btn btn-link btn-sm text-gray-600">
             Have an invite code? Register
-          </button>
+          </Link>
         </div>
       </div>
     </div>
