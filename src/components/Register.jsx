@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Added useEffect
 import { useAuth } from "../context/AuthContext";
 import { db, auth } from "../lib/firebase";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -6,10 +6,16 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Register() {
+  const { currentUser } = useAuth(); // Get currentUser to check auth state
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "", confirmPass: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // If manually navigating to /register while logged in
+  useEffect(() => {
+    if (currentUser) navigate("/");
+  }, [currentUser, navigate]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -18,7 +24,6 @@ export default function Register() {
 
     const { email, password, confirmPass } = formData;
 
-    // Basic Validation
     if (password !== confirmPass) {
       setError("Passwords do not match.");
       setLoading(false);
@@ -26,8 +31,6 @@ export default function Register() {
     }
 
     try {
-      // Whitelist Verification
-      // check if this email exists in authorized_users before creating account
       const userRef = doc(db, "authorized_users", email);
       const userSnap = await getDoc(userRef);
 
@@ -36,41 +39,47 @@ export default function Register() {
       }
 
       const userData = userSnap.data();
-
       if (userData.status === "REGISTERED") {
         throw new Error("This account is already registered. Please Login.");
       }
 
-      // Create firebase auth account
+      // This line automatically logs the user in upon success
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // update firestore whitelist status
-      // link the new firebase uid to the existing email record
       await updateDoc(userRef, {
         status: "REGISTERED",
-        uid: user.uid, // Important: link the auth id to this doc
+        uid: user.uid,
         registeredAt: serverTimestamp()
       });
 
-      // Create the public user profile
-      // or just rely on authorized_users for roles
-      
       alert("Registration Successful! Welcome to the Finance System.");
+      // Navigate not strictly needed as useeffect will catch the auth change, 
+      // but kept for clarity.
       navigate("/"); 
 
     } catch (err) {
       console.error(err);
-      // clean up firebase error messages for the user
       if(err.code === 'auth/email-already-in-use') {
         setError("Account already exists. Please login.");
       } else {
         setError(err.message);
       }
-    } finally {
       setLoading(false);
     }
   };
+
+  // RENDER GUARD
+  if (currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-200">
+        <div className="flex flex-col items-center gap-4">
+          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <p className="text-gray-500 animate-pulse">Setting up your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-200">
@@ -81,7 +90,7 @@ export default function Register() {
           {error && <div className="alert alert-error text-xs">{error}</div>}
 
           <form onSubmit={handleRegister} className="flex flex-col gap-3">
-            <div className="form-control">
+             <div className="form-control">
               <label className="label"><span className="label-text">Email (Must match Invite)</span></label>
               <input 
                 type="email" required className="input input-bordered" 
@@ -105,7 +114,7 @@ export default function Register() {
                 onChange={(e) => setFormData({...formData, confirmPass: e.target.value})}
               />
             </div>
-            
+
             <button disabled={loading} className="btn btn-primary mt-4">
               {loading ? "Verifying Invite..." : "Complete Registration"}
             </button>

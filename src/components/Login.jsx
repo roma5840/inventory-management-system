@@ -22,11 +22,24 @@ export default function Login() {
 
     try {
       await login(email, password);
-      navigate("/"); // Navigate to Dashboard on success
+      // No navigate needed here; useeffect handles it naturally.
+      // do not set loading(false) to prevent the button from flickering
     } catch (err) {
       setError("Failed to sign in. Check email/password.");
+      setLoading(false); 
     }
-    setLoading(false);
+  }
+
+  // If user is logged in, show spinner instead of form
+  if (currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-200">
+        <div className="flex flex-col items-center gap-4">
+          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <p className="text-gray-500 animate-pulse">Redirecting to Dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -61,7 +74,6 @@ export default function Login() {
           </form>
 
           <div className="divider">OR</div>
-          {/* Link to Registration using React Router */}
           <Link to="/register" className="btn btn-link btn-sm text-gray-600">
             Have an invite code? Register
           </Link>
