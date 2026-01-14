@@ -7,7 +7,8 @@ export default function Dashboard() {
   const { userRole } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // Instant UI input
+  const [debouncedTerm, setDebouncedTerm] = useState(""); // Delayed query value
   
   // Pagination State
   const ITEMS_PER_PAGE = 10;
@@ -20,56 +21,59 @@ export default function Dashboard() {
   const [editForm, setEditForm] = useState({ name: "", price: "", minStockLevel: "" });
   const [updateLoading, setUpdateLoading] = useState(false);
 
-  // REAL-TIME LISTENER WITH DEBOUNCE OPTIMIZATION
+  // EFFECT 1: Handle Debounce (Only for typing)
+  // This updates 'debouncedTerm' 600ms after you stop typing.
   useEffect(() => {
-    // 1. Debounce: Wait 600ms after typing stops before querying Firestore
-    // This dramatically reduces "Reads" from the free tier quota.
-    const delayQuery = setTimeout(() => {
-        setLoading(true);
-        const collectionRef = collection(db, "products");
-        let q;
+    const timer = setTimeout(() => {
+      setDebouncedTerm(searchTerm);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-        let baseConstraints = [];
-        if (searchTerm.trim()) {
-            const term = searchTerm.toLowerCase().trim();
-            // This relies on the 'searchKeywords' array created in ProductManager
-            baseConstraints = [where("searchKeywords", "array-contains", term)];
+  // EFFECT 2: Handle Fetching (Immediate response to Page or Debounced Term)
+  // This runs INSTANTLY when Page changes, or after the 600ms search delay.
+  useEffect(() => {
+    setLoading(true);
+    const collectionRef = collection(db, "products");
+    let q;
+
+    let baseConstraints = [];
+    
+    // Use 'debouncedTerm' for the actual query, not 'searchTerm'
+    if (debouncedTerm.trim()) {
+        const term = debouncedTerm.toLowerCase().trim();
+        baseConstraints = [where("searchKeywords", "array-contains", term)];
+    } else {
+        baseConstraints = [orderBy("name")];
+    }
+
+    if (currentPage > 1 && pageStack[currentPage - 2]) {
+        baseConstraints.push(startAfter(pageStack[currentPage - 2]));
+    }
+
+    q = query(collectionRef, ...baseConstraints, limit(ITEMS_PER_PAGE));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data() 
+        }));
+        
+        setProducts(items);
+        
+        if (snapshot.docs.length > 0) {
+            setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
         } else {
-            baseConstraints = [orderBy("name")];
+            setLastVisible(null);
         }
+        setLoading(false);
+    }, (error) => {
+        console.error("Error:", error);
+        setLoading(false);
+    });
 
-        if (currentPage > 1 && pageStack[currentPage - 2]) {
-            baseConstraints.push(startAfter(pageStack[currentPage - 2]));
-        }
-
-        q = query(collectionRef, ...baseConstraints, limit(ITEMS_PER_PAGE));
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ 
-                id: doc.id, 
-                ...doc.data() 
-            }));
-            
-            setProducts(items);
-            
-            if (snapshot.docs.length > 0) {
-                setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-            } else {
-                setLastVisible(null);
-            }
-            setLoading(false);
-        }, (error) => {
-            console.error("Error:", error);
-            setLoading(false);
-        });
-
-        // Cleanup listener on unmount or re-run
-        return () => unsubscribe();
-
-    }, 600); // 600ms delay
-
-    return () => clearTimeout(delayQuery); // Cleanup timeout
-  }, [searchTerm, currentPage]); 
+    return () => unsubscribe();
+  }, [debouncedTerm, currentPage]); // Dependent on DEBOUNCED term
 
   const handleNext = () => {
     if (!lastVisible) return;
@@ -84,7 +88,8 @@ export default function Dashboard() {
   };
 
   const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+    setSearchTerm(e.target.value); // Updates Input immediately
+    // Reset pagination immediately so UI doesn't look weird
     setCurrentPage(1);
     setPageStack([]);
     setLastVisible(null);
