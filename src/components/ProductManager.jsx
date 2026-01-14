@@ -13,26 +13,6 @@ export default function ProductManager() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // Check if product exists when Barcode is blurred (focus lost)
-  const handleBarcodeBlur = async () => {
-    if (!formData.id) return;
-    setLoading(true);
-    try {
-      const docRef = doc(db, "products", formData.id);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        setMsg("Error: Item already exists! Please edit it using the Inventory List below.");
-      } else {
-        setMsg(""); // Clear error if it's a new, valid barcode
-      }
-    } catch (error) {
-      console.error("Error checking product:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -69,16 +49,14 @@ export default function ProductManager() {
           const productRef = doc(db, "products", formData.id);
           const statsRef = doc(db, "stats", "summary");
           
+          // This is the ONLY time we read the document now
           const productDoc = await transaction.get(productRef);
           const statsDoc = await transaction.get(statsRef);
 
-          // Strict check - do not allow overwrite from this form
+          // Strict check: Block save if ID exists
           if (productDoc.exists()) {
             throw "Product ID already exists. Please use the Inventory List to edit this item.";
           }
-
-          let oldStock = 0;
-          let oldPrice = 0;
 
           // Prepare Keyword Array for Search
           const searchKeywords = formData.name.toLowerCase().split(/\s+/).filter(w => w.length > 0);
@@ -102,13 +80,11 @@ export default function ProductManager() {
              currentTotalItems = statsDoc.data().totalItemsCount || 0;
           }
 
-          const oldValueVal = oldStock * oldPrice;
           const newValueVal = stock * price;
-          const stockDiff = stock - oldStock;
 
           transaction.set(statsRef, {
-            totalInventoryValue: currentTotalValue - oldValueVal + newValueVal,
-            totalItemsCount: currentTotalItems + stockDiff
+            totalInventoryValue: currentTotalValue + newValueVal,
+            totalItemsCount: currentTotalItems + stock
           }, { merge: true });
         });
       });
@@ -123,7 +99,6 @@ export default function ProductManager() {
       });
     } catch (error) {
       console.error(error);
-      // Clean up error message if it's an object
       const errorMessage = typeof error === 'string' ? error : "Error saving product.";
       setMsg(errorMessage);
     } finally {
@@ -144,8 +119,7 @@ export default function ProductManager() {
             className="input input-bordered w-full font-mono" 
             value={formData.id} 
             onChange={e => setFormData({...formData, id: e.target.value})}
-            onBlur={handleBarcodeBlur}
-            placeholder="Scan to add or edit..."
+            placeholder="Scan to add..."
             required 
           />
         </div>
