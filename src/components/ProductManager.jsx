@@ -44,6 +44,31 @@ export default function ProductManager() {
     setLoading(true);
     setMsg("");
 
+    const price = Number(formData.price);
+    const stock = Number(formData.currentStock);
+    const minStock = Number(formData.minStockLevel);
+
+    if (!formData.id.trim()) {
+        setMsg("Error: Barcode/ISBN is required.");
+        setLoading(false); return;
+    }
+    if (!formData.name.trim()) {
+        setMsg("Error: Book Title is required.");
+        setLoading(false); return;
+    }
+    if (price < 0) {
+        setMsg("Error: Price cannot be negative.");
+        setLoading(false); return;
+    }
+    if (stock < 0) {
+        setMsg("Error: Stock cannot be negative.");
+        setLoading(false); return;
+    }
+    if (minStock < 0) {
+        setMsg("Error: Min Alert cannot be negative.");
+        setLoading(false); return;
+    }
+
     try {
       await import("firebase/firestore").then(async ({ runTransaction }) => {
         await runTransaction(db, async (transaction) => {
@@ -69,10 +94,10 @@ export default function ProductManager() {
           transaction.set(productRef, {
             id: formData.id,
             name: formData.name,
-            price: Number(formData.price),
-            minStockLevel: Number(formData.minStockLevel),
-            currentStock: Number(formData.currentStock),
-            searchKeywords: searchKeywords, // NEW: Indexing
+            price: price,
+            minStockLevel: minStock,
+            currentStock: stock,
+            searchKeywords: searchKeywords, 
             lastUpdated: serverTimestamp()
           }, { merge: true });
 
@@ -85,8 +110,8 @@ export default function ProductManager() {
           }
 
           const oldValueVal = oldStock * oldPrice;
-          const newValueVal = Number(formData.currentStock) * Number(formData.price);
-          const stockDiff = Number(formData.currentStock) - oldStock;
+          const newValueVal = stock * price;
+          const stockDiff = stock - oldStock;
 
           transaction.set(statsRef, {
             totalInventoryValue: currentTotalValue - oldValueVal + newValueVal,
@@ -118,7 +143,7 @@ export default function ProductManager() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         {/* Barcode */}
         <div className="form-control">
-          <label className="label py-1"><span className="label-text">Barcode / ISBN</span></label>
+          <label className="label py-1"><span className="label-text">Barcode / ISBN *</span></label>
           <input 
             type="text" 
             className="input input-bordered w-full font-mono" 
@@ -132,12 +157,13 @@ export default function ProductManager() {
 
         {/* Product Name */}
         <div className="form-control">
-          <label className="label py-1"><span className="label-text">Book Title</span></label>
+          <label className="label py-1"><span className="label-text">Book Title *</span></label>
           <input 
             type="text" 
             className="input input-bordered w-full" 
             value={formData.name} 
             onChange={e => setFormData({...formData, name: e.target.value})}
+            placeholder="e.g. Financial Accounting Vol 1"
             required 
           />
         </div>
@@ -145,21 +171,25 @@ export default function ProductManager() {
         <div className="grid grid-cols-2 gap-3">
           {/* Price */}
           <div className="form-control">
-            <label className="label py-1"><span className="label-text">Price</span></label>
+            <label className="label py-1"><span className="label-text">Price (₱) *</span></label>
             <input 
               type="number" 
+              min="0"
+              step="0.01"
               className="input input-bordered w-full" 
               value={formData.price} 
               onChange={e => setFormData({...formData, price: e.target.value})}
+              placeholder="0.00"
               required 
             />
           </div>
           
           {/* Min Stock */}
           <div className="form-control">
-            <label className="label py-1"><span className="label-text">Min. Alert</span></label>
+            <label className="label py-1"><span className="label-text">Min. Alert *</span></label>
             <input 
               type="number" 
+              min="0"
               className="input input-bordered w-full" 
               value={formData.minStockLevel} 
               onChange={e => setFormData({...formData, minStockLevel: e.target.value})}
@@ -170,9 +200,10 @@ export default function ProductManager() {
 
         {/* Initial Stock */}
         <div className="form-control">
-            <label className="label py-1"><span className="label-text">Set Stock Level</span></label>
+            <label className="label py-1"><span className="label-text">Set Stock Level *</span></label>
             <input 
               type="number" 
+              min="0"
               className="input input-bordered w-full" 
               value={formData.currentStock} 
               onChange={e => setFormData({...formData, currentStock: e.target.value})}

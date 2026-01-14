@@ -108,6 +108,22 @@ export default function Dashboard() {
     e.preventDefault();
     setUpdateLoading(true);
 
+    const newPrice = Number(editForm.price);
+    const newMinLevel = Number(editForm.minStockLevel);
+
+    if (!editForm.name.trim()) {
+        alert("Error: Product Name is required.");
+        setUpdateLoading(false); return;
+    }
+    if (newPrice < 0) {
+        alert("Error: Price cannot be negative.");
+        setUpdateLoading(false); return;
+    }
+    if (newMinLevel < 0) {
+        alert("Error: Min Stock Level cannot be negative.");
+        setUpdateLoading(false); return;
+    }
+
     try {
         await runTransaction(db, async (transaction) => {
             const productRef = doc(db, "products", editingProduct.id);
@@ -120,7 +136,6 @@ export default function Dashboard() {
             if (!pDoc.exists()) throw "Product does not exist!";
             
             const currentData = pDoc.data();
-            const newPrice = Number(editForm.price);
             const currentStock = currentData.currentStock || 0;
             
             // AUDIT LOGIC: 
@@ -140,7 +155,7 @@ export default function Dashboard() {
             transaction.update(productRef, {
                 name: editForm.name,
                 price: newPrice,
-                minStockLevel: Number(editForm.minStockLevel),
+                minStockLevel: newMinLevel,
                 searchKeywords: newKeywords,
                 lastUpdated: serverTimestamp()
             });
@@ -310,7 +325,7 @@ export default function Dashboard() {
 
                 {/* EDITABLE FIELDS */}
                 <div className="form-control">
-                    <label className="label text-xs uppercase font-bold text-gray-500">Book Title</label>
+                    <label className="label text-xs uppercase font-bold text-gray-500">Item Name *</label>
                     <input 
                         type="text" 
                         className="input input-bordered w-full" 
@@ -322,10 +337,11 @@ export default function Dashboard() {
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Price</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Price (₱) *</label>
                         <input 
                             type="number" 
                             step="0.01"
+                            min="0"
                             className="input input-bordered w-full" 
                             value={editForm.price}
                             onChange={e => setEditForm({...editForm, price: e.target.value})}
@@ -333,9 +349,10 @@ export default function Dashboard() {
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Alert Level</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Alert Level *</label>
                         <input 
                             type="number" 
+                            min="0"
                             className="input input-bordered w-full" 
                             value={editForm.minStockLevel}
                             onChange={e => setEditForm({...editForm, minStockLevel: e.target.value})}
