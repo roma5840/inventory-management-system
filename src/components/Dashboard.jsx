@@ -217,7 +217,7 @@ export default function Dashboard() {
                   <tr key={p.id} className="hover group border-b border-gray-100">
                     <td className="font-mono text-xs font-bold text-gray-500">{p.id}</td>
                     <td className="font-semibold text-gray-700">{p.name}</td>
-                    <td className="text-right font-mono">${p.price.toLocaleString()}</td>
+                    <td className="text-right font-mono">₱{p.price.toLocaleString()}</td>
                     <td className="text-center">
                       <span className={`font-bold ${p.currentStock <= p.minStockLevel ? 'text-red-600' : 'text-gray-700'}`}>
                         {p.currentStock}
