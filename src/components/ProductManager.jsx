@@ -22,15 +22,9 @@ export default function ProductManager() {
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        setFormData(prev => ({
-          ...prev,
-          name: data.name,
-          price: data.price,
-          minStockLevel: data.minStockLevel,
-          currentStock: data.currentStock
-        }));
-        setMsg("Found existing item. Switching to Edit Mode.");
+        setMsg("Error: Item already exists! Please edit it using the Inventory List below.");
+      } else {
+        setMsg(""); // Clear error if it's a new, valid barcode
       }
     } catch (error) {
       console.error("Error checking product:", error);
@@ -78,19 +72,18 @@ export default function ProductManager() {
           const productDoc = await transaction.get(productRef);
           const statsDoc = await transaction.get(statsRef);
 
+          // Strict check - do not allow overwrite from this form
+          if (productDoc.exists()) {
+            throw "Product ID already exists. Please use the Inventory List to edit this item.";
+          }
+
           let oldStock = 0;
           let oldPrice = 0;
-
-          if (productDoc.exists()) {
-            const data = productDoc.data();
-            oldStock = data.currentStock || 0;
-            oldPrice = data.price || 0;
-          }
 
           // Prepare Keyword Array for Search
           const searchKeywords = formData.name.toLowerCase().split(/\s+/).filter(w => w.length > 0);
 
-          // Update Product
+          // Create Product
           transaction.set(productRef, {
             id: formData.id,
             name: formData.name,
@@ -99,7 +92,7 @@ export default function ProductManager() {
             currentStock: stock,
             searchKeywords: searchKeywords, 
             lastUpdated: serverTimestamp()
-          }, { merge: true });
+          });
 
           // Update Stats
           let currentTotalValue = 0;
@@ -120,7 +113,7 @@ export default function ProductManager() {
         });
       });
 
-      setMsg("Success: Product Saved & Stats Updated!");
+      setMsg("Success: New Product Added!");
       setFormData({
         id: "",
         name: "",
@@ -130,7 +123,9 @@ export default function ProductManager() {
       });
     } catch (error) {
       console.error(error);
-      setMsg("Error saving product.");
+      // Clean up error message if it's an object
+      const errorMessage = typeof error === 'string' ? error : "Error saving product.";
+      setMsg(errorMessage);
     } finally {
       setLoading(false);
     }
