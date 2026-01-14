@@ -21,8 +21,8 @@ export default function Dashboard() {
   const [editForm, setEditForm] = useState({ name: "", price: "", minStockLevel: "" });
   const [updateLoading, setUpdateLoading] = useState(false);
 
-  // EFFECT 1: Handle Debounce (Only for typing)
-  // This updates 'debouncedTerm' 600ms after you stop typing.
+  // Handle Debounce (Only for typing)
+  // This updates 'debouncedTerm' 600ms after user stops typing.
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedTerm(searchTerm);
@@ -30,8 +30,8 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // EFFECT 2: Handle Fetching (Immediate response to Page or Debounced Term)
-  // This runs INSTANTLY when Page changes, or after the 600ms search delay.
+  // Handle Fetching (Immediate response to Page or Debounced Term)
+  // runs instantly when page changes, or after the 600ms search delay.
   useEffect(() => {
     setLoading(true);
     const collectionRef = collection(db, "products");
@@ -95,7 +95,6 @@ export default function Dashboard() {
     setLastVisible(null);
   }
 
-  // PREPARE EDIT MODAL
   const openEditModal = (product) => {
     setEditingProduct(product);
     setEditForm({
@@ -114,7 +113,7 @@ export default function Dashboard() {
             const productRef = doc(db, "products", editingProduct.id);
             const statsRef = doc(db, "stats", "summary");
             
-            // Re-fetch to ensure data consistency
+            // Refetch to ensure data consistency
             const pDoc = await transaction.get(productRef);
             const sDoc = await transaction.get(statsRef);
             

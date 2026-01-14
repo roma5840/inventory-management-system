@@ -30,7 +30,7 @@ export default function TransactionForm() {
   return (
     <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
       
-      {/* ACTION BUTTON GRID - Professional SVGs */}
+      {/* ACTION BUTTON GRID - SVGs */}
       <div className="grid grid-cols-2 md:grid-cols-4 w-full">
         
         <button 
