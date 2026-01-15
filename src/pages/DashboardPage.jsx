@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { query, collection, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 
 // Components moved here
@@ -13,29 +11,7 @@ import TransactionHistory from "../components/TransactionHistory";
 import ProductManager from "../components/ProductManager";
 
 export default function DashboardPage() {
-  const { currentUser, userRole } = useAuth();
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch logic moved from App.jsx
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const q = query(collection(db, "products"), orderBy("name"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setProducts(items);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Error fetching products:", error);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [currentUser]);
+  const { userRole } = useAuth();
 
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
