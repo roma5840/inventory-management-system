@@ -8,7 +8,6 @@ import TransactionForm from "../components/TransactionForm";
 import AdminInvite from "../components/AdminInvite";
 import Dashboard from "../components/Dashboard";
 import TransactionHistory from "../components/TransactionHistory";
-import ProductManager from "../components/ProductManager";
 
 export default function DashboardPage() {
   const { userRole } = useAuth();
@@ -29,7 +28,6 @@ export default function DashboardPage() {
 
                {userRole === 'ADMIN' && (
                  <>
-                   <ProductManager />
                    <AdminInvite />
                  </>
                )}
@@ -37,11 +35,10 @@ export default function DashboardPage() {
                <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
                  <h3 className="card-title text-gray-700 mb-2">Instructions</h3>
                  <ul className="text-sm list-disc list-inside text-gray-600 space-y-2">
-                   <li>Click <strong>"Scan Barcode"</strong> to start.</li>
-                   <li><strong>Receiving:</strong> New stock from Supplier (+).</li>
-                   <li><strong>Issuance:</strong> Sale/Distribution to Student (-).</li>
-                   <li><strong>Issuance Return:</strong> Return to Shelf (+).</li>
-                   <li><strong>Pull Out:</strong> Defective/Vendor Return (-).</li>
+                   <li><strong>Receiving:</strong> Stock In. Fills Name/Price if item is new.</li>
+                   <li><strong>Issuance:</strong> Stock Out to Student/Dept.</li>
+                   <li><strong>Return:</strong> Student returns item to shelf.</li>
+                   <li><strong>Pull Out:</strong> Defective item sent back to supplier.</li>
                  </ul>
                </div>
             </div>
