@@ -4,35 +4,48 @@ import { useInventory } from "../hooks/useInventory";
 export default function TransactionForm() {
   const { processTransaction, loading, error } = useInventory();
   
+  // 1. STATE MUST INCLUDE ALL FIELDS TO PREVENT CRASHES
   const [formData, setFormData] = useState({
     barcode: "",
     qty: 1,
-    type: ""
+    type: "",
+    // New Fields (Must be initialized as empty strings)
+    studentName: "",
+    studentId: "",
+    transactionMode: "CASH", 
+    supplier: "", 
+    remarks: "",
+    priceOverride: "" 
   });
+  
   const [successMsg, setSuccessMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMsg("");
 
-    const success = await processTransaction(
-      formData.barcode, 
-      formData.type, 
-      formData.qty
-    );
+    const success = await processTransaction(formData);
 
     if (success) {
       setSuccessMsg(`Success: ${formData.type} processed.`);
-      setFormData(prev => ({ ...prev, barcode: "", qty: 1 })); 
+      // Reset form but keep type selected
+      setFormData(prev => ({ 
+        ...prev, 
+        barcode: "", 
+        qty: 1, 
+        studentName: "", 
+        studentId: "", 
+        remarks: "", 
+        priceOverride: "" 
+      })); 
     }
   };
 
   return (
     <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
       
-      {/* ACTION BUTTON GRID - SVGs */}
+      {/* ACTION BUTTON GRID */}
       <div className="grid grid-cols-2 md:grid-cols-4 w-full">
-        
         <button 
           type="button"
           onClick={() => setFormData(prev => ({ ...prev, type: "RECEIVING" }))}
@@ -104,11 +117,73 @@ export default function TransactionForm() {
                </button>
             </div>
 
-            {/* Barcode Input - Auto-focus enabled */}
+            {/* RECEIVING SPECIFICS */}
+            {formData.type === 'RECEIVING' && (
+              <div className="grid grid-cols-2 gap-4 bg-green-50 p-3 rounded-lg border border-green-100">
+                <div className="form-control">
+                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
+                  {/* SAFEGUARD: Use || "" to prevent crash if state is undefined */}
+                  <input 
+                    type="text" 
+                    className="input input-sm input-bordered bg-white" 
+                    placeholder="e.g. Rex Bookstore"
+                    value={formData.supplier || ""}
+                    onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Edit Price (Optional)</label>
+                  <input 
+                    type="number" step="0.01"
+                    className="input input-sm input-bordered bg-white" 
+                    placeholder="Override Price..."
+                    value={formData.priceOverride || ""}
+                    onChange={(e) => setFormData({...formData, priceOverride: e.target.value})}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ISSUANCE SPECIFICS */}
+            {formData.type === 'ISSUANCE' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-red-50 p-3 rounded-lg border border-red-100">
+                 <div className="form-control">
+                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Student ID</label>
+                  <input 
+                    type="text" 
+                    className="input input-sm input-bordered bg-white" 
+                    value={formData.studentId || ""}
+                    onChange={(e) => setFormData({...formData, studentId: e.target.value})}
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
+                  <input 
+                    type="text" 
+                    className="input input-sm input-bordered bg-white" 
+                    value={formData.studentName || ""}
+                    onChange={(e) => setFormData({...formData, studentName: e.target.value})}
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
+                  <select 
+                    className="select select-sm select-bordered bg-white"
+                    value={formData.transactionMode || "CASH"}
+                    onChange={(e) => setFormData({...formData, transactionMode: e.target.value})}
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="CHARGED">Charged (Tuition)</option>
+                    <option value="TRANSMITTAL">Transmittal</option>
+                    <option value="SIP">SIP / Scholar</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* COMMON FIELDS */}
             <div className="form-control">
-              <label className="label text-xs font-bold text-gray-500 uppercase">
-                Scan Barcode / ISBN
-              </label>
+              <label className="label text-xs font-bold text-gray-500 uppercase">Scan Barcode / ISBN</label>
               <input 
                 type="text" 
                 placeholder="Focus here & Scan..." 
@@ -120,22 +195,29 @@ export default function TransactionForm() {
               />
             </div>
 
-            {/* Quantity */}
-            <div className="form-control">
-              <label className="label text-xs font-bold text-gray-500 uppercase">
-                Quantity
-              </label>
-              <input 
-                type="number" 
-                min="1"
-                className="input input-bordered w-full text-lg" 
-                value={formData.qty}
-                onChange={(e) => setFormData({...formData, qty: e.target.value})}
-                required
-              />
+            <div className="flex gap-4">
+               <div className="form-control w-1/3">
+                <label className="label text-xs font-bold text-gray-500 uppercase">Qty</label>
+                <input 
+                  type="number" min="1"
+                  className="input input-bordered w-full text-lg" 
+                  value={formData.qty}
+                  onChange={(e) => setFormData({...formData, qty: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="form-control w-2/3">
+                <label className="label text-xs font-bold text-gray-500 uppercase">Remarks (Optional)</label>
+                <input 
+                  type="text" 
+                  className="input input-bordered w-full" 
+                  placeholder="Any notes..."
+                  value={formData.remarks || ""}
+                  onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                />
+              </div>
             </div>
 
-            {/* Messages */}
             {error && <div className="alert alert-error text-sm shadow-lg rounded-md">{error}</div>}
             {successMsg && <div className="alert alert-success text-sm shadow-lg rounded-md">{successMsg}</div>}
 

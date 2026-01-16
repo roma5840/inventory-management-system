@@ -8,7 +8,10 @@ export const useInventory = () => {
   const [error, setError] = useState(null);
   const { currentUser } = useAuth(); // Get current user
 
-  const processTransaction = async (barcode, type, qty) => {
+  const processTransaction = async (data) => {
+    // Destructure the object passed from form
+    const { barcode, type, qty, studentId, studentName, transactionMode, supplier, remarks, priceOverride } = data;
+
     if (!currentUser) {
       setError("Unauthorized: Please login.");
       return false;
@@ -36,7 +39,14 @@ export const useInventory = () => {
         // 3. Product Math
         const pData = productDoc.data();
         const currentStock = pData.currentStock || 0;
-        const price = pData.price || 0;
+        
+        // BOSS LOGIC: If Receiving AND price override is set, update master price
+        let price = pData.price || 0;
+        if (type === 'RECEIVING' && priceOverride && Number(priceOverride) > 0) {
+           price = Number(priceOverride);
+           transaction.update(productRef, { price: price }); // Update Master Price
+        }
+
         let newStock = 0;
         let stockChange = 0; 
 
@@ -70,6 +80,7 @@ export const useInventory = () => {
         // 5. Writes
         transaction.update(productRef, { currentStock: newStock });
         
+        // Save ALL the extra Finance Data
         transaction.set(transactionRef, {
           type,
           productId: barcode,
@@ -78,14 +89,21 @@ export const useInventory = () => {
           previousStock: currentStock,
           newStock: newStock,
           timestamp: serverTimestamp(),
-          userId
+          userId,
+          // New Finance Fields (Save as null if empty)
+          studentId: studentId || null,
+          studentName: studentName || null,
+          transactionMode: type === 'ISSUANCE' ? transactionMode : null,
+          supplier: type === 'RECEIVING' ? supplier : null,
+          remarks: remarks || null,
+          priceAtTime: price
         });
 
-        // Update Global Stats (Preserving lowStockCount)
+        // Update Global Stats
         transaction.set(statsRef, {
             totalInventoryValue: currentTotalValue + valueChange,
             totalItemsCount: currentTotalItems + stockChange,
-            lowStockCount: currentLowStock // Keep existing count
+            lowStockCount: currentLowStock 
         }, { merge: true });
       });
 
