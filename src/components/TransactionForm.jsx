@@ -9,13 +9,20 @@ export default function TransactionForm() {
     barcode: "",
     qty: 1,
     type: "",
-    // New Fields (Must be initialized as empty strings)
+    // Finance / Student Data
     studentName: "",
     studentId: "",
     transactionMode: "CASH", 
     supplier: "", 
     remarks: "",
-    priceOverride: "" 
+    priceOverride: "",
+    // Returns & Pull Outs
+    reason: "",       // Why is it being returned/pulled out?
+    referenceNo: "",  // Gate Pass or Receipt No.
+    // PRODUCT MANAGER FIELDS (For Creating/Editing on the fly)
+    itemName: "",     // If new item
+    category: "TEXTBOOK", 
+    location: "",     // Rack Number
   });
   
   const [successMsg, setSuccessMsg] = useState("");
@@ -117,63 +124,72 @@ export default function TransactionForm() {
                </button>
             </div>
 
-            {/* RECEIVING SPECIFICS */}
+            {/* === RECEIVING MODULE (Includes PRODUCT MANAGER Logic) === */}
             {formData.type === 'RECEIVING' && (
-              <div className="grid grid-cols-2 gap-4 bg-green-50 p-3 rounded-lg border border-green-100">
-                <div className="form-control">
-                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
-                  {/* SAFEGUARD: Use || "" to prevent crash if state is undefined */}
-                  <input 
-                    type="text" 
-                    className="input input-sm input-bordered bg-white" 
-                    placeholder="e.g. Rex Bookstore"
-                    value={formData.supplier || ""}
-                    onChange={(e) => setFormData({...formData, supplier: e.target.value})}
-                  />
+              <div className="bg-green-50 p-3 rounded-lg border border-green-100 flex flex-col gap-3">
+                <div className="alert alert-info shadow-sm text-xs py-2">
+                  <span>If item is NEW, fill out Name/Category below. If existing, just scan Barcode.</span>
                 </div>
-                <div className="form-control">
-                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Edit Price (Optional)</label>
-                  <input 
-                    type="number" step="0.01"
-                    className="input input-sm input-bordered bg-white" 
-                    placeholder="Override Price..."
-                    value={formData.priceOverride || ""}
-                    onChange={(e) => setFormData({...formData, priceOverride: e.target.value})}
-                  />
+                
+                {/* Supplier & Price */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="form-control">
+                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
+                    <input type="text" className="input input-sm input-bordered bg-white" placeholder="e.g. Rex" 
+                      value={formData.supplier || ""} onChange={(e) => setFormData({...formData, supplier: e.target.value})} />
+                  </div>
+                  <div className="form-control">
+                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Price (Update/New)</label>
+                    <input type="number" step="0.01" className="input input-sm input-bordered bg-white" placeholder="0.00" 
+                      value={formData.priceOverride || ""} onChange={(e) => setFormData({...formData, priceOverride: e.target.value})} />
+                  </div>
+                </div>
+
+                {/* NEW ITEM / EDIT DETAILS SECTION */}
+                <div className="grid grid-cols-2 gap-3 border-t border-green-200 pt-2">
+                   <div className="form-control col-span-2">
+                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Item Name (New Items Only)</label>
+                    <input type="text" className="input input-sm input-bordered bg-white" placeholder="Title / Description..." 
+                      value={formData.itemName || ""} onChange={(e) => setFormData({...formData, itemName: e.target.value})} />
+                  </div>
+                  <div className="form-control">
+                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Category</label>
+                    <select className="select select-sm select-bordered bg-white" 
+                      value={formData.category || "TEXTBOOK"} onChange={(e) => setFormData({...formData, category: e.target.value})}>
+                      <option value="TEXTBOOK">Textbook</option>
+                      <option value="UNIFORM">Uniform</option>
+                      <option value="MERCH">Merchandise</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-control">
+                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Rack / Location</label>
+                    <input type="text" className="input input-sm input-bordered bg-white" placeholder="e.g. Rack A-1" 
+                      value={formData.location || ""} onChange={(e) => setFormData({...formData, location: e.target.value})} />
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* ISSUANCE SPECIFICS */}
+            {/* === ISSUANCE MODULE === */}
             {formData.type === 'ISSUANCE' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-red-50 p-3 rounded-lg border border-red-100">
                  <div className="form-control">
                   <label className="label text-[10px] font-bold text-gray-500 uppercase">Student ID</label>
-                  <input 
-                    type="text" 
-                    className="input input-sm input-bordered bg-white" 
-                    value={formData.studentId || ""}
-                    onChange={(e) => setFormData({...formData, studentId: e.target.value})}
-                  />
+                  <input type="text" className="input input-sm input-bordered bg-white" 
+                    value={formData.studentId || ""} onChange={(e) => setFormData({...formData, studentId: e.target.value})} />
                 </div>
                 <div className="form-control">
                   <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
-                  <input 
-                    type="text" 
-                    className="input input-sm input-bordered bg-white" 
-                    value={formData.studentName || ""}
-                    onChange={(e) => setFormData({...formData, studentName: e.target.value})}
-                  />
+                  <input type="text" className="input input-sm input-bordered bg-white" 
+                    value={formData.studentName || ""} onChange={(e) => setFormData({...formData, studentName: e.target.value})} />
                 </div>
                 <div className="form-control">
                   <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
-                  <select 
-                    className="select select-sm select-bordered bg-white"
-                    value={formData.transactionMode || "CASH"}
-                    onChange={(e) => setFormData({...formData, transactionMode: e.target.value})}
-                  >
+                  <select className="select select-sm select-bordered bg-white" value={formData.transactionMode || "CASH"} 
+                    onChange={(e) => setFormData({...formData, transactionMode: e.target.value})}>
                     <option value="CASH">Cash</option>
-                    <option value="CHARGED">Charged (Tuition)</option>
+                    <option value="CHARGED">Charged</option>
                     <option value="TRANSMITTAL">Transmittal</option>
                     <option value="SIP">SIP / Scholar</option>
                   </select>
@@ -181,7 +197,30 @@ export default function TransactionForm() {
               </div>
             )}
 
-            {/* COMMON FIELDS */}
+            {/* === RETURN & PULL OUT MODULE === */}
+            {(formData.type === 'ISSUANCE_RETURN' || formData.type === 'PULL_OUT') && (
+              <div className={`grid grid-cols-2 gap-3 p-3 rounded-lg border ${formData.type === 'PULL_OUT' ? 'bg-orange-50 border-orange-100' : 'bg-blue-50 border-blue-100'}`}>
+                <div className="form-control">
+                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Reason</label>
+                  <select className="select select-sm select-bordered bg-white" 
+                    value={formData.reason || ""} onChange={(e) => setFormData({...formData, reason: e.target.value})}>
+                    <option value="" disabled>Select Reason</option>
+                    <option value="DAMAGED">Damaged / Defective</option>
+                    <option value="WRONG_ITEM">Wrong Item</option>
+                    <option value="OVERSTOCK">Overstock (Pull Out)</option>
+                    <option value="DROPPED">Dropped Subject (Return)</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div className="form-control">
+                  <label className="label text-[10px] font-bold text-gray-500 uppercase">Ref No. / Gate Pass</label>
+                  <input type="text" className="input input-sm input-bordered bg-white" placeholder="Doc Ref #" 
+                    value={formData.referenceNo || ""} onChange={(e) => setFormData({...formData, referenceNo: e.target.value})} />
+                </div>
+              </div>
+            )}
+
+            {/* === CORE SCANNER === */}
             <div className="form-control">
               <label className="label text-xs font-bold text-gray-500 uppercase">Scan Barcode / ISBN</label>
               <input 
@@ -198,34 +237,20 @@ export default function TransactionForm() {
             <div className="flex gap-4">
                <div className="form-control w-1/3">
                 <label className="label text-xs font-bold text-gray-500 uppercase">Qty</label>
-                <input 
-                  type="number" min="1"
-                  className="input input-bordered w-full text-lg" 
-                  value={formData.qty}
-                  onChange={(e) => setFormData({...formData, qty: e.target.value})}
-                  required
-                />
+                <input type="number" min="1" className="input input-bordered w-full text-lg" 
+                  value={formData.qty} onChange={(e) => setFormData({...formData, qty: e.target.value})} required />
               </div>
               <div className="form-control w-2/3">
-                <label className="label text-xs font-bold text-gray-500 uppercase">Remarks (Optional)</label>
-                <input 
-                  type="text" 
-                  className="input input-bordered w-full" 
-                  placeholder="Any notes..."
-                  value={formData.remarks || ""}
-                  onChange={(e) => setFormData({...formData, remarks: e.target.value})}
-                />
+                <label className="label text-xs font-bold text-gray-500 uppercase">General Remarks</label>
+                <input type="text" className="input input-bordered w-full" placeholder="Notes..." 
+                  value={formData.remarks || ""} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
               </div>
             </div>
 
             {error && <div className="alert alert-error text-sm shadow-lg rounded-md">{error}</div>}
             {successMsg && <div className="alert alert-success text-sm shadow-lg rounded-md">{successMsg}</div>}
 
-            <button 
-              type="submit" 
-              className={`btn btn-primary btn-lg w-full mt-2 shadow-md ${loading ? 'loading' : ''}`}
-              disabled={loading}
-            >
+            <button type="submit" className={`btn btn-primary btn-lg w-full mt-2 shadow-md ${loading ? 'loading' : ''}`} disabled={loading}>
               {loading ? "Processing..." : `CONFIRM ${formData.type.replace('_', ' ')}`}
             </button>
           </form>

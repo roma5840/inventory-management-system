@@ -9,8 +9,14 @@ export const useInventory = () => {
   const { currentUser } = useAuth(); // Get current user
 
   const processTransaction = async (data) => {
-    // Destructure the object passed from form
-    const { barcode, type, qty, studentId, studentName, transactionMode, supplier, remarks, priceOverride } = data;
+    // Destructure ALL new fields
+    const { 
+      barcode, type, qty, 
+      studentId, studentName, transactionMode, 
+      supplier, remarks, priceOverride,
+      reason, referenceNo,
+      itemName, category, location 
+    } = data;
 
     if (!currentUser) {
       setError("Unauthorized: Please login.");
@@ -32,21 +38,56 @@ export const useInventory = () => {
         const productDoc = await transaction.get(productRef);
         const statsDoc = await transaction.get(statsRef);
 
+        let pData;
+        let currentStock = 0;
+        let price = 0;
+
+        // === LOGIC: PRODUCT EXISTENCE ===
         if (!productDoc.exists()) {
-          throw "Product not found! Please register the item first.";
+          // If item doesn't exist...
+          if (type === 'RECEIVING') {
+             // ...AND we are Receiving: CREATE NEW ITEM ON THE FLY
+             if (!itemName || !priceOverride) {
+               throw "New Item Detected: Name and Price are required to register it.";
+             }
+             pData = {
+               name: itemName,
+               price: Number(priceOverride),
+               currentStock: 0, // Will be added below
+               minStockLevel: 10,
+               category: category || "TEXTBOOK",
+               location: location || "Unassigned",
+               searchKeywords: itemName.toLowerCase().split(' ')
+             };
+             // We use SET for new docs
+             transaction.set(productRef, pData);
+             price = pData.price;
+          } else {
+             // ...AND we are NOT Receiving: ERROR
+             throw "Product not found! You must use 'RECEIVING' to register new items.";
+          }
+        } else {
+          // Item Exists: Load Data
+          pData = productDoc.data();
+          currentStock = pData.currentStock || 0;
+          price = pData.price || 0;
+
+          // Optional: Update Price/Location if provided during Receiving
+          if (type === 'RECEIVING') {
+             const updates = {};
+             if (priceOverride && Number(priceOverride) > 0) {
+               price = Number(priceOverride);
+               updates.price = price;
+             }
+             if (location) updates.location = location;
+             
+             if (Object.keys(updates).length > 0) {
+               transaction.update(productRef, updates);
+             }
+          }
         }
 
-        // 3. Product Math
-        const pData = productDoc.data();
-        const currentStock = pData.currentStock || 0;
-        
-        // BOSS LOGIC: If Receiving AND price override is set, update master price
-        let price = pData.price || 0;
-        if (type === 'RECEIVING' && priceOverride && Number(priceOverride) > 0) {
-           price = Number(priceOverride);
-           transaction.update(productRef, { price: price }); // Update Master Price
-        }
-
+        // 3. Stock Math
         let newStock = 0;
         let stockChange = 0; 
 
@@ -78,23 +119,29 @@ export const useInventory = () => {
         const valueChange = stockChange * price;
 
         // 5. Writes
-        transaction.update(productRef, { currentStock: newStock });
+        // Note: If product was just created (pData), currentStock was 0.
+        // We always update the final stock count here.
+        transaction.update(productRef, { 
+          currentStock: newStock,
+          lastUpdated: serverTimestamp() 
+        });
         
-        // Save ALL the extra Finance Data
         transaction.set(transactionRef, {
           type,
           productId: barcode,
-          productName: pData.name,
+          productName: pData.name || itemName, // Fallback
           qty: Number(qty),
           previousStock: currentStock,
           newStock: newStock,
           timestamp: serverTimestamp(),
           userId,
-          // New Finance Fields (Save as null if empty)
+          // Finance Fields
           studentId: studentId || null,
           studentName: studentName || null,
           transactionMode: type === 'ISSUANCE' ? transactionMode : null,
           supplier: type === 'RECEIVING' ? supplier : null,
+          reason: reason || null,
+          referenceNo: referenceNo || null,
           remarks: remarks || null,
           priceAtTime: price
         });
