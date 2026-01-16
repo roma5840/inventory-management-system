@@ -1,31 +1,35 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useInventory } from "../hooks/useInventory";
 
 export default function TransactionForm() {
   const { processTransaction, loading, error } = useInventory();
   
-  // 1. STATE MUST INCLUDE ALL FIELDS TO PREVENT CRASHES
+  const barcodeRef = useRef(null);
+
   const [formData, setFormData] = useState({
     barcode: "",
     qty: 1,
     type: "",
-    // Finance / Student Data
     studentName: "",
     studentId: "",
     transactionMode: "CASH", 
     supplier: "", 
     remarks: "",
     priceOverride: "",
-    // Returns & Pull Outs
-    reason: "",       // Why is it being returned/pulled out?
-    referenceNo: "",  // Gate Pass or Receipt No.
-    // PRODUCT MANAGER FIELDS (For Creating/Editing on the fly)
-    itemName: "",     // If new item
+    reason: "",       
+    referenceNo: "",  
+    itemName: "",     
     category: "TEXTBOOK", 
-    location: "",     // Rack Number
+    location: "",     
   });
   
   const [successMsg, setSuccessMsg] = useState("");
+
+  useEffect(() => {
+    if (formData.type && barcodeRef.current) {
+      barcodeRef.current.focus();
+    }
+  }, [formData.type]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +39,6 @@ export default function TransactionForm() {
 
     if (success) {
       setSuccessMsg(`Success: ${formData.type} processed.`);
-      // Reset form but keep type selected
       setFormData(prev => ({ 
         ...prev, 
         barcode: "", 
@@ -43,8 +46,12 @@ export default function TransactionForm() {
         studentName: "", 
         studentId: "", 
         remarks: "", 
-        priceOverride: "" 
+        priceOverride: "",
+        itemName: "",
+        location: ""
       })); 
+      
+      if(barcodeRef.current) barcodeRef.current.focus();
     }
   };
 
@@ -224,6 +231,7 @@ export default function TransactionForm() {
             <div className="form-control">
               <label className="label text-xs font-bold text-gray-500 uppercase">Scan Barcode / ISBN</label>
               <input 
+                ref={barcodeRef}
                 type="text" 
                 placeholder="Focus here & Scan..." 
                 className="input input-bordered w-full font-mono text-lg" 
