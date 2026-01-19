@@ -100,9 +100,11 @@ export default function Dashboard() {
     setEditForm({
         name: product.name,
         price: product.price,
-        minStockLevel: product.minStockLevel
+        minStockLevel: product.minStockLevel,
+        location: product.location || ""
     });
   };
+
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -156,6 +158,7 @@ export default function Dashboard() {
                 name: editForm.name,
                 price: newPrice,
                 minStockLevel: newMinLevel,
+                location: editForm.location, // Kept Location
                 searchKeywords: newKeywords,
                 lastUpdated: serverTimestamp()
             });
@@ -213,11 +216,12 @@ export default function Dashboard() {
 
         {/* Table */}
         <div className="overflow-x-auto h-96">
-          <table className="table w-full">
-            <thead className="bg-gray-100 text-gray-600 sticky top-0 z-10">
+          <table className="table w-full table-pin-rows">
+            <thead className="bg-gray-100 text-gray-600 z-10">
               <tr>
                 <th>Barcode</th>
                 <th>Product Name</th>
+                <th>Location</th>
                 <th className="text-right">Price</th>
                 <th className="text-center">Stock</th>
                 <th className="text-center">Status</th>
@@ -226,12 +230,13 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {products.length === 0 && !loading ? (
-                <tr><td colSpan="6" className="text-center py-8 text-gray-400">No products found.</td></tr>
+                <tr><td colSpan="7" className="text-center py-8 text-gray-400">No products found.</td></tr>
               ) : (
                 products.map((p) => (
                   <tr key={p.id} className="hover group border-b border-gray-100">
                     <td className="font-mono text-xs font-bold text-gray-500">{p.id}</td>
                     <td className="font-semibold text-gray-700">{p.name}</td>
+                    <td className="text-xs text-gray-500">{p.location || "-"}</td>
                     <td className="text-right font-mono">₱{p.price.toLocaleString()}</td>
                     <td className="text-center">
                       <span className={`font-bold ${p.currentStock <= p.minStockLevel ? 'text-red-600' : 'text-gray-700'}`}>
@@ -332,6 +337,16 @@ export default function Dashboard() {
                         value={editForm.name}
                         onChange={e => setEditForm({...editForm, name: e.target.value})}
                         required
+                    />
+                </div>
+
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Location / Rack</label>
+                    <input 
+                        type="text" 
+                        className="input input-bordered w-full" 
+                        value={editForm.location}
+                        onChange={e => setEditForm({...editForm, location: e.target.value})}
                     />
                 </div>
 
