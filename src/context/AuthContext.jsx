@@ -4,7 +4,7 @@ import {
   signOut, 
   onAuthStateChanged 
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 
 const AuthContext = createContext();
@@ -33,20 +33,30 @@ export function AuthProvider({ children }) {
       if (user) {
         // PROOF OF JWT
         const token = await user.getIdToken(); 
-        console.log("JWT Token:", token);
+        // console.log("JWT Token:", token); // Optional debug
 
         // CHECK WHITELIST (Authorization)
-        // check if this email exists in authorized_users collection
         const docRef = doc(db, "authorized_users", user.email);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           // User is authorized
           const userData = docSnap.data();
-          setCurrentUser({ ...user, ...userData }); // Merge Auth data with Firestore Role
+          
+          // PATCH: If a user logs in but status is still PENDING (e.g. re-invited), update it.
+          if (userData.status === "PENDING") {
+             const { updateDoc } = await import("firebase/firestore"); // Dynamic import or use existing
+             await updateDoc(docRef, { 
+               status: "REGISTERED",
+               uid: user.uid, // Ensure UID is synced
+               lastLogin: new Date()
+             });
+          }
+
+          setCurrentUser({ ...user, ...userData }); 
           setUserRole(userData.role); 
         } else {
-          // User registered but NOT in whitelist
+          // User registered but NOT in whitelist (or Revoked)
           alert("Access Denied: You are not in the authorized personnel list.");
           await signOut(auth);
           setCurrentUser(null);
