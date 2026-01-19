@@ -1,8 +1,7 @@
 # Real-Time Perpetual Inventory Management System
 
 **Client:** Finance Department / Bookstore  
-**Developers:** Ryan Oliver Aquino & Jancesar Taguiang  
-**Status:** Phase 1 (Week 2 - Authentication & Product Management Module)
+**Developers:** Ryan Oliver Aquino & Jancesar Taguiang
 
 ## Project Overview
 This is a Real-Time Inventory Management System designed to replace legacy manual tracking. The primary focus is **Financial Integrity** and **Auditability**. The system adheres to the Perpetual Inventory accounting method, ensuring that every stock movement is logged, atomic, and verifiable.
@@ -48,49 +47,6 @@ The system does not allow public sign ups. Access is granted via a strict invita
 ### 2. User Roles
 *   **ADMIN:** Full access. Can manage products, view financial values (Total Assets), invite staff, and delete records.
 *   **EMPLOYEE:** Restricted access. Can only process transactions.
-
-## Database Schema (NoSQL)
-
-### products Collection
-Stores the "Master Data" or current state of inventory.
-```json
-{
-  "id": "978013409",  // BARCODE (Document ID)
-  "name": "Financial Accounting Vol 1",
-  "price": 1500,
-  "currentStock": 50,
-  "minStockLevel": 10,
-  "lastUpdated": "Timestamp"
-}
-```
-
-### transactions Collection
-Stores the "Audit Trail." Immutable.
-```json
-{
-  "id": "Auto-Generated-ID",
-  "type": "ISSUANCE", 
-  "productId": "978013409",
-  "productName": "Financial Accounting Vol 1", 
-  "qty": 1,
-  "previousStock": 50,
-  "newStock": 49,
-  "timestamp": "Timestamp",
-  "userId": "firebase_uid_of_staff"
-}
-```
-
-### authorized_users Collection
-Stores the RBAC Whitelist.
-```json
-{
-  "id": "staff@university.edu", // EMAIL (Document ID)
-  "fullName": "Juan Cruz",
-  "role": "EMPLOYEE", // or ADMIN
-  "status": "REGISTERED", // or PENDING
-  "invitedBy": "admin_uid"
-}
-```
 
 ## Setup & Installation
 
