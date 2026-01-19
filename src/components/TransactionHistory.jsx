@@ -1,35 +1,47 @@
 import { useState, useEffect } from "react";
-import { db } from "../lib/firebase";
-import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 
 export default function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Real-time listener for the last 10 transactions
-    const q = query(
-      collection(db, "transactions"),
-      orderBy("timestamp", "desc"),
-      limit(10)
-    );
+    const fetchHistory = async () => {
+        // Alias columns to match UI expectations
+        const { data } = await supabase
+            .from('transactions')
+            .select('*, productName:product_name, previousStock:previous_stock, newStock:new_stock')
+            .order('timestamp', { ascending: false })
+            .limit(10);
+        
+        if (data) setTransactions(data);
+        setLoading(false);
+    };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const trans = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setTransactions(trans);
-      setLoading(false);
-    });
+    fetchHistory();
 
-    return () => unsubscribe();
+    // Realtime Listener
+    const channel = supabase.channel('history_realtime')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, (payload) => {
+            // Map the raw snake_case payload to camelCase before adding to state
+            const newTx = {
+                ...payload.new,
+                productName: payload.new.product_name,
+                previousStock: payload.new.previous_stock,
+                newStock: payload.new.new_stock
+            };
+            setTransactions(prev => [newTx, ...prev].slice(0, 10));
+        })
+        .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
+
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "Pending...";
-    // Convert Firestore Timestamp to JS Date
-    return new Date(timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Supabase returns an ISO string (e.g., "2023-01-01T12:00:00")
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const getBadgeColor = (type) => {

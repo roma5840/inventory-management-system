@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { db } from "../lib/firebase";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import emailjs from '@emailjs/browser'; 
+import emailjs from '@emailjs/browser';
 
 export default function AdminInvite() {
   const { currentUser } = useAuth();
@@ -18,26 +17,29 @@ export default function AdminInvite() {
     setMsg("");
 
     try {
-      // Check if user already exists in whitelist
-      const userRef = doc(db, "authorized_users", email);
-      const userSnap = await getDoc(userRef);
+      // Check existence using maybeSingle to avoid 406 error on empty result
+      const { data: existing } = await supabase
+        .from('authorized_users')
+        .select('status')
+        .eq('email', email)
+        .maybeSingle();
 
-      if (userSnap.exists()) {
-        const currentStatus = userSnap.data().status;
-        // Stop execution and notify admin
-        setMsg(`Error: This email is already ${currentStatus}.`);
+      if (existing) {
+        setMsg(`Error: This email is already ${existing.status}.`);
+        setLoading(false);
         return; 
       }
 
-      // Add to authorized_users only if new
-      await setDoc(userRef, {
+      // Insert new user
+      const { error } = await supabase.from('authorized_users').insert({
         email: email,
-        fullName: name,
+        full_name: name,
         role: role,
-        status: "PENDING",
-        invitedBy: currentUser.uid,
-        invitedAt: serverTimestamp()
+        status: "PENDING"
       });
+
+      if(error) throw error;
+
 
       const templateParams = {
         to_name: name,

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useInventory } from "../hooks/useInventory";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
 
 export default function TransactionForm() {
   const { processTransaction, loading, error } = useInventory();
@@ -51,13 +50,15 @@ export default function TransactionForm() {
     if (!barcodeToSearch) return;
 
     try {
-      const docRef = doc(db, "products", barcodeToSearch);
-      const docSnap = await getDoc(docRef);
+      // Use maybeSingle() instead of single() so we don't get an error for 0 results
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', barcodeToSearch)
+        .maybeSingle(); 
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        
-        // FOUND: Populate fields, Lock Name Field
+      if (data) {
+        // FOUND: Populate fields
         setIsNewItem(false); 
         setCurrentScan(prev => ({
           ...prev, 
@@ -65,26 +66,20 @@ export default function TransactionForm() {
           itemName: data.name || "", 
           priceOverride: data.price || "", 
           location: data.location || "",
-          category: data.category || "TEXTBOOK",
-          qty: 1 // Always reset to 1 on fresh scan
+          qty: 1
         }));
-        
-        // Auto-Focus Qty Field
         setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
-
       } else {
-        // NOT FOUND: Clear fields, Unlock Name Field
+        // NOT FOUND (New Item)
         setIsNewItem(true); 
         setCurrentScan(prev => ({
             ...prev,
             barcode: barcodeToSearch,
-            itemName: "", // Clear name so they can type
+            itemName: "", 
             priceOverride: "",
             location: "",
             qty: 1
         }));
-        
-        // Auto-Focus Name Field for manual entry
         setTimeout(() => document.getElementById('nameInput')?.focus(), 50);
       }
     } catch (err) {

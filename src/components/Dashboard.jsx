@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../lib/firebase";
-import { doc, deleteDoc, collection, query, orderBy, limit, onSnapshot, where, startAfter, runTransaction, serverTimestamp } from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 
 export default function Dashboard() {
   const { userRole } = useAuth();
@@ -34,46 +33,44 @@ export default function Dashboard() {
   // runs instantly when page changes, or after the 600ms search delay.
   useEffect(() => {
     setLoading(true);
-    const collectionRef = collection(db, "products");
-    let q;
-
-    let baseConstraints = [];
     
-    // Use 'debouncedTerm' for the actual query, not 'searchTerm'
-    if (debouncedTerm.trim()) {
-        const term = debouncedTerm.toLowerCase().trim();
-        baseConstraints = [where("searchKeywords", "array-contains", term)];
-    } else {
-        baseConstraints = [orderBy("name")];
-    }
+    const fetchInventory = async () => {
+        let query = supabase
+            // Alias snake_case DB columns to camelCase for the UI
+            .from('products')
+            .select('*, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
-    if (currentPage > 1 && pageStack[currentPage - 2]) {
-        baseConstraints.push(startAfter(pageStack[currentPage - 2]));
-    }
-
-    q = query(collectionRef, ...baseConstraints, limit(ITEMS_PER_PAGE));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ 
-            id: doc.id, 
-            ...doc.data() 
-        }));
-        
-        setProducts(items);
-        
-        if (snapshot.docs.length > 0) {
-            setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+        // Search Logic (ILIKE is case-insensitive)
+        if (debouncedTerm.trim()) {
+            query = query.or(`name.ilike.%${debouncedTerm}%,id.eq.${debouncedTerm}`);
         } else {
-            setLastVisible(null);
+            query = query.order('name', { ascending: true });
         }
-        setLoading(false);
-    }, (error) => {
-        console.error("Error:", error);
-        setLoading(false);
-    });
 
-    return () => unsubscribe();
-  }, [debouncedTerm, currentPage]); // Dependent on DEBOUNCED term
+        // Pagination Logic
+        const from = (currentPage - 1) * ITEMS_PER_PAGE;
+        const to = from + ITEMS_PER_PAGE - 1;
+        
+        const { data, count, error } = await query.range(from, to);
+
+        if (error) console.error(error);
+        else setProducts(data || []);
+        
+        setLoading(false);
+    };
+
+    fetchInventory();
+    
+    // Optional: Realtime Subscription
+    const channel = supabase.channel('table-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+            fetchInventory();
+        })
+        .subscribe();
+
+    return () => supabase.removeChannel(channel);
+
+  }, [debouncedTerm, currentPage]);
 
   const handleNext = () => {
     if (!lastVisible) return;
@@ -127,54 +124,24 @@ export default function Dashboard() {
     }
 
     try {
-        await runTransaction(db, async (transaction) => {
-            const productRef = doc(db, "products", editingProduct.id);
-            const statsRef = doc(db, "stats", "summary");
-            
-            // Refetch to ensure data consistency
-            const pDoc = await transaction.get(productRef);
-            const sDoc = await transaction.get(statsRef);
-            
-            if (!pDoc.exists()) throw "Product does not exist!";
-            
-            const currentData = pDoc.data();
-            const currentStock = currentData.currentStock || 0;
-            
-            // AUDIT LOGIC: 
-            // If Price changes, the Total Inventory Value in Stats must be adjusted.
-            // Value Diff = (Stock * NewPrice) - (Stock * OldPrice)
-            let valueAdjustment = 0;
-            if (currentData.price !== newPrice) {
-                const oldVal = currentStock * currentData.price;
-                const newVal = currentStock * newPrice;
-                valueAdjustment = newVal - oldVal;
-            }
+        const newKeywords = editForm.name.toLowerCase().split(/\s+/).filter(w => w.length > 0);
 
-            // Update Search Keywords (in case name changed)
-            const newKeywords = editForm.name.toLowerCase().split(/\s+/).filter(w => w.length > 0);
-
-            // Update Product
-            transaction.update(productRef, {
+        const { error } = await supabase
+            .from('products')
+            .update({
                 name: editForm.name,
                 price: newPrice,
-                minStockLevel: newMinLevel,
-                location: editForm.location, // Kept Location
-                searchKeywords: newKeywords,
-                lastUpdated: serverTimestamp()
-            });
+                min_stock_level: newMinLevel,
+                location: editForm.location,
+                search_keywords: newKeywords,
+                last_updated: new Date()
+            })
+            .eq('id', editingProduct.id);
 
-            // Update Stats if price changed
-            if (valueAdjustment !== 0 && sDoc.exists()) {
-                const currentTotalVal = sDoc.data().totalInventoryValue || 0;
-                transaction.update(statsRef, {
-                    totalInventoryValue: currentTotalVal + valueAdjustment
-                });
-            }
-        });
+        if (error) throw error;
         
-        setEditingProduct(null); // Close Modal
+        setEditingProduct(null);
         alert("Product Details Updated Successfully.");
-
     } catch (err) {
         console.error(err);
         alert("Update failed: " + err.message);
@@ -189,7 +156,9 @@ export default function Dashboard() {
     
     if(window.confirm(`Are you sure you want to delete "${product.name}" permanently?`)) {
         try {
-            await deleteDoc(doc(db, "products", product.id));
+            const { error } = await supabase.from('products').delete().eq('id', product.id);
+            if (error) throw error;
+            // The realtime listener in useEffect will automatically remove it from the UI
         } catch (error) {
             console.error("Delete failed:", error);
             alert("Failed to delete item.");

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { db } from "../lib/firebase";
-import { collection, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import AdminInvite from "../components/AdminInvite";
@@ -12,28 +11,39 @@ export default function StaffPage() {
 
   // Subscribe to Authorized Users
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "authorized_users"), (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStaff(list);
-      setLoading(false);
-    });
-    return () => unsub();
+    const fetchStaff = async () => {
+        // Alias full_name to fullName
+        const { data } = await supabase
+            .from('authorized_users')
+            .select('*, fullName:full_name');
+        if(data) setStaff(data);
+        setLoading(false);
+    }
+    
+    fetchStaff();
+
+    const channel = supabase.channel('staff_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'authorized_users' }, () => fetchStaff())
+        .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
 
   const toggleRole = async (user) => {
-    if (user.uid === currentUser.uid) return alert("You cannot change your own role.");
-    const newRole = user.role === "ADMIN" ? "EMPLOYEE" : "ADMIN";
+    // Note: 'user.auth_uid' matches 'currentUser.id' in Supabase session
+    if (user.auth_uid === currentUser.id) return alert("You cannot change your own role.");
     
-    if (confirm(`Change ${user.fullName}'s role to ${newRole}?`)) {
-        await updateDoc(doc(db, "authorized_users", user.id), { role: newRole });
+    const newRole = user.role === "ADMIN" ? "EMPLOYEE" : "ADMIN";
+    if (confirm(`Change ${user.full_name}'s role to ${newRole}?`)) {
+        await supabase.from('authorized_users').update({ role: newRole }).eq('id', user.id);
     }
   };
 
   const revokeAccess = async (user) => {
-    if (user.uid === currentUser.uid) return alert("You cannot delete yourself.");
+    if (user.auth_uid === currentUser.id) return alert("You cannot delete yourself.");
     
-    if (confirm(`Are you sure you want to REVOKE access for ${user.fullName}? They will no longer be able to login.`)) {
-        await deleteDoc(doc(db, "authorized_users", user.id));
+    if (confirm(`Are you sure you want to REVOKE access for ${user.full_name}?`)) {
+        await supabase.from('authorized_users').delete().eq('id', user.id);
     }
   };
 

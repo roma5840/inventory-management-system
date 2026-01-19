@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { db, auth } from "../lib/firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Register() {
@@ -31,40 +29,38 @@ export default function Register() {
     }
 
     try {
-      const userRef = doc(db, "authorized_users", email);
-      const userSnap = await getDoc(userRef);
+      // 1. Check Invite Status
+      const { data: userEntry } = await supabase
+        .from('authorized_users')
+        .select('*')
+        .eq('email', email)
+        .single();
 
-      if (!userSnap.exists()) {
+      if (!userEntry) {
         throw new Error("ACCESS DENIED: This email has not been invited by Admin.");
       }
-
-      const userData = userSnap.data();
-      if (userData.status === "REGISTERED") {
+      if (userEntry.status === "REGISTERED") {
         throw new Error("This account is already registered. Please Login.");
       }
 
-      // This line automatically logs the user in upon success
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      await updateDoc(userRef, {
-        status: "REGISTERED",
-        uid: user.uid,
-        registeredAt: serverTimestamp()
+      // 2. Create Supabase Auth User
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
       });
 
-      alert("Registration Successful! Welcome to the Finance System.");
-      // Navigate not strictly needed as useeffect will catch the auth change, 
-      // but kept for clarity.
-      navigate("/"); 
+      if (signUpError) throw signUpError;
+
+      // 3. Update whitelist status
+      // Note: The AuthContext listener will actually handle the update to 'REGISTERED'
+      // automatically when it detects the new session, but we can double check here.
+      
+      alert("Registration Successful! Please check your email to confirm if required, then login.");
+      navigate("/login");
 
     } catch (err) {
       console.error(err);
-      if(err.code === 'auth/email-already-in-use') {
-        setError("Account already exists. Please login.");
-      } else {
-        setError(err.message);
-      }
+      setError(err.message);
       setLoading(false);
     }
   };

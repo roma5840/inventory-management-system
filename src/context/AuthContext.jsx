@@ -1,11 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext();
 
@@ -20,70 +14,84 @@ export function AuthProvider({ children }) {
 
   // Login Function
   async function login(email, password) {
+    // 1. Authenticate with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (authError) throw authError;
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    // 2. Check Whitelist Table
+    const { data: userDoc, error: docError } = await supabase
+      .from('authorized_users')
+      .select('*')
+      .eq('email', email)
+      .single();
 
-    const docRef = doc(db, "authorized_users", user.email);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-       // Valid Password, but NOT in Whitelist
-       await signOut(auth); // Kill session immediately
-       throw new Error("Access Denied: You are not authorized.");
+    if (docError || !userDoc) {
+      await supabase.auth.signOut();
+      throw new Error("Access Denied: You are not authorized.");
     }
-    
-    return userCredential;
+
+    return authData;
   }
 
 
   // Logout Function
   function logout() {
-    return signOut(auth);
+    return supabase.auth.signOut();
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // PROOF OF JWT
-        const token = await user.getIdToken(); 
-        // console.log("JWT Token:", token); // Optional debug
-
-        // CHECK WHITELIST (Authorization)
-        const docRef = doc(db, "authorized_users", user.email);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          // User is authorized
-          const userData = docSnap.data();
-          
-          // If a user logs in but status is still PENDING (eg. reinvited), update it.
-          if (userData.status === "PENDING") {
-             const { updateDoc } = await import("firebase/firestore"); // Dynamic import or use existing
-             await updateDoc(docRef, { 
-               status: "REGISTERED",
-               uid: user.uid, // Ensure UID is synced
-               lastLogin: new Date()
-             });
-          }
-
-          setCurrentUser({ ...user, ...userData }); 
-          setUserRole(userData.role); 
-        } else {
-          // User registered but NOT in whitelist (or Revoked)
-          alert("Access Denied: You are not in the authorized personnel list.");
-          await signOut(auth);
-          setCurrentUser(null);
-        }
-      } else {
-        setCurrentUser(null);
-        setUserRole(null);
-      }
+    // Check active session on load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
       setLoading(false);
     });
 
-    return unsubscribe;
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Helper to sync Auth User with Whitelist Data
+  const handleSession = async (session) => {
+    if (session?.user) {
+      const { data } = await supabase
+        .from('authorized_users')
+        .select('*')
+        .eq('email', session.user.email)
+        .single();
+      
+      if (data) {
+        // Update status if first time logging in
+        if (data.status === 'PENDING') {
+           await supabase.from('authorized_users').update({ 
+             status: 'REGISTERED', 
+             auth_uid: session.user.id 
+           }).eq('email', session.user.email);
+        }
+        
+        // Map DB snake_case to Context camelCase
+        setCurrentUser({ 
+          ...session.user, 
+          ...data,
+          fullName: data.full_name // Fix mapping here
+        });
+        setUserRole(data.role);
+      } else {
+        // Valid login but removed from whitelist
+        await supabase.auth.signOut();
+        setCurrentUser(null);
+      }
+    } else {
+      setCurrentUser(null);
+      setUserRole(null);
+    }
+  };
 
   const value = {
     currentUser,
