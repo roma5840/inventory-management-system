@@ -44,10 +44,13 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Check active session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
-      setLoading(false);
-    });
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      await handleSession(session); // Wait for whitelist check to finish
+      setLoading(false); // NOW we are ready
+    };
+
+    initSession();
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

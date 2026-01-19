@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
@@ -8,13 +9,15 @@ export default function Navbar() {
       <div className="flex-1">
         <div className="flex flex-col items-start">
            <div className="flex items-baseline gap-4">
-             <a href="/" className="btn btn-ghost normal-case text-xl text-blue-700 font-bold hover:bg-transparent pl-0">
+             {/* Use Link instead of a tag */}
+             <Link to="/" className="btn btn-ghost normal-case text-xl text-blue-700 font-bold hover:bg-transparent pl-0">
                BookstoreIMS
-             </a>
+             </Link>
              {userRole === 'ADMIN' && (
-               <a href="/staff" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">
+               /* Use Link instead of a tag */
+               <Link to="/staff" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">
                  Manage Staff
-               </a>
+               </Link>
              )}
            </div>
            <span className="text-xs text-gray-500 -mt-1">Finance Dept. Control</span>

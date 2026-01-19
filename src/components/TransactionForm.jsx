@@ -94,7 +94,13 @@ export default function TransactionForm() {
     e.preventDefault();
     if (!currentScan.barcode) return;
     
-    const newItem = { ...currentScan, id: Date.now() };
+    const newItem = { 
+      ...currentScan, 
+      // Force empty string to become "0" for Postgres
+      priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
+      id: Date.now() 
+    };
+
     setQueue(prev => [newItem, ...prev]);
 
     // Reset for next item
