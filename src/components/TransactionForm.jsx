@@ -10,7 +10,7 @@ export default function TransactionForm() {
   const [isNewItem, setIsNewItem] = useState(null);
 
 
-  // 1. GLOBAL HEADER STATE (Applied to all items)
+  // GLOBAL HEADER STATE (Applied to all items)
   const [headerData, setHeaderData] = useState({
     type: "",
     studentName: "",
@@ -22,10 +22,10 @@ export default function TransactionForm() {
     referenceNo: "",  
   });
 
-  // 2. QUEUE STATE (The Shopping Cart)
+  // QUEUE STATE
   const [queue, setQueue] = useState([]);
 
-  // 3. CURRENT SCAN STATE (The Active Input Line)
+  // CURRENT SCAN STATE (The Active Input Line)
   const [currentScan, setCurrentScan] = useState({
     barcode: "",
     qty: 1,
@@ -69,7 +69,7 @@ export default function TransactionForm() {
           qty: 1 // Always reset to 1 on fresh scan
         }));
         
-        // Auto-Focus Qty Field (UX improvement)
+        // Auto-Focus Qty Field
         setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
 
       } else {
@@ -94,7 +94,7 @@ export default function TransactionForm() {
 
 
 
-  // 2. Add to Queue & Reset
+  // Add to Queue & Reset
   const handleAddToQueue = (e) => {
     e.preventDefault();
     if (!currentScan.barcode) return;
@@ -119,12 +119,12 @@ export default function TransactionForm() {
   };
 
 
-  // 3. Handle Enter Key
+  // Handle Enter Key
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       
-      // If pressing Enter on Barcode (e.g. Scanner), force immediate check
+      // If pressing Enter on Barcode (eg. Scanner), force immediate check
       if (e.target.name === 'barcodeField') {
         checkProduct(currentScan.barcode); 
       } 
@@ -340,8 +340,7 @@ useEffect(() => {
                          <label className="label text-[10px] font-bold text-gray-400 uppercase">Item Name</label>
                          <input 
                             id="nameInput"
-                            type="text" 
-                            // Fix: Use readOnly instead of disabled for better readability
+                            type="text"
                             readOnly={isNewItem !== true}
                             className={`input input-sm input-bordered w-full font-bold transition-all
                                 ${isNewItem === true 

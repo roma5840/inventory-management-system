@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
           // User is authorized
           const userData = docSnap.data();
           
-          // PATCH: If a user logs in but status is still PENDING (e.g. re-invited), update it.
+          // If a user logs in but status is still PENDING (eg. reinvited), update it.
           if (userData.status === "PENDING") {
              const { updateDoc } = await import("firebase/firestore"); // Dynamic import or use existing
              await updateDoc(docRef, { 
