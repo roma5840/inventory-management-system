@@ -29,25 +29,38 @@ export default function StaffPage() {
     return () => supabase.removeChannel(channel);
   }, []);
 
+  const canManage = (targetUser) => {
+    if (userRole === 'SUPER_ADMIN') return targetUser.auth_uid !== currentUser.id; // Super can edit anyone but self
+    if (userRole === 'ADMIN') return targetUser.role === 'EMPLOYEE'; // Admin can only edit Employees
+    return false;
+  };
+
+
   const toggleRole = async (user) => {
-    // Note: 'user.auth_uid' matches 'currentUser.id' in Supabase session
-    if (user.auth_uid === currentUser.id) return alert("You cannot change your own role.");
+    if (!canManage(user)) return alert("You do not have permission to modify this user.");
     
-    const newRole = user.role === "ADMIN" ? "EMPLOYEE" : "ADMIN";
-    if (confirm(`Change ${user.full_name}'s role to ${newRole}?`)) {
-        await supabase.from('authorized_users').update({ role: newRole }).eq('id', user.id);
+    // Rotate roles based on current level
+    let newRole = "EMPLOYEE";
+    if (user.role === "EMPLOYEE") newRole = "ADMIN";
+    // Only Super Admin can make others Super Admin (optional, keeping simple for now)
+    
+    if (confirm(`Change ${user.fullName}'s role to ${newRole}?`)) {
+        const { error } = await supabase.from('authorized_users').update({ role: newRole }).eq('id', user.id);
+        if (error) alert(error.message);
     }
   };
 
   const revokeAccess = async (user) => {
-    if (user.auth_uid === currentUser.id) return alert("You cannot delete yourself.");
+    if (!canManage(user)) return alert("You do not have permission to delete this user.");
     
-    if (confirm(`Are you sure you want to REVOKE access for ${user.full_name}?`)) {
-        await supabase.from('authorized_users').delete().eq('id', user.id);
+    if (confirm(`Are you sure you want to REVOKE access for ${user.fullName}?`)) {
+        const { error } = await supabase.from('authorized_users').delete().eq('id', user.id);
+        if (error) alert(error.message);
     }
   };
 
-  if (userRole !== "ADMIN") return <div className="p-10 text-center text-error">Access Denied</div>;
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return <div className="p-10 text-center text-error">Access Denied</div>;
+
 
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
@@ -60,11 +73,11 @@ export default function StaffPage() {
             <div className="w-full md:w-1/3 sticky top-6">
                 <AdminInvite />
                 <div className="mt-4 p-4 text-xs text-gray-500 bg-white rounded-lg shadow border">
-                    <p className="font-bold">Staff Policy:</p>
+                    <p className="font-bold">Privilege Levels:</p>
                     <ul className="list-disc pl-4 mt-2 space-y-1">
-                        <li><strong>Pending:</strong> Invited via email, hasn't registered yet.</li>
-                        <li><strong>Registered:</strong> Has active access to the system.</li>
-                        <li><strong>Revoke:</strong> Permanently removes access immediately.</li>
+                        <li><strong>Super Admin:</strong> Full control.</li>
+                        <li><strong>Admin:</strong> Can manage Employees only.</li>
+                        <li><strong>Employee:</strong> No access to this page.</li>
                     </ul>
                 </div>
             </div>
@@ -90,7 +103,7 @@ export default function StaffPage() {
                             ) : staff.map((user) => (
                                 <tr key={user.id} className="hover">
                                     <td>
-                                        <div className="font-bold">{user.fullName}</div>
+                                        <div className="font-bold">{user.fullName || "Unregistered"}</div>
                                         <div className="text-xs text-gray-500">{user.email}</div>
                                     </td>
                                     <td>
@@ -100,25 +113,33 @@ export default function StaffPage() {
                                         }
                                     </td>
                                     <td>
-                                        <button 
-                                            onClick={() => toggleRole(user)}
-                                            className={`btn btn-xs no-animation ${user.role === 'ADMIN' ? 'btn-primary' : 'btn-ghost border-gray-300'}`}
-                                            disabled={user.uid === currentUser.uid}
-                                        >
+                                        <span className={`badge badge-sm ${
+                                            user.role === 'SUPER_ADMIN' ? 'badge-primary' : 
+                                            user.role === 'ADMIN' ? 'badge-secondary' : 'badge-ghost'
+                                        }`}>
                                             {user.role}
-                                        </button>
+                                        </span>
                                     </td>
                                     <td className="text-right">
-                                        <button 
-                                            onClick={() => revokeAccess(user)}
-                                            className="btn btn-square btn-xs btn-outline btn-error"
-                                            disabled={user.uid === currentUser.uid}
-                                            title="Revoke Access"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                            </svg>
-                                        </button>
+                                        {canManage(user) && (
+                                            <div className="flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => toggleRole(user)}
+                                                    className="btn btn-xs btn-ghost border-gray-300"
+                                                >
+                                                    Toggle Role
+                                                </button>
+                                                <button 
+                                                    onClick={() => revokeAccess(user)}
+                                                    className="btn btn-square btn-xs btn-outline btn-error"
+                                                    title="Revoke Access"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

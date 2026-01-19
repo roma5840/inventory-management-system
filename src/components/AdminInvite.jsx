@@ -34,7 +34,7 @@ export default function AdminInvite() {
       const { error } = await supabase.from('authorized_users').insert({
         email: email,
         full_name: name,
-        role: role,
+        role: role, // This now takes the value from the select box
         status: "PENDING"
       });
 
