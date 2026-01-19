@@ -16,22 +16,33 @@ export default function StaffPage() {
         const { data } = await supabase
             .from('authorized_users')
             .select('*, fullName:full_name')
-            .order('created_at', { ascending: false }); // Ensure newest on top
+            .order('created_at', { ascending: false });
         if(data) setStaff(data);
         setLoading(false);
     }
     
     fetchStaff();
 
-    const channel = supabase.channel('app_updates')
-        .on('broadcast', { event: 'staff_update' }, () => {
-            console.log("Remote staff update received.");
-            setRefreshTrigger(prev => prev + 1); // Trigger re-fetch
+    // 1. Listen for DB changes (e.g. Status Pending -> Registered)
+    const dbChannel = supabase.channel('staff_db_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'authorized_users' }, () => {
+            fetchStaff();
         })
         .subscribe();
 
-    return () => supabase.removeChannel(channel);
-  }, [refreshTrigger]); // Re-run fetch when trigger changes
+    // 2. Listen for Broadcasts (e.g. Admin invites from other tabs)
+    const appChannel = supabase.channel('app_updates')
+        .on('broadcast', { event: 'staff_update' }, () => {
+            fetchStaff();
+        })
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(dbChannel);
+        supabase.removeChannel(appChannel);
+    };
+  }, [refreshTrigger]);
+
 
   const canManage = (targetUser) => {
     if (userRole === 'SUPER_ADMIN') return targetUser.auth_uid !== currentUser.id; // Super can edit anyone but self

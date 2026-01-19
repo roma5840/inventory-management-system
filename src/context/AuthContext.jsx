@@ -76,13 +76,20 @@ export function AuthProvider({ children }) {
              status: 'REGISTERED', 
              auth_uid: session.user.id 
            }).eq('email', session.user.email);
+
+           // TRIGGER: Broadcast this update to Admin tabs immediately
+           await supabase.channel('app_updates').send({
+             type: 'broadcast',
+             event: 'staff_update',
+             payload: {} 
+           });
         }
         
         // Map DB snake_case to Context camelCase
         setCurrentUser({ 
           ...session.user, 
           ...data,
-          fullName: data.full_name // Fix mapping here
+          fullName: data.full_name 
         });
         setUserRole(data.role);
       } else {
@@ -95,6 +102,7 @@ export function AuthProvider({ children }) {
       setUserRole(null);
     }
   };
+
 
   const value = {
     currentUser,
