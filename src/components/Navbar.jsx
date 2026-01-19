@@ -6,10 +6,17 @@ export default function Navbar() {
   return (
     <div className="navbar bg-white border-b border-gray-200 px-4 mb-6">
       <div className="flex-1">
-        <div className="flex flex-col">
-           <a className="btn btn-ghost normal-case text-xl text-blue-700 font-bold hover:bg-transparent pl-0">
-             BookstoreIMS
-           </a>
+        <div className="flex flex-col items-start">
+           <div className="flex items-baseline gap-4">
+             <a href="/" className="btn btn-ghost normal-case text-xl text-blue-700 font-bold hover:bg-transparent pl-0">
+               BookstoreIMS
+             </a>
+             {userRole === 'ADMIN' && (
+               <a href="/staff" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">
+                 Manage Staff
+               </a>
+             )}
+           </div>
            <span className="text-xs text-gray-500 -mt-1">Finance Dept. Control</span>
         </div>
       </div>

@@ -25,12 +25,6 @@ export default function DashboardPage() {
           <div className="lg:col-span-1">
             <div className="sticky top-6">
                <TransactionForm />
-
-               {userRole === 'ADMIN' && (
-                 <>
-                   <AdminInvite />
-                 </>
-               )}
                
                <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
                  <h3 className="card-title text-gray-700 mb-2">Instructions</h3>
