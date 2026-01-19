@@ -191,7 +191,7 @@ export default function Dashboard({ lastUpdated }) {
                 <th className="text-right">Price</th>
                 <th className="text-center">Stock</th>
                 <th className="text-center">Status</th>
-                {userRole === 'ADMIN' && <th></th>}
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -216,7 +216,7 @@ export default function Dashboard({ lastUpdated }) {
                     </td>
                     
                     {/* ACTION BUTTONS */}
-                    {userRole === 'ADMIN' && (
+                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                       <td className="text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 

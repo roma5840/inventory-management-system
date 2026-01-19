@@ -61,8 +61,8 @@ export default function Stats({ lastUpdated }) {
 
   return (
     <div className="stats shadow w-full mb-6 bg-white relative">
-      {/* Admin-only Recalculate Button */}
-      {userRole === 'ADMIN' && (
+      {/* Admin/Super Admin Recalculate Button */}
+      {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
         <button 
           onClick={recalculateTotals}
           disabled={updating}
