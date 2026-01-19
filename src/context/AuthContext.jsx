@@ -19,9 +19,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // Login Function
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function login(email, password) {
+
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    const docRef = doc(db, "authorized_users", user.email);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+       // Valid Password, but NOT in Whitelist
+       await signOut(auth); // Kill session immediately
+       throw new Error("Access Denied: You are not authorized.");
+    }
+    
+    return userCredential;
   }
+
 
   // Logout Function
   function logout() {

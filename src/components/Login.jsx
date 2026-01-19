@@ -22,8 +22,6 @@ export default function Login() {
 
     try {
       await login(email, password);
-      // No navigate needed here; useeffect handles it naturally.
-      // do not set loading(false) to prevent the button from flickering
     } catch (err) {
       setError("Failed to sign in. Check email/password.");
       setLoading(false); 
