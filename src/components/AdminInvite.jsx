@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import emailjs from '@emailjs/browser';
 
-export default function AdminInvite() {
+export default function AdminInvite({ onSuccess }) { // Added onSuccess prop
   const { currentUser } = useAuth();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -17,7 +17,7 @@ export default function AdminInvite() {
     setMsg("");
 
     try {
-      // Check existence using maybeSingle to avoid 406 error on empty result
+      // Check existence
       const { data: existing } = await supabase
         .from('authorized_users')
         .select('status')
@@ -34,12 +34,21 @@ export default function AdminInvite() {
       const { error } = await supabase.from('authorized_users').insert({
         email: email,
         full_name: name,
-        role: role, // This now takes the value from the select box
+        role: role, 
         status: "PENDING"
       });
 
       if(error) throw error;
 
+      // 1. Broadcast to other tabs
+      await supabase.channel('app_updates').send({
+        type: 'broadcast',
+        event: 'staff_update',
+        payload: {} 
+      });
+
+      // 2. Refresh local parent component
+      if (onSuccess) onSuccess();
 
       const templateParams = {
         to_name: name,

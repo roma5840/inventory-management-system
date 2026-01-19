@@ -8,26 +8,30 @@ export default function StaffPage() {
   const { userRole, currentUser } = useAuth();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // For manual/broadcast updates
 
-  // Subscribe to Authorized Users
+  // Subscribe to Authorized Users via Broadcast
   useEffect(() => {
     const fetchStaff = async () => {
-        // Alias full_name to fullName
         const { data } = await supabase
             .from('authorized_users')
-            .select('*, fullName:full_name');
+            .select('*, fullName:full_name')
+            .order('created_at', { ascending: false }); // Ensure newest on top
         if(data) setStaff(data);
         setLoading(false);
     }
     
     fetchStaff();
 
-    const channel = supabase.channel('staff_realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'authorized_users' }, () => fetchStaff())
+    const channel = supabase.channel('app_updates')
+        .on('broadcast', { event: 'staff_update' }, () => {
+            console.log("Remote staff update received.");
+            setRefreshTrigger(prev => prev + 1); // Trigger re-fetch
+        })
         .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, []);
+  }, [refreshTrigger]); // Re-run fetch when trigger changes
 
   const canManage = (targetUser) => {
     if (userRole === 'SUPER_ADMIN') return targetUser.auth_uid !== currentUser.id; // Super can edit anyone but self
@@ -42,11 +46,19 @@ export default function StaffPage() {
     // Rotate roles based on current level
     let newRole = "EMPLOYEE";
     if (user.role === "EMPLOYEE") newRole = "ADMIN";
-    // Only Super Admin can make others Super Admin (optional, keeping simple for now)
     
     if (confirm(`Change ${user.fullName}'s role to ${newRole}?`)) {
         const { error } = await supabase.from('authorized_users').update({ role: newRole }).eq('id', user.id);
-        if (error) alert(error.message);
+        if (error) {
+            alert(error.message);
+        } else {
+            setRefreshTrigger(prev => prev + 1); // Refresh local
+            await supabase.channel('app_updates').send({ // Notify others
+                type: 'broadcast',
+                event: 'staff_update',
+                payload: {} 
+            });
+        }
     }
   };
 
@@ -55,7 +67,16 @@ export default function StaffPage() {
     
     if (confirm(`Are you sure you want to REVOKE access for ${user.fullName}?`)) {
         const { error } = await supabase.from('authorized_users').delete().eq('id', user.id);
-        if (error) alert(error.message);
+        if (error) {
+            alert(error.message);
+        } else {
+            setRefreshTrigger(prev => prev + 1); // Refresh local
+            await supabase.channel('app_updates').send({ // Notify others
+                type: 'broadcast',
+                event: 'staff_update',
+                payload: {} 
+            });
+        }
     }
   };
 
@@ -71,7 +92,7 @@ export default function StaffPage() {
             
             {/* LEFT: Invite Form */}
             <div className="w-full md:w-1/3 sticky top-6">
-                <AdminInvite />
+                <AdminInvite onSuccess={() => setRefreshTrigger(prev => prev + 1)} />
                 <div className="mt-4 p-4 text-xs text-gray-500 bg-white rounded-lg shadow border">
                     <p className="font-bold">Privilege Levels:</p>
                     <ul className="list-disc pl-4 mt-2 space-y-1">
