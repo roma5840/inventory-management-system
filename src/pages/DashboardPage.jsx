@@ -11,20 +11,28 @@ import TransactionHistory from "../components/TransactionHistory";
 
 export default function DashboardPage() {
   const { userRole } = useAuth();
+  // State to force re-fetch of child components
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
       <Navbar />
       
       <main className="container mx-auto px-4">
-        <Stats />
+        {/* Pass refreshTrigger so Stats re-calculates immediately */}
+        <Stats key={refreshTrigger} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* LEFT COLUMN */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
-               <TransactionForm />
+               {/* Pass handleRefresh as onSuccess callback */}
+               <TransactionForm onSuccess={handleRefresh} />
                
                <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
                  <h3 className="card-title text-gray-700 mb-2">Instructions</h3>
@@ -40,8 +48,9 @@ export default function DashboardPage() {
 
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-2 flex flex-col gap-8">
-            <TransactionHistory /> 
-            <Dashboard />
+            {/* Pass refreshTrigger to force updates */}
+            <TransactionHistory lastUpdated={refreshTrigger} /> 
+            <Dashboard lastUpdated={refreshTrigger} />
           </div>
 
         </div>

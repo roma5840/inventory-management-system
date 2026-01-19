@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-export default function TransactionHistory() {
+export default function TransactionHistory({ lastUpdated }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchHistory = async () => {
-        // Alias columns to match UI expectations
         const { data } = await supabase
             .from('transactions')
             .select('*, productName:product_name, previousStock:previous_stock, newStock:new_stock')
@@ -20,22 +19,16 @@ export default function TransactionHistory() {
 
     fetchHistory();
 
-    // Realtime Listener
+    // Realtime Listener - Changed to Re-fetch to ensure Joined Data (Product Name) is present
     const channel = supabase.channel('history_realtime')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, (payload) => {
-            // Map the raw snake_case payload to camelCase before adding to state
-            const newTx = {
-                ...payload.new,
-                productName: payload.new.product_name,
-                previousStock: payload.new.previous_stock,
-                newStock: payload.new.new_stock
-            };
-            setTransactions(prev => [newTx, ...prev].slice(0, 10));
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, () => {
+            fetchHistory();
         })
         .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, []);
+  }, [lastUpdated]); // Added lastUpdated dependency
+
 
 
   const formatDate = (timestamp) => {

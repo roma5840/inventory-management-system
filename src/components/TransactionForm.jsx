@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useInventory } from "../hooks/useInventory";
 import { supabase } from "../lib/supabase";
 
-export default function TransactionForm() {
+export default function TransactionForm({ onSuccess }) {
   const { processTransaction, loading, error } = useInventory();
   const barcodeRef = useRef(null);
 
@@ -152,8 +152,12 @@ export default function TransactionForm() {
       setQueue([]); 
       // Reset scanner focus
       if(barcodeRef.current) barcodeRef.current.focus();
+
+      // Trigger Immediate Dashboard/Stats Refresh
+      if (onSuccess) onSuccess();
     }
   };
+
 
 
 

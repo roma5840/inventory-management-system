@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
-export default function Dashboard() {
+export default function Dashboard({ lastUpdated }) {
   const { userRole } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,18 +36,15 @@ export default function Dashboard() {
     
     const fetchInventory = async () => {
         let query = supabase
-            // Alias snake_case DB columns to camelCase for the UI
             .from('products')
             .select('*, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
-        // Search Logic (ILIKE is case-insensitive)
         if (debouncedTerm.trim()) {
             query = query.or(`name.ilike.%${debouncedTerm}%,id.eq.${debouncedTerm}`);
         } else {
             query = query.order('name', { ascending: true });
         }
 
-        // Pagination Logic
         const from = (currentPage - 1) * ITEMS_PER_PAGE;
         const to = from + ITEMS_PER_PAGE - 1;
         
@@ -61,7 +58,7 @@ export default function Dashboard() {
 
     fetchInventory();
     
-    // Optional: Realtime Subscription
+    // Realtime Subscription
     const channel = supabase.channel('table-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
             fetchInventory();
@@ -70,7 +67,7 @@ export default function Dashboard() {
 
     return () => supabase.removeChannel(channel);
 
-  }, [debouncedTerm, currentPage]);
+  }, [debouncedTerm, currentPage, lastUpdated]); // Added lastUpdated dependency
 
   const handleNext = () => {
     if (!lastVisible) return;

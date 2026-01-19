@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
-export default function Stats() {
+export default function Stats({ lastUpdated }) {
   const { userRole } = useAuth();
   const [stats, setStats] = useState({ 
     totalInventoryValue: 0, 
@@ -23,7 +23,6 @@ export default function Stats() {
          let low = 0;
          
          data.forEach(p => {
-            // Explicitly cast price to Number (Postgres returns numeric types as strings)
             const price = Number(p.price) || 0;
             totalVal += (p.current_stock * price);
             totalItems += p.current_stock;
@@ -40,13 +39,13 @@ export default function Stats() {
 
     fetchStats();
     
-    // Subscribe to changes
     const ch = supabase.channel('stats-listener')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchStats())
       .subscribe();
       
     return () => supabase.removeChannel(ch);
-  }, []);
+  }, [lastUpdated]); // Trigger re-calc on transaction success
+
 
   // One-time migration function to fix "0" values
   const recalculateTotals = async () => {
