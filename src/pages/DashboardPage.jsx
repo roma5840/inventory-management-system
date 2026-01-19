@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase"; // Added Import
 
 // Components moved here
 import Navbar from "../components/Navbar";
@@ -17,6 +18,20 @@ export default function DashboardPage() {
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
   };
+
+  // NEW: Listen for "inventory_update" broadcast from other tabs
+  useEffect(() => {
+    const channel = supabase.channel('app_updates')
+      .on('broadcast', { event: 'inventory_update' }, () => {
+        console.log("Remote update received. Refreshing data...");
+        handleRefresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-100 pb-10">

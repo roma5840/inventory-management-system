@@ -153,12 +153,18 @@ export default function TransactionForm({ onSuccess }) {
       // Reset scanner focus
       if(barcodeRef.current) barcodeRef.current.focus();
 
-      // Trigger Immediate Dashboard/Stats Refresh
+      // 1. Trigger Local Dashboard Refresh
       if (onSuccess) onSuccess();
+
+      // 2. Broadcast Realtime Signal to other Tabs/Users
+      // This bypasses the need for Postgres Replication
+      await supabase.channel('app_updates').send({
+        type: 'broadcast',
+        event: 'inventory_update',
+        payload: {} 
+      });
     }
   };
-
-
 
 
 
