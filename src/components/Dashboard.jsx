@@ -40,7 +40,7 @@ export default function Dashboard({ lastUpdated }) {
             .select('*, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
         if (debouncedTerm.trim()) {
-            query = query.or(`name.ilike.%${debouncedTerm}%,id.eq.${debouncedTerm}`);
+            query = query.or(`name.ilike.%${debouncedTerm}%,id.ilike.%${debouncedTerm}%`);
         } else {
             query = query.order('name', { ascending: true });
         }
@@ -67,7 +67,7 @@ export default function Dashboard({ lastUpdated }) {
 
     return () => supabase.removeChannel(channel);
 
-  }, [debouncedTerm, currentPage, lastUpdated]); // Added lastUpdated dependency
+  }, [debouncedTerm, currentPage, lastUpdated]);
 
   const handleNext = () => {
     if (!lastVisible) return;
