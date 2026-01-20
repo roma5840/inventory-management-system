@@ -14,7 +14,7 @@ export default function TransactionForm({ onSuccess }) {
     type: "",
     studentName: "",
     studentId: "",
-    transactionMode: "CASH", 
+    transactionMode: "CHARGED", 
     supplier: "", 
     remarks: "",
     reason: "",       
@@ -293,8 +293,9 @@ useEffect(() => {
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
                                 <select className="select select-sm select-bordered bg-white" 
                                     value={headerData.transactionMode} onChange={e => setHeaderData({...headerData, transactionMode: e.target.value})}>
-                                    <option value="CASH">Cash</option>
                                     <option value="CHARGED">Charged</option>
+                                    <option value="CASH">Cash</option>
+                                    <option value="SIP">SIP</option>
                                     <option value="TRANSMITTAL">Transmittal</option>
                                 </select>
                             </div>
