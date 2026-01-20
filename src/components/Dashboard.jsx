@@ -21,16 +21,16 @@ export default function Dashboard({ lastUpdated }) {
   const [updateLoading, setUpdateLoading] = useState(false);
 
   // Handle Debounce (Only for typing)
-  // This updates 'debouncedTerm' 600ms after user stops typing.
+  // This updates 'debouncedTerm' 250ms after user stops typing.
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedTerm(searchTerm);
-    }, 600);
+    }, 250);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
   // Handle Fetching (Immediate response to Page or Debounced Term)
-  // runs instantly when page changes, or after the 600ms search delay.
+  // runs instantly when page changes, or after the 250ms search delay.
   useEffect(() => {
     setLoading(true);
     
