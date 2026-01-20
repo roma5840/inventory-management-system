@@ -8,7 +8,51 @@ export default function StaffPage() {
   const { userRole, currentUser } = useAuth();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // For manual/broadcast updates
+  const [refreshTrigger, setRefreshTrigger] = useState(0); 
+  
+  // NEW: State for Inline Renaming
+  const [editingNameId, setEditingNameId] = useState(null);
+  const [tempName, setTempName] = useState("");
+
+  // Logic: Super Admin can edit everyone. Admin can only edit Employees.
+  const canManage = (targetUser) => {
+    if (userRole === 'SUPER_ADMIN') return true; 
+    if (userRole === 'ADMIN') return targetUser.role === 'EMPLOYEE'; 
+    return false;
+  };
+
+  // NEW: Rename Handlers
+  const startEditName = (user) => {
+    setEditingNameId(user.id);
+    setTempName(user.fullName || "");
+  };
+
+  const saveName = async (user) => {
+    if (!tempName.trim()) return alert("Name cannot be empty");
+    
+    try {
+        const { error } = await supabase
+            .from('authorized_users')
+            .update({ full_name: tempName })
+            .eq('id', user.id);
+
+        if (error) throw error;
+
+        setEditingNameId(null);
+        setRefreshTrigger(prev => prev + 1);
+        
+        // Broadcast change to other tabs
+        await supabase.channel('app_updates').send({
+            type: 'broadcast',
+            event: 'staff_update',
+            payload: {} 
+        });
+
+    } catch (err) {
+        alert("Update failed: " + err.message);
+    }
+  };
+
 
   // Subscribe to Authorized Users via Broadcast
   useEffect(() => {
@@ -42,14 +86,6 @@ export default function StaffPage() {
         supabase.removeChannel(appChannel);
     };
   }, [refreshTrigger]);
-
-
-  const canManage = (targetUser) => {
-    if (userRole === 'SUPER_ADMIN') return targetUser.auth_uid !== currentUser.id; // Super can edit anyone but self
-    if (userRole === 'ADMIN') return targetUser.role === 'EMPLOYEE'; // Admin can only edit Employees
-    return false;
-  };
-
 
   const toggleRole = async (user) => {
     if (!canManage(user)) return alert("You do not have permission to modify this user.");
@@ -135,8 +171,40 @@ export default function StaffPage() {
                             ) : staff.map((user) => (
                                 <tr key={user.id} className="hover">
                                     <td>
-                                        <div className="font-bold">{user.fullName || "Unregistered"}</div>
-                                        <div className="text-xs text-gray-500">{user.email}</div>
+                                        {/* INLINE NAME EDITING LOGIC */}
+                                        {editingNameId === user.id ? (
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="text" 
+                                                    className="input input-xs input-bordered w-full max-w-[150px] bg-white"
+                                                    value={tempName}
+                                                    onChange={(e) => setTempName(e.target.value)}
+                                                    autoFocus
+                                                    onKeyDown={(e) => e.key === 'Enter' && saveName(user)}
+                                                />
+                                                <button onClick={() => saveName(user)} className="btn btn-xs btn-success text-white">✓</button>
+                                                <button onClick={() => setEditingNameId(null)} className="btn btn-xs btn-ghost text-red-500">✕</button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 group">
+                                                <div>
+                                                    <div className="font-bold">{user.fullName || "Unregistered"}</div>
+                                                    <div className="text-xs text-gray-500">{user.email}</div>
+                                                </div>
+                                                {/* Edit Pencil - Only if allowed */}
+                                                {canManage(user) && (
+                                                    <button 
+                                                        onClick={() => startEditName(user)}
+                                                        className="opacity-0 group-hover:opacity-100 btn btn-xs btn-ghost text-blue-400 transition-opacity"
+                                                        title="Rename User"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
+                                                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </td>
                                     <td>
                                         {user.status === 'REGISTERED' 
