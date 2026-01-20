@@ -87,13 +87,12 @@ export default function StaffPage() {
     };
   }, [refreshTrigger]);
 
-  const toggleRole = async (user) => {
-    if (!canManage(user)) return alert("You do not have permission to modify this user.");
+  const changeRole = async (user, newRole) => {
+    if (userRole !== 'SUPER_ADMIN') return alert("Only Super Admins can change roles.");
     
-    // Rotate roles based on current level
-    let newRole = "EMPLOYEE";
-    if (user.role === "EMPLOYEE") newRole = "ADMIN";
-    
+    // Safety check: Prevent locking yourself out (optional but recommended)
+    if (user.id === currentUser.id) return alert("You cannot change your own role here.");
+
     if (confirm(`Change ${user.fullName}'s role to ${newRole}?`)) {
         const { error } = await supabase.from('authorized_users').update({ role: newRole }).eq('id', user.id);
         if (error) {
@@ -106,6 +105,9 @@ export default function StaffPage() {
                 payload: {} 
             });
         }
+    } else {
+        // If cancelled, trigger a refresh to reset the dropdown UI back to original value
+        setRefreshTrigger(prev => prev + 1);
     }
   };
 
@@ -222,13 +224,20 @@ export default function StaffPage() {
                                     </td>
                                     <td className="text-right">
                                         {canManage(user) && (
-                                            <div className="flex justify-end gap-2">
-                                                <button 
-                                                    onClick={() => toggleRole(user)}
-                                                    className="btn btn-xs btn-ghost border-gray-300"
-                                                >
-                                                    Toggle Role
-                                                </button>
+                                            <div className="flex justify-end gap-2 items-center">
+                                                {/* Only SUPER_ADMIN sees the dropdown */}
+                                                {userRole === 'SUPER_ADMIN' && (
+                                                    <select 
+                                                        className="select select-bordered select-xs w-32 font-normal"
+                                                        value={user.role}
+                                                        onChange={(e) => changeRole(user, e.target.value)}
+                                                    >
+                                                        <option value="EMPLOYEE">Employee</option>
+                                                        <option value="ADMIN">Admin</option>
+                                                        <option value="SUPER_ADMIN">Super Admin</option>
+                                                    </select>
+                                                )}
+                                                
                                                 <button 
                                                     onClick={() => revokeAccess(user)}
                                                     className="btn btn-square btn-xs btn-outline btn-error"

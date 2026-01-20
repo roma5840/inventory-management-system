@@ -3,8 +3,8 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import emailjs from '@emailjs/browser';
 
-export default function AdminInvite({ onSuccess }) { // Added onSuccess prop
-  const { currentUser } = useAuth();
+export default function AdminInvite({ onSuccess }) {
+  const { currentUser, userRole } = useAuth();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("EMPLOYEE");
@@ -17,7 +17,6 @@ export default function AdminInvite({ onSuccess }) { // Added onSuccess prop
     setMsg("");
 
     try {
-      // Check existence
       const { data: existing } = await supabase
         .from('authorized_users')
         .select('status')
@@ -30,7 +29,6 @@ export default function AdminInvite({ onSuccess }) { // Added onSuccess prop
         return; 
       }
 
-      // Insert new user
       const { error } = await supabase.from('authorized_users').insert({
         email: email,
         full_name: name,
@@ -40,14 +38,12 @@ export default function AdminInvite({ onSuccess }) { // Added onSuccess prop
 
       if(error) throw error;
 
-      // 1. Broadcast to other tabs
       await supabase.channel('app_updates').send({
         type: 'broadcast',
         event: 'staff_update',
         payload: {} 
       });
 
-      // 2. Refresh local parent component
       if (onSuccess) onSuccess();
 
       const templateParams = {
@@ -67,6 +63,8 @@ export default function AdminInvite({ onSuccess }) { // Added onSuccess prop
       setMsg(`Invite sent to ${name}`);
       setEmail("");
       setName("");
+      // Reset role to default
+      setRole("EMPLOYEE");
     } catch (error) {
       console.error(error);
       setMsg("Error sending invite.");
@@ -91,15 +89,20 @@ export default function AdminInvite({ onSuccess }) { // Added onSuccess prop
             value={name} onChange={e => setName(e.target.value)} required 
           />
         </div>
-        <div className="form-control">
-          <select 
-            className="select select-bordered w-full"
-            value={role} onChange={e => setRole(e.target.value)}
-          >
-            <option value="EMPLOYEE">Role: Employee</option>
-            <option value="ADMIN">Role: Admin</option>
-          </select>
-        </div>
+        
+        {/* Only Super Admin can choose roles. Defaults to EMPLOYEE for others. */}
+        {userRole === 'SUPER_ADMIN' && (
+          <div className="form-control">
+            <select 
+              className="select select-bordered w-full"
+              value={role} onChange={e => setRole(e.target.value)}
+            >
+              <option value="EMPLOYEE">Role: Employee</option>
+              <option value="ADMIN">Role: Admin</option>
+              <option value="SUPER_ADMIN">Role: Super Admin</option>
+            </select>
+          </div>
+        )}
 
         <button 
           disabled={loading} 
