@@ -115,16 +115,27 @@ export default function StaffPage() {
     if (!canManage(user)) return alert("You do not have permission to delete this user.");
     
     if (confirm(`Are you sure you want to REVOKE access for ${user.fullName}?`)) {
-        const { error } = await supabase.from('authorized_users').delete().eq('id', user.id);
-        if (error) {
-            alert(error.message);
-        } else {
-            setRefreshTrigger(prev => prev + 1); // Refresh local
-            await supabase.channel('app_updates').send({ // Notify others
+        try {
+            // CALL THE SECURE SQL FUNCTION
+            const { error } = await supabase.rpc('delete_staff_account', { 
+                target_record_id: user.id 
+            });
+
+            if (error) throw error;
+
+            // 1. Refresh Local State
+            setRefreshTrigger(prev => prev + 1); 
+
+            // 2. Broadcast to other tabs
+            await supabase.channel('app_updates').send({ 
                 type: 'broadcast',
                 event: 'staff_update',
                 payload: {} 
             });
+
+        } catch (err) {
+            console.error("Revoke failed:", err);
+            alert("Failed to revoke access: " + err.message);
         }
     }
   };

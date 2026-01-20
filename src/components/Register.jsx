@@ -49,12 +49,16 @@ export default function Register() {
         password,
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        // Handle "User already exists" error gracefully
+        if (signUpError.message.includes("already registered") || signUpError.status === 422) {
+             alert("Account exists! It seems you were re-invited.\n\nPlease go to Login and use your previous password.");
+             navigate("/login");
+             return;
+        }
+        throw signUpError;
+      }
 
-      // 3. Update whitelist status
-      // Note: The AuthContext listener will actually handle the update to 'REGISTERED'
-      // automatically when it detects the new session, but we can double check here.
-      
       alert("Registration Successful! Please check your email to confirm if required, then login.");
       navigate("/login");
 
