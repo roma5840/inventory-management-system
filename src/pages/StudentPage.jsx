@@ -84,19 +84,34 @@ export default function StudentPage() {
     setSaving(true);
 
     try {
+        // 1. Send Update to Database
         const { error } = await supabase
             .from('students')
             .update({ 
                 name: editForm.name, 
                 course: editForm.course,
-                last_updated: new Date() // FIXED: Column name matches your SQL schema
+                last_updated: new Date()
             })
             .eq('student_id', editingStudent.student_id);
 
         if (error) throw error;
         
+        // 2. Update Local State Immediately (Optimistic UI)
+        setStudents(prev => prev.map(s => 
+            s.student_id === editingStudent.student_id 
+                ? { ...s, name: editForm.name, course: editForm.course } 
+                : s
+        ));
+
+        // 3. Broadcast to Other Tabs
+        await supabase.channel('app_updates').send({
+            type: 'broadcast',
+            event: 'inventory_update',
+            payload: {} 
+        });
+
         setEditingStudent(null);
-        // Realtime listener will auto-refresh UI
+        
     } catch (err) {
         alert("Update failed: " + err.message);
     } finally {
