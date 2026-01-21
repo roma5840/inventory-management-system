@@ -50,12 +50,14 @@ export default function Register() {
       });
 
       if (signUpError) {
-        // Handle "User already exists" error gracefully
-        if (signUpError.message.includes("already registered") || signUpError.status === 422) {
+        // ONLY show the "Already Registered" alert if the message specifically says so
+        if (signUpError.message.includes("already registered")) {
              alert("Account exists! It seems you were re-invited.\n\nPlease go to Login and use your previous password.");
              navigate("/login");
              return;
         }
+        
+        // Otherwise, throw the real error (like "Password should be at least 6 characters")
         throw signUpError;
       }
 
