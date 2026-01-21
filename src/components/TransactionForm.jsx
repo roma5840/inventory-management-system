@@ -200,9 +200,16 @@ export default function TransactionForm({ onSuccess }) {
       setSuccessMsg(`Success: Processed ${queue.length} items.`);
       setQueue([]); 
       
-      // RESET ALL FORM DATA TO CLEAN SLATE
-      setHeaderData(initialHeaderState); 
+      // RESET FIELDS BUT KEEP THE TRANSACTION TYPE OPEN
+      setHeaderData(prev => ({
+        ...initialHeaderState,    // Reset everything to blank
+        type: prev.type,          // Restore the current Type (e.g., ISSUANCE)
+        transactionMode: prev.transactionMode // Restore the selected Mode (e.g. CASH/CHARGED)
+      }));
+
       setIsNewStudent(null);
+      
+      // Reset the Scanner Input Line
       setCurrentScan({
         barcode: "",
         qty: 1,
@@ -212,7 +219,7 @@ export default function TransactionForm({ onSuccess }) {
         location: "", 
       });
 
-      // Reset scanner focus
+      // Reset scanner focus so they can immediately scan the next student/item
       if(barcodeRef.current) barcodeRef.current.focus();
 
       if (onSuccess) onSuccess();
@@ -343,13 +350,12 @@ useEffect(() => {
                     
                     {headerData.type === 'ISSUANCE' && (
                         <>
-                            {/* Student ID with Auto-Detection UI */}
+                            {/* Student ID - Still shows Green/Orange status, but doesn't lock other fields */}
                             <div className="form-control">
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">
                                     <span>Student ID Number</span>
-                                    {/* Visual Status Indicator */}
-                                    {isNewStudent === true && <span className="text-orange-600 animate-pulse">New Student Record</span>}
-                                    {isNewStudent === false && <span className="text-green-600">Record Found</span>}
+                                    {isNewStudent === true && <span className="text-orange-600 animate-pulse">New Record</span>}
+                                    {isNewStudent === false && <span className="text-green-600">Found</span>}
                                 </label>
                                 <div className="relative">
                                     <input 
@@ -361,13 +367,12 @@ useEffect(() => {
                                         placeholder="Scan or Type ID..."
                                         value={headerData.studentId} 
                                         onChange={e => {
-                                            // Reset to 'Unknown' immediately while typing
                                             if(isNewStudent !== null) setIsNewStudent(null);
                                             setHeaderData({...headerData, studentId: e.target.value});
                                         }}
                                         autoFocus
                                     />
-                                    {/* Status Icon Overlay */}
+                                    {/* Status Icons */}
                                     <div className="absolute right-2 top-1.5">
                                         {isNewStudent === false && (
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
@@ -387,11 +392,8 @@ useEffect(() => {
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
                                 <input 
                                     type="text" 
-                                    className={`input input-sm input-bordered transition-all
-                                        ${isNewStudent === false ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}
-                                    `}
-                                    readOnly={isNewStudent === false} // Read-only if found in DB
-                                    placeholder={isNewStudent === false ? "Locked (Found in DB)" : "Enter Full Name"}
+                                    className="input input-sm input-bordered bg-white"
+                                    placeholder="Enter Full Name"
                                     value={headerData.studentName} 
                                     onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
                                 />
@@ -401,11 +403,8 @@ useEffect(() => {
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Course / Year</label>
                                 <input 
                                     type="text" 
-                                    className={`input input-sm input-bordered transition-all
-                                        ${isNewStudent === false ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}
-                                    `}
-                                    readOnly={isNewStudent === false}
-                                    placeholder={isNewStudent === false ? "Locked" : "e.g. BSCS-2"}
+                                    className="input input-sm input-bordered bg-white"
+                                    placeholder="e.g. BSCS-2"
                                     value={headerData.course} 
                                     onChange={e => setHeaderData({...headerData, course: e.target.value})} 
                                 />
