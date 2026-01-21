@@ -395,7 +395,7 @@ useEffect(() => {
                                     className="input input-sm input-bordered bg-white"
                                     placeholder="Enter Full Name"
                                     value={headerData.studentName} 
-                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
+                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
                                 />
                             </div>
 
@@ -406,7 +406,7 @@ useEffect(() => {
                                     className="input input-sm input-bordered bg-white"
                                     placeholder="e.g. BSCS-2"
                                     value={headerData.course} 
-                                    onChange={e => setHeaderData({...headerData, course: e.target.value})} 
+                                    onChange={e => setHeaderData({...headerData, course: e.target.value.toUpperCase()})} 
                                 />
                             </div>
 
