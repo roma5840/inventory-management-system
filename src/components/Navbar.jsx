@@ -8,10 +8,13 @@ export default function Navbar() {
     <div className="navbar bg-white border-b border-gray-200 px-4 mb-6">
       <div className="flex-1">
         <div className="flex flex-col items-start">
-           <div className="flex items-baseline gap-4">
+          <div className="flex items-baseline gap-4">
              {/* Use Link instead of a tag */}
              <Link to="/" className="btn btn-ghost normal-case text-xl text-blue-700 font-bold hover:bg-transparent pl-0">
                BookstoreIMS
+             </Link>
+             <Link to="/students" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">
+                 Students
              </Link>
              {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                <Link to="/staff" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">

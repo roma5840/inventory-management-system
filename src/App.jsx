@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import DashboardPage from "./pages/DashboardPage";
 import StaffPage from "./pages/StaffPage";
+import StudentPage from "./pages/StudentPage"; 
 
 // Helper for Protected Routes
 const ProtectedRoute = ({ children }) => {
@@ -26,6 +27,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Protected Student Route */}
+      <Route 
+        path="/students" 
+        element={
+          <ProtectedRoute>
+            <StudentPage />
           </ProtectedRoute>
         } 
       />
