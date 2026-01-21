@@ -47,10 +47,6 @@ export default function Register() {
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          // This dynamically grabs the URL (localhost in dev, vercel in prod)
-          emailRedirectTo: window.location.origin, 
-        }
       });
 
       if (signUpError) {
