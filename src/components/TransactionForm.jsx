@@ -7,19 +7,22 @@ export default function TransactionForm({ onSuccess }) {
   const barcodeRef = useRef(null);
 
   const [isNewItem, setIsNewItem] = useState(null);
+  const [isNewStudent, setIsNewStudent] = useState(null); 
 
 
   // GLOBAL HEADER STATE (Applied to all items)
-  const [headerData, setHeaderData] = useState({
+  const initialHeaderState = {
     type: "",
     studentName: "",
     studentId: "",
+    course: "",
     transactionMode: "CHARGED", 
     supplier: "", 
     remarks: "",
     reason: "",       
     referenceNo: "",  
-  });
+  };
+  const [headerData, setHeaderData] = useState(initialHeaderState);
 
   // QUEUE STATE
   const [queue, setQueue] = useState([]);
@@ -87,7 +90,54 @@ export default function TransactionForm({ onSuccess }) {
     }
   };
 
+  const checkStudent = async (idInput) => {
+    const idToSearch = idInput?.trim();
+    if (!idToSearch) {
+        setIsNewStudent(null);
+        return;
+    }
 
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('name, course')
+        .eq('student_id', idToSearch)
+        .maybeSingle();
+
+      if (data) {
+        // FOUND: Auto-fill and Lock
+        setIsNewStudent(false);
+        setHeaderData(prev => ({
+          ...prev,
+          studentName: data.name || "",
+          course: data.course || ""
+        }));
+      } else {
+        // NOT FOUND: Enable fields and Clear previous data
+        setIsNewStudent(true);
+        setHeaderData(prev => ({
+          ...prev,
+          studentName: "", // Clear name so they can type
+          course: ""       // Clear course so they can type
+        }));
+      }
+    } catch (err) {
+      console.error("Student lookup failed", err);
+    }
+  };
+
+  // Debounce Effect for Student ID
+  useEffect(() => {
+    // Only run if we are in Issuance mode and typing an ID
+    if (headerData.type === 'ISSUANCE' && headerData.studentId) {
+        const timer = setTimeout(() => {
+            checkStudent(headerData.studentId);
+        }, 300); // 300ms Delay
+        return () => clearTimeout(timer);
+    } else if (!headerData.studentId) {
+        setIsNewStudent(null); // Reset if empty
+    }
+  }, [headerData.studentId, headerData.type]);
 
   // Add to Queue & Reset
   const handleAddToQueue = (e) => {
@@ -144,20 +194,29 @@ export default function TransactionForm({ onSuccess }) {
 
   const handleFinalSubmit = async () => {
     setSuccessMsg("");
-    // Use headerData and queue state
     const success = await processTransaction(headerData, queue);
     
     if (success) {
       setSuccessMsg(`Success: Processed ${queue.length} items.`);
       setQueue([]); 
+      
+      // RESET ALL FORM DATA TO CLEAN SLATE
+      setHeaderData(initialHeaderState); 
+      setIsNewStudent(null);
+      setCurrentScan({
+        barcode: "",
+        qty: 1,
+        priceOverride: "",
+        itemName: "",     
+        category: "TEXTBOOK", 
+        location: "", 
+      });
+
       // Reset scanner focus
       if(barcodeRef.current) barcodeRef.current.focus();
 
-      // 1. Trigger Local Dashboard Refresh
       if (onSuccess) onSuccess();
 
-      // 2. Broadcast Realtime Signal to other Tabs/Users
-      // This bypasses the need for Postgres Replication
       await supabase.channel('app_updates').send({
         type: 'broadcast',
         event: 'inventory_update',
@@ -269,11 +328,11 @@ useEffect(() => {
                     <h3 className="font-bold text-gray-700 uppercase tracking-wide text-sm">
                         {headerData.type.replace('_', ' ')} HEADER
                     </h3>
-                    <button onClick={() => setHeaderData(p => ({...p, type: ""}))} className="btn btn-xs btn-ghost text-gray-400">Cancel</button>
+                    <button onClick={() => setHeaderData(initialHeaderState)} className="btn btn-xs btn-ghost text-gray-400">Cancel</button>
                 </div>
                 
                 {/* Dynamic Header Fields */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {headerData.type === 'RECEIVING' && (
                         <div className="form-control">
                             <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
@@ -284,11 +343,74 @@ useEffect(() => {
                     
                     {headerData.type === 'ISSUANCE' && (
                         <>
+                            {/* Student ID with Auto-Detection UI */}
+                            <div className="form-control">
+                                <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">
+                                    <span>Student ID Number</span>
+                                    {/* Visual Status Indicator */}
+                                    {isNewStudent === true && <span className="text-orange-600 animate-pulse">New Student Record</span>}
+                                    {isNewStudent === false && <span className="text-green-600">Record Found</span>}
+                                </label>
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        className={`input input-sm input-bordered w-full font-mono transition-colors
+                                            ${isNewStudent === true ? 'border-orange-400 bg-orange-50 focus:border-orange-500' : ''}
+                                            ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : 'bg-white'}
+                                        `}
+                                        placeholder="Scan or Type ID..."
+                                        value={headerData.studentId} 
+                                        onChange={e => {
+                                            // Reset to 'Unknown' immediately while typing
+                                            if(isNewStudent !== null) setIsNewStudent(null);
+                                            setHeaderData({...headerData, studentId: e.target.value});
+                                        }}
+                                        autoFocus
+                                    />
+                                    {/* Status Icon Overlay */}
+                                    <div className="absolute right-2 top-1.5">
+                                        {isNewStudent === false && (
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
+                                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                        {isNewStudent === true && (
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-orange-500">
+                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="form-control">
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
-                                <input type="text" className="input input-sm input-bordered bg-white" 
-                                    value={headerData.studentName} onChange={e => setHeaderData({...headerData, studentName: e.target.value})} />
+                                <input 
+                                    type="text" 
+                                    className={`input input-sm input-bordered transition-all
+                                        ${isNewStudent === false ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}
+                                    `}
+                                    readOnly={isNewStudent === false} // Read-only if found in DB
+                                    placeholder={isNewStudent === false ? "Locked (Found in DB)" : "Enter Full Name"}
+                                    value={headerData.studentName} 
+                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
+                                />
                             </div>
+
+                            <div className="form-control">
+                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Course / Year</label>
+                                <input 
+                                    type="text" 
+                                    className={`input input-sm input-bordered transition-all
+                                        ${isNewStudent === false ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}
+                                    `}
+                                    readOnly={isNewStudent === false}
+                                    placeholder={isNewStudent === false ? "Locked" : "e.g. BSCS-2"}
+                                    value={headerData.course} 
+                                    onChange={e => setHeaderData({...headerData, course: e.target.value})} 
+                                />
+                            </div>
+
                             <div className="form-control">
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
                                 <select className="select select-sm select-bordered bg-white" 
@@ -302,7 +424,7 @@ useEffect(() => {
                         </>
                     )}
                     
-                    <div className="form-control">
+                    <div className="form-control md:col-span-2">
                         <label className="label text-[10px] font-bold text-gray-500 uppercase">General Remarks</label>
                         <input type="text" className="input input-sm input-bordered bg-white" 
                             value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} />
