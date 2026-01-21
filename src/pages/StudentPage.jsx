@@ -89,9 +89,9 @@ export default function StudentPage() {
             .update({ 
                 name: editForm.name, 
                 course: editForm.course,
-                updated_at: new Date()
+                last_updated: new Date() // FIXED: Column name matches your SQL schema
             })
-            .eq('student_id', editingStudent.student_id); // using student_id as primary key
+            .eq('student_id', editingStudent.student_id);
 
         if (error) throw error;
         
@@ -191,35 +191,53 @@ export default function StudentPage() {
       {editingStudent && (
         <div className="modal modal-open">
             <div className="modal-box">
-                <h3 className="font-bold text-lg">Edit Student Details</h3>
-                <form onSubmit={handleUpdate} className="flex flex-col gap-4 mt-4">
-                    <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Student ID (Read Only)</label>
-                        <input type="text" value={editingStudent.student_id} disabled className="input input-bordered bg-gray-100 font-mono" />
+                <h3 className="font-bold text-lg text-gray-700 border-b pb-2 mb-4">Edit Student Details</h3>
+                
+                <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+                    
+                    {/* Student ID - Read Only */}
+                    <div className="form-control w-full">
+                        <label className="label">
+                            <span className="label-text text-xs uppercase font-bold text-gray-500">Student ID</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            value={editingStudent.student_id} 
+                            disabled 
+                            className="input input-bordered w-full bg-gray-100 font-mono font-bold text-gray-500" 
+                        />
                     </div>
                     
-                    <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Full Name</label>
+                    {/* Name Input - Stacked Below Label */}
+                    <div className="form-control w-full">
+                        <label className="label">
+                            <span className="label-text text-xs uppercase font-bold text-gray-500">Full Name</span>
+                        </label>
                         <input 
                             type="text" 
                             required
-                            className="input input-bordered" 
+                            className="input input-bordered w-full font-semibold text-gray-700" 
                             value={editForm.name}
                             onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                            placeholder="Enter full name..."
                         />
                     </div>
 
-                    <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Course / Year</label>
+                    {/* Course Input - Stacked Below Label */}
+                    <div className="form-control w-full">
+                        <label className="label">
+                            <span className="label-text text-xs uppercase font-bold text-gray-500">Course / Year</span>
+                        </label>
                         <input 
                             type="text" 
-                            className="input input-bordered" 
+                            className="input input-bordered w-full" 
                             value={editForm.course}
                             onChange={(e) => setEditForm({...editForm, course: e.target.value})}
+                            placeholder="e.g. BSIT 4-A"
                         />
                     </div>
 
-                    <div className="modal-action">
+                    <div className="modal-action mt-6">
                         <button type="button" onClick={() => setEditingStudent(null)} className="btn btn-ghost">Cancel</button>
                         <button type="submit" className={`btn btn-primary ${saving ? 'loading' : ''}`}>Save Changes</button>
                     </div>
