@@ -44,7 +44,7 @@ export default function AdminInvite({ onSuccess }) {
         payload: {} 
       });
 
-      if (onSuccess) onSuccess();
+      
 
       const templateParams = {
         to_name: name,
@@ -59,6 +59,8 @@ export default function AdminInvite({ onSuccess }) {
         templateParams, 
         'TiKR5JvOcEky675Gx'     
       );
+
+      if (onSuccess) onSuccess();
       
       setMsg(`Invite sent to ${name}`);
       setEmail("");
