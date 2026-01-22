@@ -61,7 +61,7 @@ export default function TransactionForm({ onSuccess }) {
         .maybeSingle(); 
 
       if (data) {
-        // FOUND: Populate fields
+        // FOUND: Populate fields & Focus Qty
         setIsNewItem(false); 
         setCurrentScan(prev => ({
           ...prev, 
@@ -73,7 +73,7 @@ export default function TransactionForm({ onSuccess }) {
         }));
         setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
       } else {
-        // NOT FOUND (New Item)
+        // NOT FOUND (New Item): Mark as new, but KEEP FOCUS on Barcode field
         setIsNewItem(true); 
         setCurrentScan(prev => ({
             ...prev,
@@ -83,7 +83,7 @@ export default function TransactionForm({ onSuccess }) {
             location: "",
             qty: 1
         }));
-        setTimeout(() => document.getElementById('nameInput')?.focus(), 50);
+        // Removed auto-focus to nameInput so user can re-scan if needed
       }
     } catch (err) {
       console.error("Lookup failed", err);
