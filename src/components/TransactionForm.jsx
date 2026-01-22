@@ -251,11 +251,11 @@ export default function TransactionForm({ onSuccess }) {
 useEffect(() => {
     const timer = setTimeout(() => {
       // Only search if barcode exists and we haven't already locked onto a status
-      // wait 250ms before searching
+      // wait 400ms before searching
       if (currentScan.barcode.trim()) {
          checkProduct(currentScan.barcode);
       }
-    }, 250);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [currentScan.barcode]);
