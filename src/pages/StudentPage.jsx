@@ -127,7 +127,7 @@ export default function StudentPage() {
         <div className="card bg-base-100 shadow-xl">
             {/* Header */}
             <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                <h2 className="card-title text-xl text-gray-700">Student Registry</h2>
+                <h2 className="card-title text-xl text-gray-700">Enrollment Summary</h2>
                 <input 
                     type="text" 
                     placeholder="Search Name or ID..." 
