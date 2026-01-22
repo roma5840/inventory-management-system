@@ -248,7 +248,7 @@ export default function StudentPage() {
                             className="input input-bordered w-full" 
                             value={editForm.course}
                             onChange={(e) => setEditForm({...editForm, course: e.target.value.toUpperCase()})}
-                            placeholder="e.g. BSIT 4-A"
+                            placeholder="e.g. BSIT-1"
                         />
                     </div>
 

@@ -395,7 +395,7 @@ useEffect(() => {
                         <input 
                             type="text" 
                             className="input input-sm input-bordered bg-white"
-                            placeholder="e.g. BSCS-2"
+                            placeholder="e.g. BSIT-1"
                             value={headerData.course} 
                             onChange={e => setHeaderData({...headerData, course: e.target.value.toUpperCase()})} 
                         />
