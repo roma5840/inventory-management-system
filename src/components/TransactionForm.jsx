@@ -128,8 +128,8 @@ export default function TransactionForm({ onSuccess }) {
 
   // Debounce Effect for Student ID
   useEffect(() => {
-    // Only run if we are in Issuance mode and typing an ID
-    if (headerData.type === 'ISSUANCE' && headerData.studentId) {
+    // Run for ALL types if a student ID is typed
+    if (headerData.type && headerData.studentId) {
         const timer = setTimeout(() => {
             checkStudent(headerData.studentId);
         }, 300); // 300ms Delay
@@ -340,92 +340,95 @@ useEffect(() => {
                 
                 {/* Dynamic Header Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {headerData.type === 'RECEIVING' && (
+                    
+                    {/* STUDENT FIELDS: ALWAYS VISIBLE (OPTIONAL) */}
+                    <div className="form-control">
+                        <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">
+                            <span>Student ID Number (Optional)</span>
+                            {isNewStudent === true && <span className="text-orange-600 animate-pulse">New Record</span>}
+                            {isNewStudent === false && <span className="text-green-600">Found</span>}
+                        </label>
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                className={`input input-sm input-bordered w-full font-mono transition-colors
+                                    ${isNewStudent === true ? 'border-orange-400 bg-orange-50 focus:border-orange-500' : ''}
+                                    ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : 'bg-white'}
+                                `}
+                                placeholder="Scan or Type ID..."
+                                value={headerData.studentId} 
+                                onChange={e => {
+                                    if(isNewStudent !== null) setIsNewStudent(null);
+                                    setHeaderData({...headerData, studentId: e.target.value});
+                                }}
+                                autoFocus
+                            />
+                            {/* Status Icons */}
+                            <div className="absolute right-2 top-1.5">
+                                {isNewStudent === false && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                                    </svg>
+                                )}
+                                {isNewStudent === true && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-orange-500">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                                    </svg>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="form-control">
+                        <label className="label text-[10px] font-bold text-gray-500 uppercase">Student / Staff Name</label>
+                        <input 
+                            type="text" 
+                            className="input input-sm input-bordered bg-white"
+                            placeholder="Enter Name (Optional)"
+                            value={headerData.studentName} 
+                            onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
+                        />
+                    </div>
+
+                    <div className="form-control">
+                        <label className="label text-[10px] font-bold text-gray-500 uppercase">Course / Year / Dept</label>
+                        <input 
+                            type="text" 
+                            className="input input-sm input-bordered bg-white"
+                            placeholder="e.g. BSCS-2 (Optional)"
+                            value={headerData.course} 
+                            onChange={e => setHeaderData({...headerData, course: e.target.value.toUpperCase()})} 
+                        />
+                    </div>
+
+                    {/* SUPPLIER: VISIBLE FOR RECEIVING, RETURN, PULL_OUT */}
+                    {headerData.type !== 'ISSUANCE' && (
                         <div className="form-control">
                             <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
                             <input type="text" className="input input-sm input-bordered bg-white" 
+                                placeholder="Optional"
                                 value={headerData.supplier} onChange={e => setHeaderData({...headerData, supplier: e.target.value})} />
                         </div>
                     )}
                     
+                    {/* TRANS MODE: ISSUANCE ONLY */}
                     {headerData.type === 'ISSUANCE' && (
-                        <>
-                            {/* Student ID - Still shows Green/Orange status, but doesn't lock other fields */}
-                            <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">
-                                    <span>Student ID Number</span>
-                                    {isNewStudent === true && <span className="text-orange-600 animate-pulse">New Record</span>}
-                                    {isNewStudent === false && <span className="text-green-600">Found</span>}
-                                </label>
-                                <div className="relative">
-                                    <input 
-                                        type="text" 
-                                        className={`input input-sm input-bordered w-full font-mono transition-colors
-                                            ${isNewStudent === true ? 'border-orange-400 bg-orange-50 focus:border-orange-500' : ''}
-                                            ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : 'bg-white'}
-                                        `}
-                                        placeholder="Scan or Type ID..."
-                                        value={headerData.studentId} 
-                                        onChange={e => {
-                                            if(isNewStudent !== null) setIsNewStudent(null);
-                                            setHeaderData({...headerData, studentId: e.target.value});
-                                        }}
-                                        autoFocus
-                                    />
-                                    {/* Status Icons */}
-                                    <div className="absolute right-2 top-1.5">
-                                        {isNewStudent === false && (
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
-                                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                                            </svg>
-                                        )}
-                                        {isNewStudent === true && (
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-orange-500">
-                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-                                            </svg>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
-                                <input 
-                                    type="text" 
-                                    className="input input-sm input-bordered bg-white"
-                                    placeholder="Enter Full Name"
-                                    value={headerData.studentName} 
-                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
-                                />
-                            </div>
-
-                            <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Course / Year</label>
-                                <input 
-                                    type="text" 
-                                    className="input input-sm input-bordered bg-white"
-                                    placeholder="e.g. BSCS-2"
-                                    value={headerData.course} 
-                                    onChange={e => setHeaderData({...headerData, course: e.target.value.toUpperCase()})} 
-                                />
-                            </div>
-
-                            <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
-                                <select className="select select-sm select-bordered bg-white" 
-                                    value={headerData.transactionMode} onChange={e => setHeaderData({...headerData, transactionMode: e.target.value})}>
-                                    <option value="CHARGED">Charged</option>
-                                    <option value="CASH">Cash</option>
-                                    <option value="SIP">SIP</option>
-                                    <option value="TRANSMITTAL">Transmittal</option>
-                                </select>
-                            </div>
-                        </>
+                        <div className="form-control">
+                            <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
+                            <select className="select select-sm select-bordered bg-white" 
+                                value={headerData.transactionMode} onChange={e => setHeaderData({...headerData, transactionMode: e.target.value})}>
+                                <option value="CHARGED">Charged</option>
+                                <option value="CASH">Cash</option>
+                                <option value="SIP">SIP</option>
+                                <option value="TRANSMITTAL">Transmittal</option>
+                            </select>
+                        </div>
                     )}
                     
                     <div className="form-control md:col-span-2">
                         <label className="label text-[10px] font-bold text-gray-500 uppercase">General Remarks</label>
                         <input type="text" className="input input-sm input-bordered bg-white" 
+                            placeholder="Optional"
                             value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} />
                     </div>
                 </div>
