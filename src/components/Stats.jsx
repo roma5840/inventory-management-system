@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { useAuth } from "../context/AuthContext";
 
 export default function Stats({ lastUpdated }) {
-  const { userRole } = useAuth();
   const [stats, setStats] = useState({ 
     totalInventoryValue: 0, 
     totalItemsCount: 0, 
     lowStockCount: 0 
   });
-  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -37,42 +34,23 @@ export default function Stats({ lastUpdated }) {
       }
     };
 
+    // 1. Fetch immediately on mount or when transaction finishes
     fetchStats();
     
+    // 2. Listen for ANY changes from other users/tabs
     const ch = supabase.channel('stats-listener')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchStats())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+          fetchStats();
+      })
       .subscribe();
       
     return () => supabase.removeChannel(ch);
-  }, [lastUpdated]); // Trigger re-calc on transaction success
-
-
-  // One-time migration function to fix "0" values
-  const recalculateTotals = async () => {
-    // In Supabase version, this just forces a re-fetch since we calculate live
-    setUpdating(true);
-    // Triggering the subscription or re-mounting would handle this, 
-    // but a simple alert is fine since Supabase is real-time.
-    setTimeout(() => {
-        setUpdating(false);
-        alert("Stats are live. Data refreshed.");
-    }, 500);
-  };
+  }, [lastUpdated]); 
 
   return (
     <div className="stats shadow w-full mb-6 bg-white relative">
-      {/* Admin/Super Admin Recalculate Button */}
-      {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-        <button 
-          onClick={recalculateTotals}
-          disabled={updating}
-          className="btn btn-xs btn-circle btn-ghost absolute top-2 right-2 text-gray-400 tooltip tooltip-left"
-          data-tip="Force Recalculate Stats"
-        >
-          {updating ? "..." : "↻"}
-        </button>
-      )}
-
+      
+      {/* Total Value */}
       <div className="stat">
         <div className="stat-figure text-primary">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-8 h-8 stroke-current"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -82,15 +60,17 @@ export default function Stats({ lastUpdated }) {
         <div className="stat-desc">Current Assets on Hand</div>
       </div>
       
+      {/* Total Units */}
       <div className="stat">
         <div className="stat-figure text-secondary">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-8 h-8 stroke-current"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
         </div>
         <div className="stat-title">Total Units</div>
         <div className="stat-value text-secondary">{(stats.totalItemsCount || 0).toLocaleString()}</div>
-        <div className="stat-desc">Individual books/items</div>
+        <div className="stat-desc">Individual items</div>
       </div>
 
+      {/* Low Stock */}
       <div className="stat">
         <div className="stat-figure text-error">
            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-8 h-8 stroke-current"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
