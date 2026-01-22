@@ -344,7 +344,7 @@ useEffect(() => {
                     {/* STUDENT FIELDS: ALWAYS VISIBLE (OPTIONAL) */}
                     <div className="form-control">
                         <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">
-                            <span>Student ID Number (Optional)</span>
+                            <span>Student ID Number</span>
                             {isNewStudent === true && <span className="text-orange-600 animate-pulse">New Record</span>}
                             {isNewStudent === false && <span className="text-green-600">Found</span>}
                         </label>
@@ -380,22 +380,22 @@ useEffect(() => {
                     </div>
 
                     <div className="form-control">
-                        <label className="label text-[10px] font-bold text-gray-500 uppercase">Student / Staff Name</label>
+                        <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
                         <input 
                             type="text" 
                             className="input input-sm input-bordered bg-white"
-                            placeholder="Enter Name (Optional)"
+                            placeholder="Enter Name"
                             value={headerData.studentName} 
                             onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
                         />
                     </div>
 
                     <div className="form-control">
-                        <label className="label text-[10px] font-bold text-gray-500 uppercase">Course / Year / Dept</label>
+                        <label className="label text-[10px] font-bold text-gray-500 uppercase">Course / Year</label>
                         <input 
                             type="text" 
                             className="input input-sm input-bordered bg-white"
-                            placeholder="e.g. BSCS-2 (Optional)"
+                            placeholder="e.g. BSCS-2"
                             value={headerData.course} 
                             onChange={e => setHeaderData({...headerData, course: e.target.value.toUpperCase()})} 
                         />
@@ -406,7 +406,7 @@ useEffect(() => {
                         <div className="form-control">
                             <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
                             <input type="text" className="input input-sm input-bordered bg-white" 
-                                placeholder="Optional"
+                                placeholder="Supplier"
                                 value={headerData.supplier} onChange={e => setHeaderData({...headerData, supplier: e.target.value})} />
                         </div>
                     )}
@@ -428,7 +428,7 @@ useEffect(() => {
                     <div className="form-control md:col-span-2">
                         <label className="label text-[10px] font-bold text-gray-500 uppercase">General Remarks</label>
                         <input type="text" className="input input-sm input-bordered bg-white" 
-                            placeholder="Optional"
+                            placeholder="Remarks"
                             value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} />
                     </div>
                 </div>
