@@ -67,7 +67,10 @@ export default function Dashboard({ lastUpdated }) {
         setIsAddModalOpen(false);
         setNewItemForm({ id: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
         
-        // Broadcast update to other tabs and force local refresh
+        // 1. Refresh Local UI immediately
+        fetchInventory();
+
+        // 2. Broadcast update to other tabs
         await supabase.channel('app_updates').send({
           type: 'broadcast', event: 'inventory_update', payload: {} 
         });
@@ -92,34 +95,35 @@ export default function Dashboard({ lastUpdated }) {
 
   // Handle Fetching (Immediate response to Page or Debounced Term)
   // runs instantly when page changes, or after the 250ms search delay.
-  useEffect(() => {
+  const fetchInventory = async () => {
     setLoading(true);
     
-    const fetchInventory = async () => {
-        let query = supabase
-            .from('products')
-            .select('*, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
+    let query = supabase
+        .from('products')
+        .select('*, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
-        if (debouncedTerm.trim()) {
-            query = query.or(`name.ilike.%${debouncedTerm}%,id.ilike.%${debouncedTerm}%`);
-        } else {
-            query = query.order('name', { ascending: true });
-        }
+    if (debouncedTerm.trim()) {
+        query = query.or(`name.ilike.%${debouncedTerm}%,id.ilike.%${debouncedTerm}%`);
+    } else {
+        query = query.order('name', { ascending: true });
+    }
 
-        const from = (currentPage - 1) * ITEMS_PER_PAGE;
-        const to = from + ITEMS_PER_PAGE - 1;
-        
-        const { data, count, error } = await query.range(from, to);
+    const from = (currentPage - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+    
+    const { data, count, error } = await query.range(from, to);
 
-        if (error) console.error(error);
-        else setProducts(data || []);
-        
-        setLoading(false);
-    };
+    if (error) console.error(error);
+    else setProducts(data || []);
+    
+    setLoading(false);
+  };
 
+  // Effect: Triggers on Search, Page Change, or External Updates
+  useEffect(() => {
     fetchInventory();
     
-    // Realtime Subscription
+    // Realtime Subscription (Database Changes)
     const channel = supabase.channel('table-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
             fetchInventory();
@@ -127,8 +131,8 @@ export default function Dashboard({ lastUpdated }) {
         .subscribe();
 
     return () => supabase.removeChannel(channel);
-
   }, [debouncedTerm, currentPage, lastUpdated]);
+
 
   const handleNext = () => {
     if (!lastVisible) return;
@@ -201,7 +205,10 @@ export default function Dashboard({ lastUpdated }) {
         setEditingProduct(null);
         alert("Product Details Updated Successfully.");
 
-        // Broadcast update to other tabs and force local refresh
+        // 1. Refresh Local UI immediately
+        fetchInventory();
+
+        // 2. Broadcast update to other tabs
         await supabase.channel('app_updates').send({
           type: 'broadcast', event: 'inventory_update', payload: {} 
         });
@@ -222,11 +229,28 @@ export default function Dashboard({ lastUpdated }) {
     if(window.confirm(`Are you sure you want to delete "${product.name}" permanently?`)) {
         try {
             const { error } = await supabase.from('products').delete().eq('id', product.id);
+            
             if (error) throw error;
-            // The realtime listener in useEffect will automatically remove it from the UI
+
+            // 1. Refresh Local UI immediately
+            fetchInventory();
+
+            // 2. Broadcast update to other tabs
+            await supabase.channel('app_updates').send({
+                type: 'broadcast', event: 'inventory_update', payload: {} 
+            });
+
+            alert("Item deleted successfully.");
+
         } catch (error) {
             console.error("Delete failed:", error);
-            alert("Failed to delete item.");
+            
+            // Handle Foreign Key Violation (Item is used in transactions)
+            if (error.code === '23503') {
+                alert("Action Blocked: This item cannot be deleted because it has existing Transaction History.\n\nThe database prevents deleting items that have been used in past transactions to preserve your audit trail.");
+            } else {
+                alert("Failed to delete item: " + error.message);
+            }
         }
     }
   }
