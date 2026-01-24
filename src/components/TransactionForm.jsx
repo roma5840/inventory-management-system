@@ -298,16 +298,17 @@ useEffect(() => {
         alert("Receipt not found or no returnable items.");
     } else {
         setPastTransactionItems(data);
-        // Auto-fill header with student info from the receipt
-          if(data[0]) {
+        // Auto-fill header with student info AND remarks from the receipt
+        if(data[0]) {
             setHeaderData(prev => ({
                 ...prev,
                 studentName: data[0].student_name,
                 studentId: data[0].student_id,
                 course: data[0].course,
-                yearLevel: data[0].year_level || ""
+                yearLevel: data[0].year_level || "",
+                remarks: data[0].remarks || "" // Added remarks mapping
             }));
-          }
+        }
     }
     setLookupLoading(false);
   };
