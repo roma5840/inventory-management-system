@@ -23,7 +23,7 @@ export default function TransactionForm({ onSuccess }) {
     studentName: "",
     studentId: "",
     course: "",
-    transactionMode: "CHARGED", 
+    transactionMode: "",
     supplier: "", 
     remarks: "",
     reason: "",       
@@ -335,7 +335,7 @@ useEffect(() => {
       <div className="grid grid-cols-2 md:grid-cols-4 w-full">
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "RECEIVING" }))}
+          onClick={() => setHeaderData(prev => ({ ...prev, type: "RECEIVING", transactionMode: "" }))}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-green-50
             ${headerData.type === "RECEIVING" ? "bg-green-100 border-b-4 border-b-green-600 shadow-inner" : "bg-white"}
           `}
@@ -348,7 +348,7 @@ useEffect(() => {
 
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "ISSUANCE" }))}
+          onClick={() => setHeaderData(prev => ({ ...prev, type: "ISSUANCE", transactionMode: "CHARGED" }))}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-red-50
             ${headerData.type === "ISSUANCE" ? "bg-red-100 border-b-4 border-b-red-600 shadow-inner" : "bg-white"}
           `}
@@ -361,7 +361,7 @@ useEffect(() => {
 
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "ISSUANCE_RETURN" }))}
+          onClick={() => setHeaderData(prev => ({ ...prev, type: "ISSUANCE_RETURN", transactionMode: "" }))}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-blue-50
             ${headerData.type === "ISSUANCE_RETURN" ? "bg-blue-100 border-b-4 border-b-blue-600 shadow-inner" : "bg-white"}
           `}
@@ -374,7 +374,7 @@ useEffect(() => {
 
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "PULL_OUT" }))}
+          onClick={() => setHeaderData(prev => ({ ...prev, type: "PULL_OUT", transactionMode: "" }))}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-b hover:bg-orange-50
             ${headerData.type === "PULL_OUT" ? "bg-orange-100 border-b-4 border-b-orange-600 shadow-inner" : "bg-white"}
           `}
@@ -408,8 +408,8 @@ useEffect(() => {
                 {/* Dynamic Header Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     
-                    {/* STUDENT FIELDS: Hidden for RECEIVING */}
-                    {headerData.type !== 'RECEIVING' && (
+                    {/* STUDENT FIELDS: Hidden for RECEIVING & PULL OUT */}
+                    {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
                         <>
                             <div className="form-control">
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">

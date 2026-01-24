@@ -439,7 +439,7 @@ export default function Dashboard({ lastUpdated }) {
                         className="input input-bordered w-full font-mono font-bold text-blue-800" 
                         placeholder="Scan or type..."
                         value={newItemForm.id}
-                        onChange={e => setNewItemForm({...newItemForm, id: e.target.value})}
+                        onChange={e => setNewItemForm({...newItemForm, id: e.target.value.toUpperCase()})}
                         required
                         autoFocus
                     />
@@ -452,7 +452,7 @@ export default function Dashboard({ lastUpdated }) {
                         className="input input-bordered w-full" 
                         placeholder="Product Title"
                         value={newItemForm.name}
-                        onChange={e => setNewItemForm({...newItemForm, name: e.target.value})}
+                        onChange={e => setNewItemForm({...newItemForm, name: e.target.value.toUpperCase()})}
                         required
                     />
                 </div>
@@ -475,7 +475,7 @@ export default function Dashboard({ lastUpdated }) {
                             className="input input-bordered w-full" 
                             placeholder="Rack/Shelf"
                             value={newItemForm.location}
-                            onChange={e => setNewItemForm({...newItemForm, location: e.target.value})}
+                            onChange={e => setNewItemForm({...newItemForm, location: e.target.value.toUpperCase()})}
                         />
                     </div>
                 </div>
