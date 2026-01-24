@@ -326,7 +326,26 @@ useEffect(() => {
     win.print();
   };
 
+  const handleSwitchType = (newType, newMode = "") => {
+    setHeaderData({
+        ...initialHeaderState,
+        type: newType,
+        transactionMode: newMode
+    });
 
+    setQueue([]);
+    setPastTransactionItems([]);
+    setReturnLookupRef("");
+    setSuccessMsg("");
+    setIsNewStudent(null);
+    setIsNewItem(null);
+    
+    setCurrentScan({
+        barcode: "", qty: 1, priceOverride: "", itemName: "", category: "TEXTBOOK", location: "", 
+    });
+    
+    if(barcodeRef.current) barcodeRef.current.focus();
+  };
 
   return (
     <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
@@ -335,7 +354,7 @@ useEffect(() => {
       <div className="grid grid-cols-2 md:grid-cols-4 w-full">
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "RECEIVING", transactionMode: "" }))}
+          onClick={() => handleSwitchType("RECEIVING", "")}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-green-50
             ${headerData.type === "RECEIVING" ? "bg-green-100 border-b-4 border-b-green-600 shadow-inner" : "bg-white"}
           `}
@@ -348,7 +367,7 @@ useEffect(() => {
 
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "ISSUANCE", transactionMode: "CHARGED" }))}
+          onClick={() => handleSwitchType("ISSUANCE", "CHARGED")}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-red-50
             ${headerData.type === "ISSUANCE" ? "bg-red-100 border-b-4 border-b-red-600 shadow-inner" : "bg-white"}
           `}
@@ -361,7 +380,7 @@ useEffect(() => {
 
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "ISSUANCE_RETURN", transactionMode: "" }))}
+          onClick={() => handleSwitchType("ISSUANCE_RETURN", "")}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-blue-50
             ${headerData.type === "ISSUANCE_RETURN" ? "bg-blue-100 border-b-4 border-b-blue-600 shadow-inner" : "bg-white"}
           `}
@@ -374,7 +393,7 @@ useEffect(() => {
 
         <button 
           type="button"
-          onClick={() => setHeaderData(prev => ({ ...prev, type: "PULL_OUT", transactionMode: "" }))}
+          onClick={() => handleSwitchType("PULL_OUT", "")}
           className={`p-4 flex flex-col items-center gap-2 transition-all border-b hover:bg-orange-50
             ${headerData.type === "PULL_OUT" ? "bg-orange-100 border-b-4 border-b-orange-600 shadow-inner" : "bg-white"}
           `}
