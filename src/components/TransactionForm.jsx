@@ -275,33 +275,61 @@ export default function TransactionForm({ onSuccess }) {
     setLookupLoading(true);
     setPastTransactionItems([]);
 
-    // Fetch items belonging to this Receipt Number
-    const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('reference_number', returnLookupRef.trim())
-        // Only fetch valid sales to return
-        .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
+    try {
+        // 1. Fetch the Original Sales Items
+        const { data: salesData, error: salesError } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('reference_number', returnLookupRef.trim())
+            .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
 
-    if (error) {
-        alert("Error looking up receipt.");
-    } else if (!data || data.length === 0) {
-        alert("Receipt not found or no returnable items.");
-    } else {
-        setPastTransactionItems(data);
-        // Auto-fill header with student info AND remarks from the receipt
-        if(data[0]) {
-            setHeaderData(prev => ({
-                ...prev,
-                studentName: data[0].student_name,
-                studentId: data[0].student_id,
-                course: data[0].course,
-                yearLevel: data[0].year_level || "",
-                remarks: data[0].remarks || ""
-            }));
+        if (salesError || !salesData || salesData.length === 0) {
+            alert("Receipt not found or no returnable items.");
+            setLookupLoading(false);
+            return;
         }
+
+        // 2. Fetch ANY existing returns linked to these specific transaction IDs
+        const saleIds = salesData.map(item => item.id);
+        const { data: returnsData } = await supabase
+            .from('transactions')
+            .select('original_transaction_id, qty')
+            .in('original_transaction_id', saleIds);
+
+        // 3. Calculate Remaining Returnable Quantity
+        const validItems = salesData.map(saleItem => {
+            // Sum up how many times this specific item line has been returned
+            const alreadyReturnedQty = returnsData
+                ?.filter(r => r.original_transaction_id === saleItem.id)
+                .reduce((sum, r) => sum + r.qty, 0) || 0;
+
+            const remainingQty = saleItem.qty - alreadyReturnedQty;
+
+            return { ...saleItem, remainingQty };
+        }).filter(item => item.remainingQty > 0); // Only show items with balance
+
+        if (validItems.length === 0) {
+            alert("All items in this receipt have already been returned.");
+        } else {
+            setPastTransactionItems(validItems);
+            // Auto-fill header
+            if(validItems[0]) {
+                setHeaderData(prev => ({
+                    ...prev,
+                    studentName: validItems[0].student_name || "",
+                    studentId: validItems[0].student_id || "",
+                    course: validItems[0].course || "",
+                    yearLevel: validItems[0].year_level || "",
+                    remarks: validItems[0].remarks || ""
+                }));
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error processing lookup.");
+    } finally {
+        setLookupLoading(false);
     }
-    setLookupLoading(false);
   };
 
   const handleSelectReturnItem = (item) => {
@@ -310,9 +338,10 @@ export default function TransactionForm({ onSuccess }) {
         id: Date.now(),
         barcode: item.product_id,
         itemName: item.product_name,
-        qty: item.qty, // Default to returning full qty (editable)
+        qty: item.remainingQty, // Default to returning ALL remaining
+        maxQty: item.remainingQty, // CONSTRAINT for UI
         priceOverride: 0, 
-        originalRef: item.reference_number
+        originalTransactionId: item.id // IMPORTANT: Link to specific row
     };
     setQueue(prev => [...prev, returnItem]);
     // Remove from the "Available to return" list visually
@@ -350,6 +379,26 @@ export default function TransactionForm({ onSuccess }) {
     });
     
     if(barcodeRef.current) barcodeRef.current.focus();
+  };
+
+  // Handle manual qty change in queue table
+  const handleQueueQtyChange = (id, newQty) => {
+    setQueue(prev => prev.map(item => {
+      if (item.id === id) {
+        let finalQty = parseInt(newQty) || 0;
+        
+        // If it's a return, enforce the limit
+        if (item.maxQty && finalQty > item.maxQty) {
+           // Optional: Alert the user or just clamp the value
+           // alert(`Cannot return more than purchased. Max: ${item.maxQty}`);
+           finalQty = item.maxQty;
+        }
+        
+        if (finalQty < 1) finalQty = 1;
+        return { ...item, qty: finalQty };
+      }
+      return item;
+    }));
   };
 
   return (
@@ -681,7 +730,21 @@ export default function TransactionForm({ onSuccess }) {
                             queue.map((item, index) => (
                                 <tr key={item.id} className="hover">
                                     <td className="font-mono">{item.barcode}</td>
-                                    <td className="font-bold">{item.qty}</td>
+                                    <td>
+                                        <input 
+                                            type="number" 
+                                            className="input input-xs input-bordered w-16 text-center font-bold"
+                                            value={item.qty}
+                                            min="1"
+                                            max={item.maxQty || 999}
+                                            onChange={(e) => handleQueueQtyChange(item.id, e.target.value)}
+                                        />
+                                        {item.maxQty && (
+                                            <span className="text-[10px] text-gray-400 ml-1">
+                                                / {item.maxQty}
+                                            </span>
+                                        )}
+                                    </td>
                                     {headerData.type === 'RECEIVING' && (
                                         <td>₱{item.priceOverride} / {item.location}</td>
                                     )}
