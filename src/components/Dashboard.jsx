@@ -55,7 +55,7 @@ export default function Dashboard({ lastUpdated }) {
             name: newItemForm.name.toUpperCase(),
             price: Number(newItemForm.price),
             min_stock_level: Number(newItemForm.minStockLevel),
-            current_stock: Number(newItemForm.initialStock), // Optional: Allow setting start stock
+            current_stock: Number(newItemForm.initialStock), 
             location: newItemForm.location,
             search_keywords: newItemForm.name.toLowerCase().split(/\s+/),
             last_updated: new Date()
@@ -66,7 +66,11 @@ export default function Dashboard({ lastUpdated }) {
         alert("Success: New product registered.");
         setIsAddModalOpen(false);
         setNewItemForm({ id: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
-        // The realtime listener will update the table automatically
+        
+        // Broadcast update to other tabs and force local refresh
+        await supabase.channel('app_updates').send({
+          type: 'broadcast', event: 'inventory_update', payload: {} 
+        });
 
     } catch (err) {
         console.error(err);
@@ -196,6 +200,12 @@ export default function Dashboard({ lastUpdated }) {
         
         setEditingProduct(null);
         alert("Product Details Updated Successfully.");
+
+        // Broadcast update to other tabs and force local refresh
+        await supabase.channel('app_updates').send({
+          type: 'broadcast', event: 'inventory_update', payload: {} 
+        });
+
     } catch (err) {
         console.error(err);
         alert("Update failed: " + err.message);
@@ -203,6 +213,7 @@ export default function Dashboard({ lastUpdated }) {
         setUpdateLoading(false);
     }
   };
+
 
   const handleDelete = async (product) => {
     // Audit Check: Prevent deleting items that still have stock
@@ -370,7 +381,7 @@ export default function Dashboard({ lastUpdated }) {
                         type="text" 
                         className="input input-bordered w-full" 
                         value={editForm.name}
-                        onChange={e => setEditForm({...editForm, name: e.target.value})}
+                        onChange={e => setEditForm({...editForm, name: e.target.value.toUpperCase()})}
                         required
                     />
                 </div>
@@ -381,7 +392,7 @@ export default function Dashboard({ lastUpdated }) {
                         type="text" 
                         className="input input-bordered w-full" 
                         value={editForm.location}
-                        onChange={e => setEditForm({...editForm, location: e.target.value})}
+                        onChange={e => setEditForm({...editForm, location: e.target.value.toUpperCase()})}
                     />
                 </div>
 

@@ -472,8 +472,8 @@ useEffect(() => {
                         </>
                     )}
 
-                    {/* SUPPLIER: VISIBLE FOR RECEIVING, RETURN, PULL_OUT */}
-                    {headerData.type !== 'ISSUANCE' && (
+                    {/* SUPPLIER: VISIBLE FOR RECEIVING & PULL_OUT ONLY */}
+                    {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
                         <div className="form-control">
                             <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
                             <input type="text" className="input input-sm input-bordered bg-white" 
