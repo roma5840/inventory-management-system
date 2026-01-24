@@ -19,6 +19,11 @@ export default function StudentPage() {
   const [saving, setSaving] = useState(false);
   const [availableCourses, setAvailableCourses] = useState([]);
 
+  // Course Modal State
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [newCourseCode, setNewCourseCode] = useState("");
+  const [courseLoading, setCourseLoading] = useState(false);
+
   // Bulk Import State
   const fileInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
@@ -32,13 +37,23 @@ export default function StudentPage() {
     fetchCourses();
   }, []);
 
-  // 2. Fetch Data & Realtime Subscription
+  // 1. Debounce Search Input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setDebouncedTerm(searchTerm);
+        setPage(1); 
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // 2. Fetch Students (The Search Logic)
   useEffect(() => {
     const fetchStudents = async () => {
         setLoading(true);
         let query = supabase.from('students').select('*', { count: 'exact' });
 
         if (debouncedTerm.trim()) {
+            // Search by Name or ID
             query = query.or(`name.ilike.%${debouncedTerm}%,student_id.ilike.%${debouncedTerm}%`);
         } else {
             query = query.order('name', { ascending: true });
@@ -57,18 +72,13 @@ export default function StudentPage() {
 
     fetchStudents();
 
-    // A. Database Changes (e.g., TransactionForm adds a new student)
+    // Listeners for realtime updates
     const dbChannel = supabase.channel('student-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
-            fetchStudents();
-        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchStudents)
         .subscribe();
 
-    // B. App Broadcasts (General refreshes)
     const appChannel = supabase.channel('app_updates')
-        .on('broadcast', { event: 'inventory_update' }, () => {
-            fetchStudents();
-        })
+        .on('broadcast', { event: 'inventory_update' }, fetchStudents)
         .subscribe();
 
     return () => {
