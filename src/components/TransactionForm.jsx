@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useInventory } from "../hooks/useInventory";
 import { supabase } from "../lib/supabase";
 
@@ -12,6 +13,8 @@ export default function TransactionForm({ onSuccess }) {
   const [returnLookupRef, setReturnLookupRef] = useState("");
   const [pastTransactionItems, setPastTransactionItems] = useState([]);
   const [lookupLoading, setLookupLoading] = useState(false);
+
+  const [receiptData, setReceiptData] = useState(null);
 
 
   // GLOBAL HEADER STATE (Applied to all items)
@@ -192,43 +195,45 @@ export default function TransactionForm({ onSuccess }) {
 
   const handleFinalSubmit = async () => {
     setSuccessMsg("");
-    // processTransaction now returns the REF NUMBER string if successful
     const resultRef = await processTransaction(headerData, queue);
     
     if (resultRef) {
-      setSuccessMsg(`Success! Reference #: ${resultRef}`);
+      // 1. SAVE DATA FOR THE RECEIPT POPUP
+      setReceiptData({
+          refNumber: resultRef,
+          studentName: headerData.studentName,
+          studentId: headerData.studentId,
+          course: headerData.course,
+          type: headerData.type,
+          date: new Date().toLocaleString(),
+          items: [...queue] // Copy the queue before clearing it
+      });
+
+      // 2. CLEAR FORM
       setQueue([]); 
-      setPastTransactionItems([]); // Clear return lookup
+      setPastTransactionItems([]);
       setReturnLookupRef("");
+      setSuccessMsg(`Transaction Saved: ${resultRef}`);
       
-      // RESET FIELDS BUT KEEP THE TRANSACTION TYPE OPEN
+      // Reset Header but keep Type
       setHeaderData(prev => ({
         ...initialHeaderState,    
         type: prev.type,          
         transactionMode: prev.transactionMode 
       }));
 
+      // Reset Scanner
       setIsNewStudent(null);
-      
-      // Reset the Scanner Input Line
       setCurrentScan({
-        barcode: "",
-        qty: 1,
-        priceOverride: "",
-        itemName: "",     
-        category: "TEXTBOOK", 
-        location: "", 
+        barcode: "", qty: 1, priceOverride: "", itemName: "", category: "TEXTBOOK", location: "", 
       });
-
-      // Reset scanner focus so they can immediately scan the next student/item
       if(barcodeRef.current) barcodeRef.current.focus();
 
       if (onSuccess) onSuccess();
 
+      // Broadcast update
       await supabase.channel('app_updates').send({
-        type: 'broadcast',
-        event: 'inventory_update',
-        payload: {} 
+        type: 'broadcast', event: 'inventory_update', payload: {} 
       });
     }
   };
@@ -307,6 +312,18 @@ useEffect(() => {
     setQueue(prev => [...prev, returnItem]);
     // Remove from the "Available to return" list visually
     setPastTransactionItems(prev => prev.filter(i => i.id !== item.id));
+  };
+
+  const handlePrint = () => {
+    const printContent = document.getElementById('printable-receipt');
+    const win = window.open('', '', 'height=600,width=400');
+    win.document.write('<html><head><title>Receipt</title>');
+    win.document.write('<style>body { font-family: monospace; padding: 20px; } .text-center { text-align: center; } .text-right { text-align: right; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { border-bottom: 1px dashed #000; padding: 5px 0; text-align: left; } .total { border-top: 2px solid #000; font-weight: bold; margin-top: 10px; padding-top: 5px; }</style>');
+    win.document.write('</head><body>');
+    win.document.write(printContent.innerHTML);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.print();
   };
 
 
@@ -644,7 +661,83 @@ useEffect(() => {
 
           </div>
         )}
+        
       </div>
+      {/* === RECEIPT MODAL === */}
+      {receiptData && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full">
+            
+            {/* THIS SECTION IS WHAT GETS PRINTED */}
+            <div id="printable-receipt" className="font-mono text-sm text-gray-800 bg-white p-2">
+                <div className="text-center mb-4">
+                    <h2 className="font-bold text-lg uppercase">Bookstore System</h2>
+                    <p className="text-xs">Official Transaction Record</p>
+                    <p className="text-xs mt-1">{receiptData.date}</p>
+                </div>
+
+                <div className="border-b-2 border-dashed border-gray-300 pb-2 mb-2">
+                    <p><strong>Ref #:</strong> {receiptData.refNumber}</p>
+                    <p><strong>Type:</strong> {receiptData.type}</p>
+                    {receiptData.studentName && (
+                        <>
+                            <p><strong>Student:</strong> {receiptData.studentName}</p>
+                            <p><strong>ID:</strong> {receiptData.studentId} ({receiptData.course})</p>
+                        </>
+                    )}
+                </div>
+
+                <table className="w-full text-xs">
+                    <thead>
+                        <tr>
+                            <th className="text-left pb-1">Item</th>
+                            <th className="text-center pb-1">Qty</th>
+                            <th className="text-right pb-1">Amt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {receiptData.items.map((item, idx) => (
+                            <tr key={idx}>
+                                <td className="py-1">{item.itemName.substring(0, 15)}</td>
+                                <td className="text-center">{item.qty}</td>
+                                <td className="text-right">
+                                    {/* Only show price if it exists, otherwise - */}
+                                    {item.priceOverride > 0 ? (item.priceOverride * item.qty).toFixed(2) : '-'}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                
+                <div className="mt-4 pt-2 border-t-2 border-gray-800 text-center text-xs">
+                     <p>*** END OF TRANSACTION ***</p>
+                     <p>System Generated</p>
+                </div>
+            </div>
+
+            {/* ACTION BUTTONS (Not Printed) */}
+            <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button 
+                    onClick={() => setReceiptData(null)} 
+                    className="btn btn-sm btn-ghost flex-1"
+                >
+                    Close
+                </button>
+                <button 
+                    onClick={handlePrint} 
+                    className="btn btn-sm btn-primary flex-1"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                    </svg>
+                    Print Receipt
+                </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
