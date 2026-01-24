@@ -107,9 +107,9 @@ export default function StudentPage() {
         const { error } = await supabase
             .from('students')
             .update({ 
-                name: editForm.name, 
+                name: editForm.name.toUpperCase(), 
                 course: editForm.course,
-                year_level: editForm.year_level,
+                year_level: editForm.year_level.toUpperCase(),
                 last_updated: new Date()
             })
             .eq('student_id', editingStudent.student_id);
@@ -118,7 +118,7 @@ export default function StudentPage() {
         
         setStudents(prev => prev.map(s => 
             s.student_id === editingStudent.student_id 
-                ? { ...s, name: editForm.name, course: editForm.course, year_level: editForm.year_level } 
+                ? { ...s, name: editForm.name.toUpperCase(), course: editForm.course, year_level: editForm.year_level.toUpperCase() } 
                 : s
         ));
         
@@ -383,9 +383,9 @@ export default function StudentPage() {
                         <input 
                             type="text" 
                             required
-                            className="input input-bordered w-full font-semibold text-gray-700" 
+                            className="input input-bordered w-full font-semibold text-gray-700 uppercase" 
                             value={editForm.name}
-                            onChange={(e) => setEditForm({...editForm, name: e.target.value.toUpperCase()})}
+                            onChange={(e) => setEditForm({...editForm, name: e.target.value})}
                         />
                     </div>
 
@@ -414,9 +414,9 @@ export default function StudentPage() {
                             </label>
                             <input 
                                 type="text" 
-                                className="input input-bordered w-full" 
+                                className="input input-bordered w-full uppercase" 
                                 value={editForm.year_level}
-                                onChange={(e) => setEditForm({...editForm, year_level: e.target.value.toUpperCase()})}
+                                onChange={(e) => setEditForm({...editForm, year_level: e.target.value})}
                                 placeholder="e.g. Y1S2"
                             />
                         </div>
@@ -445,9 +445,9 @@ export default function StudentPage() {
                     <input 
                         type="text" 
                         placeholder="Enter Course" 
-                        className="input input-bordered w-full"
+                        className="input input-bordered w-full uppercase"
                         value={newCourseCode}
-                        onChange={(e) => setNewCourseCode(e.target.value.toUpperCase())}
+                        onChange={(e) => setNewCourseCode(e.target.value)}
                     />
                     <button type="submit" disabled={courseLoading} className="btn btn-primary">
                         {courseLoading ? "..." : "Add"}
