@@ -20,6 +20,63 @@ export default function Dashboard({ lastUpdated }) {
   const [editForm, setEditForm] = useState({ name: "", price: "", minStockLevel: "" });
   const [updateLoading, setUpdateLoading] = useState(false);
 
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newItemForm, setNewItemForm] = useState({ 
+    id: "", // Barcode
+    name: "", 
+    price: "", 
+    minStockLevel: "10",
+    location: "",
+    initialStock: "0" 
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+
+  const handleCreateProduct = async (e) => {
+    e.preventDefault();
+    setCreateLoading(true);
+
+    // Basic Validation
+    if (!newItemForm.id || !newItemForm.name) {
+        alert("Barcode and Name are required.");
+        setCreateLoading(false); return;
+    }
+
+    try {
+        // Check if ID exists first
+        const { data: existing } = await supabase.from('products').select('id').eq('id', newItemForm.id).maybeSingle();
+        if (existing) {
+            alert("Error: This barcode already exists in the system.");
+            setCreateLoading(false); return;
+        }
+
+        // Insert New Product
+        const { error } = await supabase.from('products').insert({
+            id: newItemForm.id,
+            name: newItemForm.name.toUpperCase(),
+            price: Number(newItemForm.price),
+            min_stock_level: Number(newItemForm.minStockLevel),
+            current_stock: Number(newItemForm.initialStock), // Optional: Allow setting start stock
+            location: newItemForm.location,
+            search_keywords: newItemForm.name.toLowerCase().split(/\s+/),
+            last_updated: new Date()
+        });
+
+        if (error) throw error;
+
+        alert("Success: New product registered.");
+        setIsAddModalOpen(false);
+        setNewItemForm({ id: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
+        // The realtime listener will update the table automatically
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to register: " + err.message);
+    } finally {
+        setCreateLoading(false);
+    }
+  };
+
+
   // Handle Debounce (Only for typing)
   // This updates 'debouncedTerm' 250ms after user stops typing.
   useEffect(() => {
@@ -166,10 +223,22 @@ export default function Dashboard({ lastUpdated }) {
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-0">
-        {/* Header */}
-        <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-          <h2 className="card-title text-xl">Current Inventory</h2>
-          <div className="flex gap-2 items-center">
+{/* Header with REGISTER BUTTON */}
+        <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-t-xl gap-4">
+          <div className="flex items-center gap-4">
+              <h2 className="card-title text-xl">Inventory Management</h2>
+              {/* Only ADMIN/SUPER_ADMIN can add items */}
+              {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                  <button 
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="btn btn-sm btn-primary shadow-sm"
+                  >
+                    + Register New Item
+                  </button>
+              )}
+          </div>
+          
+          <div className="flex gap-2 items-center w-full md:w-auto">
              <input 
               type="text" 
               placeholder="Search keyword..." 
@@ -346,6 +415,96 @@ export default function Dashboard({ lastUpdated }) {
                     <button type="button" className="btn btn-ghost" onClick={() => setEditingProduct(null)}>Cancel</button>
                     <button type="submit" className={`btn btn-primary ${updateLoading ? 'loading' : ''}`}>
                         {updateLoading ? "Updating..." : "Save Changes"}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* === REGISTER NEW ITEM MODAL === */}
+      {isAddModalOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg text-gray-700 mb-4">
+                Register New Product
+            </h3>
+            
+            <form onSubmit={handleCreateProduct} className="flex flex-col gap-3">
+                
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Barcode / ISBN *</label>
+                    <input 
+                        type="text" 
+                        className="input input-bordered w-full font-mono font-bold text-blue-800" 
+                        placeholder="Scan or type..."
+                        value={newItemForm.id}
+                        onChange={e => setNewItemForm({...newItemForm, id: e.target.value})}
+                        required
+                        autoFocus
+                    />
+                </div>
+
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Item Name *</label>
+                    <input 
+                        type="text" 
+                        className="input input-bordered w-full" 
+                        placeholder="Product Title"
+                        value={newItemForm.name}
+                        onChange={e => setNewItemForm({...newItemForm, name: e.target.value})}
+                        required
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Price (₱) *</label>
+                        <input 
+                            type="number" step="0.01" min="0"
+                            className="input input-bordered w-full" 
+                            value={newItemForm.price}
+                            onChange={e => setNewItemForm({...newItemForm, price: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Location</label>
+                        <input 
+                            type="text" 
+                            className="input input-bordered w-full" 
+                            placeholder="Rack/Shelf"
+                            value={newItemForm.location}
+                            onChange={e => setNewItemForm({...newItemForm, location: e.target.value})}
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Initial Stock</label>
+                        <input 
+                            type="number" min="0"
+                            className="input input-bordered w-full" 
+                            value={newItemForm.initialStock}
+                            onChange={e => setNewItemForm({...newItemForm, initialStock: e.target.value})}
+                        />
+                    </div>
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min Alert Level</label>
+                        <input 
+                            type="number" min="0"
+                            className="input input-bordered w-full" 
+                            value={newItemForm.minStockLevel}
+                            onChange={e => setNewItemForm({...newItemForm, minStockLevel: e.target.value})}
+                        />
+                    </div>
+                </div>
+
+                <div className="modal-action">
+                    <button type="button" className="btn btn-ghost" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                    <button type="submit" className={`btn btn-primary ${createLoading ? 'loading' : ''}`}>
+                        Register Item
                     </button>
                 </div>
             </form>
