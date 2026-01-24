@@ -492,17 +492,6 @@ useEffect(() => {
                                 />
                             </div>
 
-                            <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
-                                <input 
-                                    type="text" 
-                                    className="input input-sm input-bordered bg-white"
-                                    placeholder="Enter Name"
-                                    value={headerData.studentName} 
-                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
-                                />
-                            </div>
-
                             {/* Split Course and Year */}
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="form-control">
@@ -578,10 +567,16 @@ useEffect(() => {
                         <div className="flex gap-2">
                             <input 
                                 type="text" 
+                                autoFocus
                                 className="input input-sm input-bordered flex-1 font-mono uppercase" 
                                 placeholder="Enter Reference # (e.g. REF-2025...)"
                                 value={returnLookupRef}
                                 onChange={(e) => setReturnLookupRef(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleLookupReceipt(e);
+                                    }
+                                }}
                             />
                             <button onClick={handleLookupReceipt} className="btn btn-sm btn-primary" disabled={lookupLoading}>
                                 {lookupLoading ? "Searching..." : "Find Receipt"}

@@ -444,7 +444,7 @@ export default function StudentPage() {
                 <form onSubmit={handleAddCourse} className="flex gap-2 mb-6">
                     <input 
                         type="text" 
-                        placeholder="New Course Code (e.g. BSN)" 
+                        placeholder="Enter Course" 
                         className="input input-bordered w-full"
                         value={newCourseCode}
                         onChange={(e) => setNewCourseCode(e.target.value.toUpperCase())}
@@ -459,7 +459,7 @@ export default function StudentPage() {
                     <table className="table table-pin-rows w-full">
                         <thead>
                             <tr className="bg-gray-100">
-                                <th>Course Code</th>
+                                <th>Course</th>
                                 <th className="text-right">Action</th>
                             </tr>
                         </thead>
