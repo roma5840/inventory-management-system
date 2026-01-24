@@ -9,6 +9,10 @@ export default function TransactionForm({ onSuccess }) {
   const [isNewItem, setIsNewItem] = useState(null);
   const [isNewStudent, setIsNewStudent] = useState(null); 
 
+  const [returnLookupRef, setReturnLookupRef] = useState("");
+  const [pastTransactionItems, setPastTransactionItems] = useState([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+
 
   // GLOBAL HEADER STATE (Applied to all items)
   const initialHeaderState = {
@@ -53,7 +57,6 @@ export default function TransactionForm({ onSuccess }) {
     if (!barcodeToSearch) return;
 
     try {
-      // Use maybeSingle() instead of single() so we don't get an error for 0 results
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -73,17 +76,12 @@ export default function TransactionForm({ onSuccess }) {
         }));
         setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
       } else {
-        // NOT FOUND (New Item): Mark as new, but KEEP FOCUS on Barcode field
-        setIsNewItem(true); 
-        setCurrentScan(prev => ({
-            ...prev,
-            barcode: barcodeToSearch,
-            itemName: "", 
-            priceOverride: "",
-            location: "",
-            qty: 1
-        }));
-        // Removed auto-focus to nameInput so user can re-scan if needed
+        // NOT FOUND: STRICT MODE
+        // We do NOT allow creation here anymore.
+        setIsNewItem(null); // Reset status
+        alert("Error: Item not found in database.\nPlease register new products in the Inventory Page.");
+        setCurrentScan(prev => ({ ...prev, barcode: "" })); // Clear bad input
+        if(barcodeRef.current) barcodeRef.current.focus();
       }
     } catch (err) {
       console.error("Lookup failed", err);
@@ -194,17 +192,20 @@ export default function TransactionForm({ onSuccess }) {
 
   const handleFinalSubmit = async () => {
     setSuccessMsg("");
-    const success = await processTransaction(headerData, queue);
+    // processTransaction now returns the REF NUMBER string if successful
+    const resultRef = await processTransaction(headerData, queue);
     
-    if (success) {
-      setSuccessMsg(`Success: Processed ${queue.length} items.`);
+    if (resultRef) {
+      setSuccessMsg(`Success! Reference #: ${resultRef}`);
       setQueue([]); 
+      setPastTransactionItems([]); // Clear return lookup
+      setReturnLookupRef("");
       
       // RESET FIELDS BUT KEEP THE TRANSACTION TYPE OPEN
       setHeaderData(prev => ({
-        ...initialHeaderState,    // Reset everything to blank
-        type: prev.type,          // Restore the current Type (e.g., ISSUANCE)
-        transactionMode: prev.transactionMode // Restore the selected Mode (e.g. CASH/CHARGED)
+        ...initialHeaderState,    
+        type: prev.type,          
+        transactionMode: prev.transactionMode 
       }));
 
       setIsNewStudent(null);
@@ -259,6 +260,55 @@ useEffect(() => {
 
     return () => clearTimeout(timer);
   }, [currentScan.barcode]);
+
+  const handleLookupReceipt = async (e) => {
+    e.preventDefault();
+    if (!returnLookupRef) return;
+    setLookupLoading(true);
+    setPastTransactionItems([]);
+
+    // Fetch items belonging to this Receipt Number
+    const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('reference_number', returnLookupRef.trim())
+        // Only fetch valid sales to return
+        .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
+
+    if (error) {
+        alert("Error looking up receipt.");
+    } else if (!data || data.length === 0) {
+        alert("Receipt not found or no returnable items.");
+    } else {
+        setPastTransactionItems(data);
+        // Auto-fill header with student info from the receipt
+        if(data[0]) {
+            setHeaderData(prev => ({
+                ...prev,
+                studentName: data[0].student_name,
+                studentId: data[0].student_id,
+                course: data[0].course
+            }));
+        }
+    }
+    setLookupLoading(false);
+  };
+
+  const handleSelectReturnItem = (item) => {
+    // Add specific past item to return queue
+    const returnItem = {
+        id: Date.now(),
+        barcode: item.product_id,
+        itemName: item.product_name,
+        qty: item.qty, // Default to returning full qty (editable)
+        priceOverride: 0, 
+        originalRef: item.reference_number
+    };
+    setQueue(prev => [...prev, returnItem]);
+    // Remove from the "Available to return" list visually
+    setPastTransactionItems(prev => prev.filter(i => i.id !== item.id));
+  };
+
 
 
   return (
@@ -434,103 +484,115 @@ useEffect(() => {
                 </div>
             </div>
 
-            {/* === SECTION 2: SCANNER (Repeater) === */}
-            <div className={`p-4 rounded-lg shadow-sm border transition-colors duration-300 
-                ${isNewItem === true ? 'bg-yellow-50 border-yellow-200' : 
-                  isNewItem === false ? 'bg-green-50 border-green-200' : 'bg-white border-blue-100'}`}>
+            {/* === SECTION 2: SCANNER OR RECEIPT LOOKUP === */}
+            <div className={`p-4 rounded-lg shadow-sm border transition-colors duration-300 bg-white border-blue-100`}>
                 
-                {/* Visual Indicator - Only shows AFTER lookup */}
-                <div className="h-6 mb-2">
-                    {isNewItem === true && (
-                        <span className="text-xs font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1 animate-pulse">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" /></svg>
-                            New Item Entry
-                        </span>
-                    )}
-                    {isNewItem === false && (
-                        <span className="text-xs font-bold uppercase tracking-wider text-green-700 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
-                            Existing Item Found
-                        </span>
-                    )}
-                </div>
+                {/* --- STRICT RETURN MODE UI --- */}
+                {headerData.type === 'ISSUANCE_RETURN' ? (
+                    <div className="flex flex-col gap-4">
+                        <div className="alert alert-info shadow-sm text-xs">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                             <span><strong>Strict Return Policy:</strong> Enter the Receipt/Reference Number to find items.</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <input 
+                                type="text" 
+                                className="input input-sm input-bordered flex-1 font-mono uppercase" 
+                                placeholder="Enter Reference # (e.g. REF-2025...)"
+                                value={returnLookupRef}
+                                onChange={(e) => setReturnLookupRef(e.target.value)}
+                            />
+                            <button onClick={handleLookupReceipt} className="btn btn-sm btn-primary" disabled={lookupLoading}>
+                                {lookupLoading ? "Searching..." : "Find Receipt"}
+                            </button>
+                        </div>
 
-                <div className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-3">
-                         <label className="label text-[10px] font-bold text-gray-400 uppercase">Barcode</label>
-                         <input 
-                            name="barcodeField"
-                            ref={barcodeRef}
-                            type="text" 
-                            className="input input-sm input-bordered w-full font-mono text-blue-800 font-bold" 
-                            value={currentScan.barcode}
-                            onChange={handleBarcodeChange} 
-                            onKeyDown={handleKeyDown} 
-                            placeholder="ISBN..."
-                            autoFocus
-                         />
+                        {/* Results of Lookup */}
+                        {pastTransactionItems.length > 0 && (
+                            <div className="overflow-x-auto border rounded bg-gray-50 max-h-40">
+                                <table className="table table-xs w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Orig Qty</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pastTransactionItems.map(item => (
+                                            <tr key={item.id}>
+                                                <td>{item.product_name}</td>
+                                                <td>{item.qty}</td>
+                                                <td>
+                                                    <button onClick={() => handleSelectReturnItem(item)} className="btn btn-xs btn-outline btn-error">
+                                                        Select to Return
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
-                    
-                    {/* Item Name */}
-                    <div className="col-span-4">
-                         <label className="label text-[10px] font-bold text-gray-400 uppercase">Item Name</label>
-                         <input 
-                            id="nameInput"
-                            type="text"
-                            readOnly={isNewItem !== true}
-                            className={`input input-sm input-bordered w-full font-bold transition-all
-                                ${isNewItem === true 
-                                    ? 'bg-white border-orange-500 ring-2 ring-orange-100 text-gray-900' 
-                                    : 'bg-gray-100 text-gray-600 focus:outline-none'
-                                }
-                            `}
-                            value={currentScan.itemName || ""} 
-                            onChange={e => setCurrentScan({...currentScan, itemName: e.target.value})}
-                            onKeyDown={handleKeyDown}
-                            placeholder={isNewItem === true ? "Enter New Title..." : "..."}
-                            autoComplete="off"
-                         />
-                    </div>
+                ) : (
+                    /* --- STANDARD SCANNER UI (Receiving/Issuance) --- */
+                    <>
+                        <div className="h-6 mb-2">
+                             {/* Removed "New Item" Indicator logic - strictly existing items only */}
+                            {isNewItem === false && (
+                                <span className="text-xs font-bold uppercase tracking-wider text-green-700 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
+                                    Item Found
+                                </span>
+                            )}
+                        </div>
 
-                    <div className="col-span-2">
-                         <label className="label text-[10px] font-bold text-gray-400 uppercase">Qty</label>
-                         <input 
-                            id="qtyInput"
-                            type="number" min="1"
-                            className="input input-sm input-bordered w-full" 
-                            value={currentScan.qty}
-                            onChange={e => setCurrentScan({...currentScan, qty: e.target.value})}
-                            onKeyDown={handleKeyDown}
-                         />
-                    </div>
-                    
-                    {/* Price - Always visible, but read-only unless New Item or Receiving */}
-                    <div className="col-span-2">
-                        <label className="label text-[10px] font-bold text-gray-400 uppercase">Price</label>
-                        <input 
-                            type="number" 
-                            className={`input input-sm input-bordered w-full ${isNewItem !== true && headerData.type !== 'RECEIVING' ? 'bg-gray-100' : 'bg-white'}`}
-                            placeholder="0.00"
-                            readOnly={isNewItem !== true && headerData.type !== 'RECEIVING'}
-                            value={currentScan.priceOverride} 
-                            onChange={e => setCurrentScan({...currentScan, priceOverride: e.target.value})} 
-                            onKeyDown={handleKeyDown}
-                        />
-                    </div>
+                        <div className="grid grid-cols-12 gap-2 items-end">
+                            <div className="col-span-3">
+                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Barcode</label>
+                                <input 
+                                    name="barcodeField"
+                                    ref={barcodeRef}
+                                    type="text" 
+                                    className="input input-sm input-bordered w-full font-mono text-blue-800 font-bold" 
+                                    value={currentScan.barcode}
+                                    onChange={handleBarcodeChange} 
+                                    onKeyDown={handleKeyDown} 
+                                    placeholder="Scan..."
+                                    autoFocus
+                                />
+                            </div>
+                            
+                            <div className="col-span-5">
+                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Item Name</label>
+                                <input 
+                                    readOnly
+                                    className="input input-sm input-bordered w-full bg-gray-100 text-gray-600 focus:outline-none"
+                                    value={currentScan.itemName || ""} 
+                                    placeholder="..."
+                                />
+                            </div>
 
-                    <div className="col-span-1">
-                        <button onClick={handleAddToQueue} className="btn btn-sm btn-secondary w-full">
-                            ADD
-                        </button>
-                    </div>
-                </div>
-                
-                {/* Location - Shown for Receiving OR New Items */}
-                {(headerData.type === 'RECEIVING' || isNewItem === true) && (
-                     <div className="mt-2">
-                        <input type="text" className="input input-xs input-bordered w-1/3" placeholder="Location / Rack Number"
-                            value={currentScan.location} onChange={e => setCurrentScan({...currentScan, location: e.target.value})} />
-                     </div>
+                            <div className="col-span-2">
+                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Qty</label>
+                                <input 
+                                    id="qtyInput"
+                                    type="number" min="1"
+                                    className="input input-sm input-bordered w-full" 
+                                    value={currentScan.qty}
+                                    onChange={e => setCurrentScan({...currentScan, qty: e.target.value})}
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </div>
+                            
+                            <div className="col-span-2">
+                                <button onClick={handleAddToQueue} className="btn btn-sm btn-secondary w-full">
+                                    ADD
+                                </button>
+                            </div>
+                        </div>
+                    </>
                 )}
             </div>
 

@@ -20,18 +20,29 @@ export const useInventory = () => {
     setLoading(true);
     setError(null);
 
+    // ... imports
+
     try {
-      // Call the Database Function we created in Step 2 of the guide
+      // Generate a Reference Number Client-Side (Timestamp + Random)
+      // Format: YYYYMMDD-HHMM-XXXX
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 12); // YYYYMMDDHHMM
+      const random = Math.floor(1000 + Math.random() * 9000);
+      const generatedRef = `REF-${timestamp}-${random}`;
+
+      // Attach to headerData
+      const finalHeader = { ...headerData, referenceNo: generatedRef };
+
       const { error: rpcError } = await supabase.rpc('process_inventory_batch', {
-        header_data: headerData,
+        header_data: finalHeader,
         item_queue: queue,
-        p_user_id: currentUser.auth_uid // Passing the Auth ID
+        p_user_id: currentUser.auth_uid
       });
 
       if (rpcError) throw rpcError;
 
-      console.log("Batch Transaction Committed via RPC!");
-      return true;
+      // Return the generated Ref Number so we can show it in the success message
+      return generatedRef; 
 
     } catch (e) {
       console.error("Batch Failed:", e);
