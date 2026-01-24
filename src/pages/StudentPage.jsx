@@ -194,6 +194,42 @@ export default function StudentPage() {
     });
   };
 
+  const handleAddCourse = async (e) => {
+    e.preventDefault();
+    if (!newCourseCode.trim()) return;
+    setCourseLoading(true);
+
+    try {
+        const code = newCourseCode.trim().toUpperCase();
+        const { error } = await supabase.from('courses').insert([{ code }]);
+        
+        if (error) {
+            if (error.code === '23505') alert("Course already exists.");
+            else throw error;
+        } else {
+            setAvailableCourses(prev => [...prev, code].sort());
+            setNewCourseCode("");
+        }
+    } catch (err) {
+        alert("Error adding course: " + err.message);
+    } finally {
+        setCourseLoading(false);
+    }
+  };
+
+  const handleDeleteCourse = async (codeToDelete) => {
+    if (!confirm(`Are you sure you want to delete ${codeToDelete}?`)) return;
+    
+    try {
+        const { error } = await supabase.from('courses').delete().eq('code', codeToDelete);
+        if (error) throw error;
+        setAvailableCourses(prev => prev.filter(c => c !== codeToDelete));
+    } catch (err) {
+        alert("Failed to delete course. It might be in use.");
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
       <Navbar />
@@ -214,21 +250,31 @@ export default function StudentPage() {
                         className="hidden" 
                     />
                     
-                    {/* Import Button */}
-                    <button 
-                        onClick={() => fileInputRef.current.click()}
-                        disabled={importing}
-                        className="btn btn-sm btn-outline btn-success gap-2"
-                    >
-                        {importing ? (
-                            <span className="loading loading-spinner loading-xs"></span>
-                        ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    {/* Action Buttons */}
+                    <div className="join">
+                        <button 
+                            onClick={() => fileInputRef.current.click()}
+                            disabled={importing}
+                            className="btn btn-sm join-item btn-outline btn-success gap-2"
+                        >
+                            {importing ? <span className="loading loading-spinner loading-xs"></span> : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                </svg>
+                            )}
+                            Import CSV
+                        </button>
+                        
+                        <button 
+                            onClick={() => setShowCourseModal(true)}
+                            className="btn btn-sm join-item btn-outline gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                             </svg>
-                        )}
-                        Import CSV
-                    </button>
+                            Courses
+                        </button>
+                    </div>
                 </div>
 
                 <input 
@@ -381,6 +427,62 @@ export default function StudentPage() {
                         <button type="submit" className={`btn btn-primary ${saving ? 'loading' : ''}`}>Save Changes</button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+
+      {/* Course Management Modal */}
+      {showCourseModal && (
+        <div className="modal modal-open">
+            <div className="modal-box">
+                <div className="flex justify-between items-center border-b pb-2 mb-4">
+                    <h3 className="font-bold text-lg text-gray-700">Manage Courses</h3>
+                    <button onClick={() => setShowCourseModal(false)} className="btn btn-sm btn-circle btn-ghost">✕</button>
+                </div>
+
+                {/* Add New Course Form */}
+                <form onSubmit={handleAddCourse} className="flex gap-2 mb-6">
+                    <input 
+                        type="text" 
+                        placeholder="New Course Code (e.g. BSN)" 
+                        className="input input-bordered w-full"
+                        value={newCourseCode}
+                        onChange={(e) => setNewCourseCode(e.target.value.toUpperCase())}
+                    />
+                    <button type="submit" disabled={courseLoading} className="btn btn-primary">
+                        {courseLoading ? "..." : "Add"}
+                    </button>
+                </form>
+
+                {/* List of Courses */}
+                <div className="h-64 overflow-y-auto border rounded-lg">
+                    <table className="table table-pin-rows w-full">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th>Course Code</th>
+                                <th className="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {availableCourses.map(code => (
+                                <tr key={code} className="hover">
+                                    <td className="font-bold text-gray-600">{code}</td>
+                                    <td className="text-right">
+                                        <button 
+                                            onClick={() => handleDeleteCourse(code)}
+                                            className="btn btn-xs btn-ghost text-red-500"
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {availableCourses.length === 0 && (
+                                <tr><td colSpan="2" className="text-center text-gray-400 py-4">No courses found.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
       )}
