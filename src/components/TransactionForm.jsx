@@ -195,7 +195,23 @@ export default function TransactionForm({ onSuccess }) {
   };
 
   const handleRemoveItem = (idToRemove) => {
+    const itemToRemove = queue.find(item => item.id === idToRemove);
+    if (!itemToRemove) return;
+
+    // 1. Remove from Queue
     setQueue(prev => prev.filter(item => item.id !== idToRemove));
+
+    // 2. IF RETURN MODE: Restore it back to the "Available to Return" list
+    if (headerData.type === 'ISSUANCE_RETURN' && itemToRemove.originalTransactionId) {
+        const restoredItem = {
+            id: itemToRemove.originalTransactionId,
+            product_id: itemToRemove.barcode,
+            product_name: itemToRemove.itemName,
+            qty: itemToRemove.originalReceiptQty,
+            remainingQty: itemToRemove.maxQty
+        };
+        setPastTransactionItems(prev => [...prev, restoredItem]);
+    }
   };
 
   const handleFinalSubmit = async () => {
@@ -338,10 +354,11 @@ export default function TransactionForm({ onSuccess }) {
         id: Date.now(),
         barcode: item.product_id,
         itemName: item.product_name,
-        qty: item.remainingQty, // Default to returning ALL remaining
-        maxQty: item.remainingQty, // CONSTRAINT for UI
+        qty: item.remainingQty,
+        maxQty: item.remainingQty,
+        originalReceiptQty: item.qty,
         priceOverride: 0, 
-        originalTransactionId: item.id // IMPORTANT: Link to specific row
+        originalTransactionId: item.id 
     };
     setQueue(prev => [...prev, returnItem]);
     // Remove from the "Available to return" list visually
@@ -495,26 +512,24 @@ export default function TransactionForm({ onSuccess }) {
                                         type="text" 
                                         className={`input input-sm input-bordered w-full font-mono transition-colors
                                             ${isNewStudent === true ? 'border-orange-400 bg-orange-50 focus:border-orange-500' : ''}
-                                            ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : 'bg-white'}
+                                            ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : ''}
+                                            ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white'}
                                         `}
-                                        placeholder="Scan or Type ID..."
+                                        placeholder={headerData.type === 'ISSUANCE_RETURN' ? "Auto-filled from Receipt" : "Scan or Type ID..."}
                                         value={headerData.studentId} 
                                         onChange={e => {
                                             if(isNewStudent !== null) setIsNewStudent(null);
                                             setHeaderData({...headerData, studentId: e.target.value});
                                         }}
-                                        autoFocus
+                                        // STRICT AUDIT: Cannot manually change ID in return mode
+                                        readOnly={headerData.type === 'ISSUANCE_RETURN'}
+                                        autoFocus={headerData.type !== 'ISSUANCE_RETURN'}
                                     />
                                     {/* Status Icons */}
                                     <div className="absolute right-2 top-1.5">
                                         {isNewStudent === false && (
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
                                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                                            </svg>
-                                        )}
-                                        {isNewStudent === true && (
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-orange-500">
-                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
                                             </svg>
                                         )}
                                     </div>
@@ -525,7 +540,9 @@ export default function TransactionForm({ onSuccess }) {
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
                                 <input 
                                     type="text" 
-                                    className="input input-sm input-bordered bg-white"
+                                    // Disabled if Return mode AND no student found yet
+                                    disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
+                                    className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
                                     placeholder="Enter Name"
                                     value={headerData.studentName} 
                                     onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
@@ -537,7 +554,8 @@ export default function TransactionForm({ onSuccess }) {
                                 <div className="form-control">
                                     <label className="label text-[10px] font-bold text-gray-500 uppercase">Course</label>
                                     <select 
-                                        className="select select-sm select-bordered bg-white"
+                                        disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
+                                        className="select select-sm select-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
                                         value={headerData.course}
                                         onChange={e => setHeaderData({...headerData, course: e.target.value})}
                                     >
@@ -551,7 +569,8 @@ export default function TransactionForm({ onSuccess }) {
                                     <label className="label text-[10px] font-bold text-gray-500 uppercase">Year / Sem</label>
                                     <input 
                                         type="text" 
-                                        className="input input-sm input-bordered bg-white"
+                                        disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
+                                        className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
                                         placeholder="e.g. Y1S2"
                                         value={headerData.yearLevel} 
                                         onChange={e => setHeaderData({...headerData, yearLevel: e.target.value.toUpperCase()})} 
@@ -587,9 +606,12 @@ export default function TransactionForm({ onSuccess }) {
                     
                     <div className="form-control md:col-span-2">
                         <label className="label text-[10px] font-bold text-gray-500 uppercase">General Remarks</label>
-                        <input type="text" className="input input-sm input-bordered bg-white" 
-                            placeholder="Remarks"
-                            value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} />
+                        <input type="text" 
+                             disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
+                             className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                             placeholder="Remarks"
+                             value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} 
+                        />
                     </div>
                 </div>
             </div>
