@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
+import Papa from "papaparse"; // Import CSV Parser
 
 export default function StudentPage() {
   const [students, setStudents] = useState([]);
@@ -16,6 +17,10 @@ export default function StudentPage() {
   const [editingStudent, setEditingStudent] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", course: "" });
   const [saving, setSaving] = useState(false);
+
+  // Bulk Import State
+  const fileInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
 
   // 1. Debounce Search Input
   useEffect(() => {
@@ -119,6 +124,57 @@ export default function StudentPage() {
     }
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImporting(true);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          // 1. Map CSV Headers to DB Columns
+          // CSV Headers based on your file: "STUDENT ID", "NAME", "COURSE"
+          const formattedData = results.data
+            .filter(row => row['STUDENT ID'] && row['NAME']) // Ensure valid rows
+            .map(row => ({
+              student_id: row['STUDENT ID'].trim(),
+              name: row['NAME'].trim().toUpperCase(),
+              course: row['COURSE'] ? row['COURSE'].trim().toUpperCase() : '',
+              last_updated: new Date()
+            }));
+
+          if (formattedData.length === 0) throw new Error("No valid data found in CSV.");
+
+          // 2. Perform Batch Upsert (Update if ID exists, Insert if new)
+          const { error } = await supabase
+            .from('students')
+            .upsert(formattedData, { onConflict: 'student_id' });
+
+          if (error) throw error;
+
+          alert(`Successfully processed ${formattedData.length} students.`);
+          
+          // 3. Clear Input & Refresh
+          if (fileInputRef.current) fileInputRef.current.value = "";
+
+          
+        } catch (err) {
+          alert("Import Failed: " + err.message);
+          console.error(err);
+        } finally {
+          setImporting(false);
+        }
+      },
+      error: (error) => {
+        alert("CSV Parsing Error: " + error.message);
+        setImporting(false);
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
       <Navbar />
@@ -126,8 +182,36 @@ export default function StudentPage() {
       <main className="container mx-auto px-4 max-w-5xl">
         <div className="card bg-base-100 shadow-xl">
             {/* Header */}
-            <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                <h2 className="card-title text-xl text-gray-700">Enrollment Summary</h2>
+            <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-t-xl gap-4">
+                <div className="flex items-center gap-2">
+                    <h2 className="card-title text-xl text-gray-700">Enrollment Summary</h2>
+                    
+                    {/* Hidden File Input */}
+                    <input 
+                        type="file" 
+                        accept=".csv"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        className="hidden" 
+                    />
+                    
+                    {/* Import Button */}
+                    <button 
+                        onClick={() => fileInputRef.current.click()}
+                        disabled={importing}
+                        className="btn btn-sm btn-outline btn-success gap-2"
+                    >
+                        {importing ? (
+                            <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                        )}
+                        Import CSV
+                    </button>
+                </div>
+
                 <input 
                     type="text" 
                     placeholder="Search Name or ID..." 
