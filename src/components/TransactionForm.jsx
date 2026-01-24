@@ -15,6 +15,8 @@ export default function TransactionForm({ onSuccess }) {
   const [lookupLoading, setLookupLoading] = useState(false);
 
   const [receiptData, setReceiptData] = useState(null);
+  const [availableCourses, setAvailableCourses] = useState([]);
+
 
 
   // GLOBAL HEADER STATE (Applied to all items)
@@ -23,6 +25,7 @@ export default function TransactionForm({ onSuccess }) {
     studentName: "",
     studentId: "",
     course: "",
+    yearLevel: "",
     transactionMode: "",
     supplier: "", 
     remarks: "",
@@ -52,6 +55,14 @@ export default function TransactionForm({ onSuccess }) {
       barcodeRef.current.focus();
     }
   }, [headerData.type, queue]); // Re-run when type changes or item added
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+        const { data } = await supabase.from('courses').select('code').order('code');
+        if (data) setAvailableCourses(data.map(c => c.code));
+    };
+    fetchCourses();
+  }, []);
 
   
 
@@ -101,25 +112,25 @@ export default function TransactionForm({ onSuccess }) {
     try {
       const { data, error } = await supabase
         .from('students')
-        .select('name, course')
+        .select('name, course, year_level')
         .eq('student_id', idToSearch)
         .maybeSingle();
 
       if (data) {
-        // FOUND: Auto-fill and Lock
         setIsNewStudent(false);
         setHeaderData(prev => ({
           ...prev,
           studentName: data.name || "",
-          course: data.course || ""
+          course: data.course || "",
+          yearLevel: data.year_level || "" // Auto-fill Year
         }));
       } else {
-        // NOT FOUND: Enable fields and Clear previous data
         setIsNewStudent(true);
         setHeaderData(prev => ({
           ...prev,
-          studentName: "", // Clear name so they can type
-          course: ""       // Clear course so they can type
+          studentName: "", 
+          course: "",
+          yearLevel: "" 
         }));
       }
     } catch (err) {
@@ -204,9 +215,10 @@ export default function TransactionForm({ onSuccess }) {
           studentName: headerData.studentName,
           studentId: headerData.studentId,
           course: headerData.course,
+          yearLevel: headerData.yearLevel,
           type: headerData.type,
           date: new Date().toLocaleString(),
-          items: [...queue] // Copy the queue before clearing it
+          items: [...queue]
       });
 
       // 2. CLEAR FORM
@@ -287,14 +299,15 @@ useEffect(() => {
     } else {
         setPastTransactionItems(data);
         // Auto-fill header with student info from the receipt
-        if(data[0]) {
+          if(data[0]) {
             setHeaderData(prev => ({
                 ...prev,
                 studentName: data[0].student_name,
                 studentId: data[0].student_id,
-                course: data[0].course
+                course: data[0].course,
+                yearLevel: data[0].year_level || ""
             }));
-        }
+          }
     }
     setLookupLoading(false);
   };
@@ -479,14 +492,41 @@ useEffect(() => {
                             </div>
 
                             <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Course / Year</label>
+                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
                                 <input 
                                     type="text" 
                                     className="input input-sm input-bordered bg-white"
-                                    placeholder="e.g. BSIT-1"
-                                    value={headerData.course} 
-                                    onChange={e => setHeaderData({...headerData, course: e.target.value.toUpperCase()})} 
+                                    placeholder="Enter Name"
+                                    value={headerData.studentName} 
+                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
                                 />
+                            </div>
+
+                            {/* Split Course and Year */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="form-control">
+                                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Course</label>
+                                    <select 
+                                        className="select select-sm select-bordered bg-white"
+                                        value={headerData.course}
+                                        onChange={e => setHeaderData({...headerData, course: e.target.value})}
+                                    >
+                                        <option value="">--Select--</option>
+                                        {availableCourses.map(c => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-control">
+                                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Year / Sem</label>
+                                    <input 
+                                        type="text" 
+                                        className="input input-sm input-bordered bg-white"
+                                        placeholder="e.g. Y1S2"
+                                        value={headerData.yearLevel} 
+                                        onChange={e => setHeaderData({...headerData, yearLevel: e.target.value.toUpperCase()})} 
+                                    />
+                                </div>
                             </div>
                         </>
                     )}
@@ -705,7 +745,8 @@ useEffect(() => {
                     {receiptData.studentName && (
                         <>
                             <p><strong>Student:</strong> {receiptData.studentName}</p>
-                            <p><strong>ID:</strong> {receiptData.studentId} ({receiptData.course})</p>
+                            <p><strong>ID:</strong> {receiptData.studentId}</p>
+                            <p><strong>Course/Yr:</strong> {receiptData.course} {receiptData.yearLevel}</p>
                         </>
                     )}
                 </div>

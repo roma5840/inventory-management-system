@@ -15,21 +15,22 @@ export default function StudentPage() {
 
   // Edit State
   const [editingStudent, setEditingStudent] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", course: "" });
+  const [editForm, setEditForm] = useState({ name: "", course: "", year_level: "" });
   const [saving, setSaving] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState([]);
 
   // Bulk Import State
   const fileInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
 
-  // 1. Debounce Search Input
+  // Fetch Courses Logic
   useEffect(() => {
-    const timer = setTimeout(() => {
-        setDebouncedTerm(searchTerm);
-        setPage(1); // Reset to page 1 on search change
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+    const fetchCourses = async () => {
+      const { data } = await supabase.from('courses').select('code').order('code');
+      if (data) setAvailableCourses(data.map(c => c.code));
+    };
+    fetchCourses();
+  }, []);
 
   // 2. Fetch Data & Realtime Subscription
   useEffect(() => {
@@ -80,7 +81,11 @@ export default function StudentPage() {
   // 3. Handlers
   const handleEditClick = (student) => {
     setEditingStudent(student);
-    setEditForm({ name: student.name, course: student.course });
+    setEditForm({ 
+        name: student.name, 
+        course: student.course || "", 
+        year_level: student.year_level || "" 
+    });
   };
 
   const handleUpdate = async (e) => {
@@ -89,34 +94,30 @@ export default function StudentPage() {
     setSaving(true);
 
     try {
-        // 1. Send Update to Database
         const { error } = await supabase
             .from('students')
             .update({ 
                 name: editForm.name, 
                 course: editForm.course,
+                year_level: editForm.year_level,
                 last_updated: new Date()
             })
             .eq('student_id', editingStudent.student_id);
 
         if (error) throw error;
         
-        // 2. Update Local State Immediately (Optimistic UI)
         setStudents(prev => prev.map(s => 
             s.student_id === editingStudent.student_id 
-                ? { ...s, name: editForm.name, course: editForm.course } 
+                ? { ...s, name: editForm.name, course: editForm.course, year_level: editForm.year_level } 
                 : s
         ));
-
-        // 3. Broadcast to Other Tabs
+        
+        // Broadcast
         await supabase.channel('app_updates').send({
-            type: 'broadcast',
-            event: 'inventory_update',
-            payload: {} 
+            type: 'broadcast', event: 'inventory_update', payload: {} 
         });
 
         setEditingStudent(null);
-        
     } catch (err) {
         alert("Update failed: " + err.message);
     } finally {
@@ -136,19 +137,30 @@ export default function StudentPage() {
       complete: async (results) => {
         try {
           // 1. Map CSV Headers to DB Columns
-          // CSV Headers based on your file: "STUDENT ID", "NAME", "COURSE"
           const formattedData = results.data
-            .filter(row => row['STUDENT ID'] && row['NAME']) // Ensure valid rows
+            .filter(row => row['STUDENT ID'] && row['NAME'])
             .map(row => ({
               student_id: row['STUDENT ID'].trim(),
               name: row['NAME'].trim().toUpperCase(),
               course: row['COURSE'] ? row['COURSE'].trim().toUpperCase() : '',
+              year_level: row['SEMESTER'] ? row['SEMESTER'].trim().toUpperCase() : '', // Map Semester -> Year Level
               last_updated: new Date()
             }));
 
           if (formattedData.length === 0) throw new Error("No valid data found in CSV.");
 
-          // 2. Perform Batch Upsert (Update if ID exists, Insert if new)
+          // 2. Extract Unique Courses and Update 'courses' table
+          const uniqueCourses = [...new Set(formattedData.map(d => d.course).filter(Boolean))];
+          const courseInserts = uniqueCourses.map(c => ({ code: c }));
+          
+          // Upsert courses (ignore duplicates)
+          if (courseInserts.length > 0) {
+             await supabase.from('courses').upsert(courseInserts, { onConflict: 'code' });
+             // Refresh local course list
+             setAvailableCourses(prev => [...new Set([...prev, ...uniqueCourses])].sort());
+          }
+
+          // 3. Perform Batch Upsert for Students
           const { error } = await supabase
             .from('students')
             .upsert(formattedData, { onConflict: 'student_id' });
@@ -156,10 +168,7 @@ export default function StudentPage() {
           if (error) throw error;
 
           alert(`Successfully processed ${formattedData.length} students.`);
-          
-          // 3. Clear Input & Refresh
           if (fileInputRef.current) fileInputRef.current.value = "";
-
           
         } catch (err) {
           alert("Import Failed: " + err.message);
@@ -243,7 +252,10 @@ export default function StudentPage() {
                                     <td className="font-mono font-bold text-gray-500">{s.student_id}</td>
                                     <td className="font-semibold text-gray-700">{s.name}</td>
                                     <td>
-                                        <span className="badge badge-ghost badge-sm">{s.course || "N/A"}</span>
+                                        <div className="flex gap-2">
+                                            <span className="badge badge-ghost badge-sm">{s.course || "N/A"}</span>
+                                            {s.year_level && <span className="badge badge-outline badge-sm">{s.year_level}</span>}
+                                        </div>
                                     </td>
                                     <td className="text-right">
                                         <button 
@@ -307,7 +319,7 @@ export default function StudentPage() {
                         />
                     </div>
                     
-                    {/* Name Input - Stacked Below Label */}
+                    {/* Name Input */}
                     <div className="form-control w-full">
                         <label className="label">
                             <span className="label-text text-xs uppercase font-bold text-gray-500">Full Name</span>
@@ -318,22 +330,40 @@ export default function StudentPage() {
                             className="input input-bordered w-full font-semibold text-gray-700" 
                             value={editForm.name}
                             onChange={(e) => setEditForm({...editForm, name: e.target.value.toUpperCase()})}
-                            placeholder="Enter full name..."
                         />
                     </div>
 
-                    {/* Course Input - Stacked Below Label */}
-                    <div className="form-control w-full">
-                        <label className="label">
-                            <span className="label-text text-xs uppercase font-bold text-gray-500">Course / Year</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            className="input input-bordered w-full" 
-                            value={editForm.course}
-                            onChange={(e) => setEditForm({...editForm, course: e.target.value.toUpperCase()})}
-                            placeholder="e.g. BSIT-1"
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Course Dropdown */}
+                        <div className="form-control w-full">
+                            <label className="label">
+                                <span className="label-text text-xs uppercase font-bold text-gray-500">Course</span>
+                            </label>
+                            <select 
+                                className="select select-bordered w-full"
+                                value={editForm.course}
+                                onChange={(e) => setEditForm({...editForm, course: e.target.value})}
+                            >
+                                <option value="" disabled>Select Course</option>
+                                {availableCourses.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Year Input */}
+                        <div className="form-control w-full">
+                            <label className="label">
+                                <span className="label-text text-xs uppercase font-bold text-gray-500">Year / Sem</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                className="input input-bordered w-full" 
+                                value={editForm.year_level}
+                                onChange={(e) => setEditForm({...editForm, year_level: e.target.value.toUpperCase()})}
+                                placeholder="e.g. Y1S2"
+                            />
+                        </div>
                     </div>
 
                     <div className="modal-action mt-6">
