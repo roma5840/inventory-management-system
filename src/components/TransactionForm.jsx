@@ -216,17 +216,27 @@ export default function TransactionForm({ onSuccess }) {
 
   const handleFinalSubmit = async () => {
     setSuccessMsg("");
-    const resultRef = await processTransaction(headerData, queue);
+
+    // Prepare data with Uppercase enforcement
+    const finalHeaderData = {
+        ...headerData,
+        studentName: headerData.studentName?.toUpperCase() || "",
+        yearLevel: headerData.yearLevel?.toUpperCase() || "",
+        course: headerData.course || "", // Dropdowns are usually already fixed values
+        remarks: headerData.remarks || ""
+    };
+
+    const resultRef = await processTransaction(finalHeaderData, queue);
     
     if (resultRef) {
       // 1. SAVE DATA FOR THE RECEIPT POPUP
       setReceiptData({
           refNumber: resultRef,
-          studentName: headerData.studentName,
-          studentId: headerData.studentId,
-          course: headerData.course,
-          yearLevel: headerData.yearLevel,
-          type: headerData.type,
+          studentName: finalHeaderData.studentName,
+          studentId: finalHeaderData.studentId,
+          course: finalHeaderData.course,
+          yearLevel: finalHeaderData.yearLevel,
+          type: finalHeaderData.type,
           date: new Date().toLocaleString(),
           items: [...queue]
       });
@@ -540,12 +550,11 @@ export default function TransactionForm({ onSuccess }) {
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
                                 <input 
                                     type="text" 
-                                    // Disabled if Return mode AND no student found yet
                                     disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
-                                    className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                                    className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400 uppercase"
                                     placeholder="Enter Name"
-                                    value={headerData.studentName} 
-                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value.toUpperCase()})} 
+                                    value={headerData.studentName}
+                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
                                 />
                             </div>
 
@@ -570,10 +579,10 @@ export default function TransactionForm({ onSuccess }) {
                                     <input 
                                         type="text" 
                                         disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
-                                        className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                                        className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400 uppercase"
                                         placeholder="e.g. Y1S2"
-                                        value={headerData.yearLevel} 
-                                        onChange={e => setHeaderData({...headerData, yearLevel: e.target.value.toUpperCase()})} 
+                                        value={headerData.yearLevel}
+                                        onChange={e => setHeaderData({...headerData, yearLevel: e.target.value})} 
                                     />
                                 </div>
                             </div>
