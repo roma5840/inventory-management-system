@@ -17,8 +17,6 @@ export default function TransactionForm({ onSuccess }) {
   const [receiptData, setReceiptData] = useState(null);
   const [availableCourses, setAvailableCourses] = useState([]);
 
-
-
   // GLOBAL HEADER STATE (Applied to all items)
   const initialHeaderState = {
     type: "",
@@ -63,8 +61,6 @@ export default function TransactionForm({ onSuccess }) {
     };
     fetchCourses();
   }, []);
-
-  
 
   const checkProduct = async (barcodeInput) => {
     const barcodeToSearch = barcodeInput?.trim();
@@ -122,7 +118,7 @@ export default function TransactionForm({ onSuccess }) {
           ...prev,
           studentName: data.name || "",
           course: data.course || "",
-          yearLevel: data.year_level || "" // Auto-fill Year
+          yearLevel: data.year_level || ""
         }));
       } else {
         setIsNewStudent(true);
@@ -198,8 +194,6 @@ export default function TransactionForm({ onSuccess }) {
     }
   };
 
-
-
   const handleRemoveItem = (idToRemove) => {
     setQueue(prev => prev.filter(item => item.id !== idToRemove));
   };
@@ -250,8 +244,6 @@ export default function TransactionForm({ onSuccess }) {
     }
   };
 
-
-
   // Reset status when user manually types in barcode field
   const handleBarcodeChange = (e) => {
       const newVal = e.target.value;
@@ -265,8 +257,7 @@ export default function TransactionForm({ onSuccess }) {
   };
 
 
-
-useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       // Only search if barcode exists and we haven't already locked onto a status
       // wait 400ms before searching
@@ -306,7 +297,7 @@ useEffect(() => {
                 studentId: data[0].student_id,
                 course: data[0].course,
                 yearLevel: data[0].year_level || "",
-                remarks: data[0].remarks || "" // Added remarks mapping
+                remarks: data[0].remarks || ""
             }));
         }
     }
