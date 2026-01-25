@@ -47,12 +47,12 @@ export default function TransactionHistory({ lastUpdated }) {
     const result = await voidTransaction(refNo, reason);
     if (result.success) {
       alert("Transaction Voided Successfully.");
-      fetchTransactions(); // Refresh UI
+      fetchTransactions();
+      if (onUpdate) onUpdate(); 
     } else {
       alert("Error: " + result.error);
     }
   };
-
   // Helper: Group flat rows by Reference Number for cleaner display
   const groupedTransactions = transactions.reduce((acc, curr) => {
     const key = curr.reference_number || "NO_REF";

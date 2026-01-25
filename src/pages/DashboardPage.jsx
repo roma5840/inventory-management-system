@@ -63,8 +63,10 @@ export default function DashboardPage() {
 
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-2 flex flex-col gap-8">
-            {/* Pass refreshTrigger to force updates */}
-            <TransactionHistory lastUpdated={refreshTrigger} /> 
+            <TransactionHistory 
+              lastUpdated={refreshTrigger} 
+              onUpdate={handleRefresh} 
+            /> 
             <Dashboard lastUpdated={refreshTrigger} />
           </div>
 
