@@ -337,17 +337,21 @@ export default function TransactionForm({ onSuccess }) {
             const remainingQty = saleItem.qty - alreadyReturnedQty;
 
             // MAP SNAPSHOTS TO UI FRIENDLY KEYS
-            // We verify if 'product_name' exists (old data) or use 'product_name_snapshot' (new data)
             const displayName = saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
-            const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; // Fallback for old data
+            const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; 
+            
+            // AUDIT FIX: Prioritize the snapshot price, fallback to price column
+            // This ensures the return value matches the issuance value exactly.
+            const priceSnapshot = saleItem.price_snapshot !== null ? saleItem.price_snapshot : saleItem.price;
 
             return { 
                 ...saleItem, 
-                displayName,    // standardized key for UI
-                displayBarcode, // standardized key for logic
+                displayName,    
+                displayBarcode, 
+                price_snapshot: priceSnapshot,
                 remainingQty 
             };
-        }).filter(item => item.remainingQty > 0); 
+        }).filter(item => item.remainingQty > 0);
 
         if (validItems.length === 0) {
             alert("All items in this receipt have already been returned.");
@@ -383,13 +387,16 @@ export default function TransactionForm({ onSuccess }) {
         itemName: item.displayName,
         
         // LOGIC: The Critical Link. 
-        // We pass the UUID so the DB updates the CORRECT item, even if barcode changed.
         internalId: item.product_internal_id, 
 
         qty: item.remainingQty,
         maxQty: item.remainingQty,
         originalReceiptQty: item.qty,
-        priceOverride: 0, 
+        
+        // AUDIT FIX: Use the price they ORIGINALLY paid. 
+        // We prefer the snapshot if it exists, otherwise the raw price column.
+        priceOverride: item.price_snapshot !== undefined ? item.price_snapshot : item.price, 
+        
         originalTransactionId: item.id 
     };
     setQueue(prev => [...prev, returnItem]);
@@ -743,16 +750,18 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
 
-                            {/* NEW: Price Field (Editable only in RECEIVING) */}
+                            {/* Modified Price Field: Editable for RECEIVING AND PULL_OUT */}
                             <div className="col-span-2">
                                 <label className="label text-[10px] font-bold text-gray-400 uppercase">Price</label>
                                 <input 
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    readOnly={headerData.type !== 'RECEIVING'} // Only editable during Receiving
+                                    /* LOGIC CHANGE: Unlock for Receiving OR Pull Out */
+                                    readOnly={!['RECEIVING', 'PULL_OUT'].includes(headerData.type)}
                                     className={`input input-sm input-bordered w-full font-mono ${
-                                        headerData.type === 'RECEIVING' 
+                                        /* VISUAL CHANGE: Blue text for editable modes */
+                                        ['RECEIVING', 'PULL_OUT'].includes(headerData.type)
                                             ? 'bg-white border-blue-300 text-blue-800' 
                                             : 'bg-gray-100 text-gray-500 cursor-not-allowed'
                                     }`}
@@ -888,10 +897,17 @@ export default function TransactionForm({ onSuccess }) {
                         {receiptData.items.map((item, idx) => (
                             <tr key={idx}>
                                 <td className="py-1">{item.itemName.substring(0, 15)}</td>
-                                <td className="text-center">{item.qty}</td>
+                                <td className="text-center">
+                                    {/* If it's a return, show negative sign for clarity in audit */}
+                                    {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
+                                </td>
                                 <td className="text-right">
-                                    {/* Only show price if it exists, otherwise - */}
-                                    {item.priceOverride > 0 ? (item.priceOverride * item.qty).toFixed(2) : '-'}
+                                    {/* Show the Value. For returns, usually denoted with () or - in accounting */}
+                                    {item.priceOverride > 0 
+                                      ? (receiptData.type === 'ISSUANCE_RETURN' 
+                                          ? `(${(item.priceOverride * item.qty).toFixed(2)})` // Accounting format for negative
+                                          : (item.priceOverride * item.qty).toFixed(2))
+                                      : '-'}
                                 </td>
                             </tr>
                         ))}
