@@ -377,10 +377,15 @@ export default function TransactionForm({ onSuccess }) {
     // Add specific past item to return queue
     const returnItem = {
         id: Date.now(),
-        // Use the displayBarcode mapping we created above
+        // VISUALS: Show the Snapshot Barcode (what was on the receipt)
         barcode: item.displayBarcode, 
-        // Use the displayName mapping
+        // VISUALS: Show the Snapshot Name
         itemName: item.displayName,
+        
+        // LOGIC: The Critical Link. 
+        // We pass the UUID so the DB updates the CORRECT item, even if barcode changed.
+        internalId: item.product_internal_id, 
+
         qty: item.remainingQty,
         maxQty: item.remainingQty,
         originalReceiptQty: item.qty,
