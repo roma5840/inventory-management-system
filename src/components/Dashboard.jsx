@@ -17,12 +17,14 @@ export default function Dashboard({ lastUpdated }) {
 
   // Edit Modal State
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", price: "", minStockLevel: "" });
+  const [editForm, setEditForm] = useState({ name: "", price: "", minStockLevel: "", accpacCode: "" });
   const [updateLoading, setUpdateLoading] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
   const [newItemForm, setNewItemForm] = useState({ 
-    id: "", // Barcode
+    id: "", 
+    accpacCode: "",
     name: "", 
     price: "", 
     minStockLevel: "10",
@@ -35,23 +37,29 @@ export default function Dashboard({ lastUpdated }) {
     e.preventDefault();
     setCreateLoading(true);
 
-    // Basic Validation
     if (!newItemForm.id || !newItemForm.name) {
         alert("Barcode and Name are required.");
         setCreateLoading(false); return;
     }
 
     try {
-        // Check if ID exists first
-        const { data: existing } = await supabase.from('products').select('id').eq('id', newItemForm.id).maybeSingle();
+        // Check uniqueness for Barcode OR AccPac
+        const { data: existing } = await supabase
+            .from('products')
+            .select('barcode, accpac_code')
+            .or(`barcode.eq.${newItemForm.id},accpac_code.eq.${newItemForm.accpacCode}`)
+            .maybeSingle();
+            
         if (existing) {
-            alert("Error: This barcode already exists in the system.");
+            if (existing.barcode === newItemForm.id) alert("Error: Barcode already exists.");
+            else alert("Error: AccPac Code already exists.");
             setCreateLoading(false); return;
         }
 
-        // Insert New Product
+        // INSERT: Note we map 'id' (form) to 'barcode' (db)
         const { error } = await supabase.from('products').insert({
-            id: newItemForm.id,
+            barcode: newItemForm.id, 
+            accpac_code: newItemForm.accpacCode || null,
             name: newItemForm.name.toUpperCase(),
             price: Number(newItemForm.price),
             min_stock_level: Number(newItemForm.minStockLevel),
@@ -65,12 +73,9 @@ export default function Dashboard({ lastUpdated }) {
 
         alert("Success: New product registered.");
         setIsAddModalOpen(false);
-        setNewItemForm({ id: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
-        
-        // 1. Refresh Local UI immediately
+        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
         fetchInventory();
-
-        // 2. Broadcast update to other tabs
+        
         await supabase.channel('app_updates').send({
           type: 'broadcast', event: 'inventory_update', payload: {} 
         });
@@ -98,12 +103,14 @@ export default function Dashboard({ lastUpdated }) {
   const fetchInventory = async () => {
     setLoading(true);
     
+    // Map 'barcode' to 'id' so the rest of the UI doesn't break
+    // We also fetch 'internal_id' for editing purposes
     let query = supabase
         .from('products')
-        .select('*, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
+        .select('internal_id, id:barcode, accpac_code, name, price, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
     if (debouncedTerm.trim()) {
-        query = query.or(`name.ilike.%${debouncedTerm}%,id.ilike.%${debouncedTerm}%`);
+        query = query.or(`name.ilike.%${debouncedTerm}%,barcode.ilike.%${debouncedTerm}%,accpac_code.ilike.%${debouncedTerm}%`);
     } else {
         query = query.order('name', { ascending: true });
     }
@@ -155,12 +162,15 @@ export default function Dashboard({ lastUpdated }) {
   }
 
   const openEditModal = (product) => {
+    // product.id now holds the Barcode text (due to the alias in fetchInventory)
+    // product.internal_id holds the UUID
     setEditingProduct(product);
     setEditForm({
         name: product.name,
         price: product.price,
         minStockLevel: product.minStockLevel,
-        location: product.location || ""
+        location: product.location || "",
+        accpacCode: product.accpac_code || ""
     });
   };
 
@@ -191,14 +201,16 @@ export default function Dashboard({ lastUpdated }) {
         const { error } = await supabase
             .from('products')
             .update({
+                barcode: editingProduct.id, // We are sending the new barcode text here
                 name: editForm.name,
-                price: newPrice,
-                min_stock_level: newMinLevel,
+                price: Number(editForm.price),
+                min_stock_level: Number(editForm.minStockLevel),
                 location: editForm.location,
-                search_keywords: newKeywords,
+                accpac_code: editForm.accpacCode || null,
+                search_keywords: editForm.name.toLowerCase().split(/\s+/),
                 last_updated: new Date()
             })
-            .eq('id', editingProduct.id);
+            .eq('internal_id', editingProduct.internal_id); 
 
         if (error) throw error;
         
@@ -255,21 +267,122 @@ export default function Dashboard({ lastUpdated }) {
     }
   }
 
+  const generateNextBarcode = async () => {
+    try {
+      // Call a raw SQL query or function to get next sequence val
+      // Since we can't easily call raw SQL, we can fetch the count or use a custom RPC
+      // For now, we will use a simple RPC wrapping the sequence, or client-side logic + count.
+      // Easiest reliable method:
+      const { data, error } = await supabase.rpc('get_next_barcode_seq'); 
+      // *Note: You need to create this simple RPC: return nextval('product_barcode_seq');*
+      // Fallback if RPC not made: Use timestamp
+      if (error) return `GEN-${Date.now().toString().slice(-6)}`;
+      return `GEN-${String(data).padStart(5, '0')}`;
+    } catch (e) {
+      return `GEN-${Math.floor(Math.random() * 100000)}`;
+    }
+  };
+
+  // *Self-Correction for client-side purely:*
+  const generateClientBarcode = () => {
+    // Generates a timestamp-based ID which is unique and sequential in time
+    const seq = Math.floor(Date.now() / 1000); 
+    return `SYS-${seq}`;
+  }
+
+  const handleCSVImport = async (e) => {
+    e.preventDefault();
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+    
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const rows = text.split('\n').slice(1); // Skip Header
+      let processedCount = 0;
+      let errorCount = 0;
+
+      for (let row of rows) {
+        // CSV Format: ACCPAC CODE, DESCRIPTION, ...
+        const cols = row.split(','); 
+        if (cols.length < 2) continue;
+
+        const accpacRaw = cols[0]?.trim();
+        const descRaw = cols[1]?.trim().replace(/"/g, ''); // Remove quotes
+        
+        if (!accpacRaw || !descRaw) continue;
+
+        try {
+          // 1. Check if AccPac exists
+          const { data: existing } = await supabase
+            .from('products')
+            .select('id, name')
+            .eq('accpac_code', accpacRaw)
+            .maybeSingle();
+
+          if (existing) {
+            // UPSERT: Update Name if changed
+            if (existing.name !== descRaw) {
+               await supabase.from('products').update({ 
+                 name: descRaw, 
+                 last_updated: new Date() 
+               }).eq('id', existing.id);
+            }
+          } else {
+            // INSERT: Generate Barcode
+            // Sequential simulation using timestamp to avoid collision in loop
+            const newBarcode = `SYS-${Date.now().toString().slice(-8)}-${Math.floor(Math.random()*1000)}`;
+            
+            await supabase.from('products').insert({
+              id: newBarcode,
+              accpac_code: accpacRaw,
+              name: descRaw,
+              price: 0, // Default
+              min_stock_level: 10,
+              current_stock: 0,
+              search_keywords: descRaw.toLowerCase().split(/\s+/),
+              last_updated: new Date()
+            });
+          }
+          processedCount++;
+        } catch (err) {
+          console.error("Import Row Error:", err);
+          errorCount++;
+        }
+      }
+
+      alert(`Import Complete.\nProcessed: ${processedCount}\nErrors: ${errorCount}`);
+      setIsImportModalOpen(false);
+      fetchInventory();
+    };
+
+    reader.readAsText(file);
+  };
+
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-0">
-{/* Header with REGISTER BUTTON */}
+        {/* Header with REGISTER BUTTON */}
         <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-t-xl gap-4">
           <div className="flex items-center gap-4">
               <h2 className="card-title text-xl">Inventory Management</h2>
-              {/* Only ADMIN/SUPER_ADMIN can add items */}
               {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                  <button 
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="btn btn-sm btn-primary shadow-sm"
-                  >
-                    + Register New Item
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="btn btn-sm btn-primary shadow-sm"
+                    >
+                      + New Item
+                    </button>
+                    <button 
+                      onClick={() => setIsImportModalOpen(true)}
+                      className="btn btn-sm btn-outline btn-success shadow-sm"
+                    >
+                      Upload CSV
+                    </button>
+                  </div>
               )}
           </div>
           
@@ -304,7 +417,10 @@ export default function Dashboard({ lastUpdated }) {
               ) : (
                 products.map((p) => (
                   <tr key={p.id} className="hover group border-b border-gray-100">
-                    <td className="font-mono text-xs font-bold text-gray-500">{p.id}</td>
+                    <td className="font-mono text-xs font-bold text-gray-500">
+                        <div>{p.id}</div>
+                        {p.accpac_code && <div className="text-[10px] text-blue-600 bg-blue-50 inline-block px-1 rounded">{p.accpac_code}</div>}
+                    </td>
                     <td className="font-semibold text-gray-700">{p.name}</td>
                     <td className="text-xs text-gray-500">{p.location || "-"}</td>
                     <td className="text-right font-mono">₱{p.price.toLocaleString()}</td>
@@ -386,8 +502,13 @@ export default function Dashboard({ lastUpdated }) {
                 {/* READ ONLY FIELDS (For Audit Safety) */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-400">Barcode / ISBN</label>
-                        <input type="text" value={editingProduct.id} disabled className="input input-bordered input-sm bg-gray-100" />
+                        <label className="label text-xs uppercase font-bold text-gray-500">Barcode / ISBN</label>
+                        <input 
+                            type="text" 
+                            value={editingProduct.id} // This is bound to local state in a real implementation, simplified here
+                            onChange={(e) => setEditingProduct({...editingProduct, id: e.target.value.toUpperCase()})}
+                            className="input input-bordered input-sm font-mono font-bold text-blue-800" 
+                        />
                     </div>
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-400">Current Stock</label>
@@ -467,17 +588,36 @@ export default function Dashboard({ lastUpdated }) {
             
             <form onSubmit={handleCreateProduct} className="flex flex-col gap-3">
                 
-                <div className="form-control">
-                    <label className="label text-xs uppercase font-bold text-gray-500">Barcode / ISBN *</label>
-                    <input 
-                        type="text" 
-                        className="input input-bordered w-full font-mono font-bold text-blue-800" 
-                        placeholder="Scan or type..."
-                        value={newItemForm.id}
-                        onChange={e => setNewItemForm({...newItemForm, id: e.target.value.toUpperCase()})}
-                        required
-                        autoFocus
-                    />
+                {/* Barcode & AccPac Row */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Barcode *</label>
+                        <div className="flex gap-1">
+                            <input 
+                                type="text" 
+                                className="input input-bordered w-full font-mono font-bold text-blue-800" 
+                                placeholder="Scan/Type"
+                                value={newItemForm.id}
+                                onChange={e => setNewItemForm({...newItemForm, id: e.target.value.toUpperCase()})}
+                                required
+                            />
+                            <button type="button" 
+                                onClick={() => setNewItemForm({...newItemForm, id: generateClientBarcode()})}
+                                className="btn btn-square btn-outline btn-xs" title="Auto-Gen">
+                                ⚡
+                            </button>
+                        </div>
+                    </div>
+                    <div className="form-control">
+                        <label className="label text-xs uppercase font-bold text-gray-500">AccPac Code</label>
+                        <input 
+                            type="text" 
+                            className="input input-bordered w-full font-mono text-gray-700" 
+                            placeholder="Optional"
+                            value={newItemForm.accpacCode}
+                            onChange={e => setNewItemForm({...newItemForm, accpacCode: e.target.value.toUpperCase()})}
+                        />
+                    </div>
                 </div>
 
                 <div className="form-control">
@@ -543,6 +683,30 @@ export default function Dashboard({ lastUpdated }) {
                     </button>
                 </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isImportModalOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg text-gray-700 mb-4">Import AccPac CSV</h3>
+            <p className="text-xs text-gray-500 mb-4">
+                CSV Format must be: <strong>ACCPAC ITEM CODE, ITEM DESCRIPTION</strong><br/>
+                System will auto-generate barcodes if the item is new.
+                Existing AccPac codes will have their Names updated.
+            </p>
+            
+            <input 
+                type="file" 
+                accept=".csv"
+                onChange={handleCSVImport}
+                className="file-input file-input-bordered file-input-primary w-full" 
+            />
+
+            <div className="modal-action">
+                <button className="btn btn-ghost" onClick={() => setIsImportModalOpen(false)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}

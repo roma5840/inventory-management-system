@@ -67,21 +67,25 @@ export default function TransactionForm({ onSuccess }) {
     if (!barcodeToSearch) return;
 
     try {
+      // Search by barcode column
       const { data, error } = await supabase
         .from('products')
-        .select('*')
-        .eq('id', barcodeToSearch)
+        .select('internal_id, barcode, name, price, location, accpac_code') 
+        .eq('barcode', barcodeToSearch)
         .maybeSingle(); 
 
       if (data) {
-        // FOUND: Populate fields & Focus Qty
         setIsNewItem(false); 
         setCurrentScan(prev => ({
           ...prev, 
-          barcode: barcodeToSearch,
+          barcode: data.barcode,
+          // We don't strictly need internal_id in currentScan state for display,
+          // but we might want it if we were doing specific logic. 
+          // For now, the backend lookup handles the ID link based on the barcode sent.
           itemName: data.name || "", 
           priceOverride: data.price || "", 
           location: data.location || "",
+          accpacCode: data.accpac_code || "",
           qty: 1
         }));
         setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
@@ -154,8 +158,8 @@ export default function TransactionForm({ onSuccess }) {
     
     const newItem = { 
       ...currentScan, 
-      // Force empty string to become "0" for Postgres
       priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
+      accpacCode: currentScan.accpacCode, // Pass it here
       id: Date.now() 
     };
 
@@ -302,7 +306,7 @@ export default function TransactionForm({ onSuccess }) {
     setPastTransactionItems([]);
 
     try {
-        // 1. Fetch the Original Sales Items
+        // 1. Fetch Original Sales (Now using new column names implicitly via *)
         const { data: salesData, error: salesError } = await supabase
             .from('transactions')
             .select('*')
@@ -315,24 +319,33 @@ export default function TransactionForm({ onSuccess }) {
             return;
         }
 
-        // 2. Fetch ANY existing returns linked to these specific transaction IDs
+        // 2. Fetch existing returns (Logic remains valid)
         const saleIds = salesData.map(item => item.id);
         const { data: returnsData } = await supabase
             .from('transactions')
             .select('original_transaction_id, qty')
             .in('original_transaction_id', saleIds);
 
-        // 3. Calculate Remaining Returnable Quantity
+        // 3. Calculate Remaining Qty & Map Snapshot Columns
         const validItems = salesData.map(saleItem => {
-            // Sum up how many times this specific item line has been returned
             const alreadyReturnedQty = returnsData
                 ?.filter(r => r.original_transaction_id === saleItem.id)
                 .reduce((sum, r) => sum + r.qty, 0) || 0;
 
             const remainingQty = saleItem.qty - alreadyReturnedQty;
 
-            return { ...saleItem, remainingQty };
-        }).filter(item => item.remainingQty > 0); // Only show items with balance
+            // MAP SNAPSHOTS TO UI FRIENDLY KEYS
+            // We verify if 'product_name' exists (old data) or use 'product_name_snapshot' (new data)
+            const displayName = saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
+            const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; // Fallback for old data
+
+            return { 
+                ...saleItem, 
+                displayName,    // standardized key for UI
+                displayBarcode, // standardized key for logic
+                remainingQty 
+            };
+        }).filter(item => item.remainingQty > 0); 
 
         if (validItems.length === 0) {
             alert("All items in this receipt have already been returned.");
@@ -362,8 +375,10 @@ export default function TransactionForm({ onSuccess }) {
     // Add specific past item to return queue
     const returnItem = {
         id: Date.now(),
-        barcode: item.product_id,
-        itemName: item.product_name,
+        // Use the displayBarcode mapping we created above
+        barcode: item.displayBarcode, 
+        // Use the displayName mapping
+        itemName: item.displayName,
         qty: item.remainingQty,
         maxQty: item.remainingQty,
         originalReceiptQty: item.qty,
@@ -371,7 +386,6 @@ export default function TransactionForm({ onSuccess }) {
         originalTransactionId: item.id 
     };
     setQueue(prev => [...prev, returnItem]);
-    // Remove from the "Available to return" list visually
     setPastTransactionItems(prev => prev.filter(i => i.id !== item.id));
   };
 
@@ -668,7 +682,8 @@ export default function TransactionForm({ onSuccess }) {
                                     <tbody>
                                         {pastTransactionItems.map(item => (
                                             <tr key={item.id}>
-                                                <td>{item.product_name}</td>
+                                                {/* Use displayName property we mapped */}
+                                                <td>{item.displayName}</td>
                                                 <td>{item.qty}</td>
                                                 <td>
                                                     <button onClick={() => handleSelectReturnItem(item)} className="btn btn-xs btn-outline btn-error">
