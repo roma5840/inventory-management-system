@@ -209,12 +209,17 @@ export default function TransactionForm({ onSuccess }) {
     if (headerData.type === 'ISSUANCE_RETURN' && itemToRemove.originalTransactionId) {
         const restoredItem = {
             id: itemToRemove.originalTransactionId,
-            product_id: itemToRemove.barcode,
+            product_id: itemToRemove.barcode, // maintain original structure
             displayBarcode: itemToRemove.barcode,
             product_name: itemToRemove.itemName,
             displayName: itemToRemove.itemName,
-            qty: itemToRemove.originalReceiptQty,
-            remainingQty: itemToRemove.maxQty
+            
+            // FIX: Restore price data so re-adding doesn't result in NaN
+            price: itemToRemove.priceOverride, 
+            price_snapshot: itemToRemove.priceOverride,
+
+            qty: itemToRemove.originalReceiptQty, // Original total
+            remainingQty: itemToRemove.maxQty // What was available before we added it to queue
         };
         setPastTransactionItems(prev => [...prev, restoredItem]);
     }
@@ -308,7 +313,7 @@ export default function TransactionForm({ onSuccess }) {
     setPastTransactionItems([]);
 
     try {
-        // 1. Fetch Original Sales (Now using new column names implicitly via *)
+        // 1. Fetch Original Sales
         const { data: salesData, error: salesError } = await supabase
             .from('transactions')
             .select('*')
@@ -321,27 +326,31 @@ export default function TransactionForm({ onSuccess }) {
             return;
         }
 
-        // 2. Fetch existing returns (Logic remains valid)
+        // 2. Fetch existing returns from DB
         const saleIds = salesData.map(item => item.id);
         const { data: returnsData } = await supabase
             .from('transactions')
             .select('original_transaction_id, qty')
             .in('original_transaction_id', saleIds);
 
-        // 3. Calculate Remaining Qty & Map Snapshot Columns
+        // 3. Calculate Remaining Qty (DB History + Current Queue)
         const validItems = salesData.map(saleItem => {
+            // A. Count what was already returned in previous sessions
             const alreadyReturnedQty = returnsData
                 ?.filter(r => r.original_transaction_id === saleItem.id)
                 .reduce((sum, r) => sum + r.qty, 0) || 0;
 
-            const remainingQty = saleItem.qty - alreadyReturnedQty;
+            // B. Count what is currently sitting in the active queue (The Fix)
+            const currentlyInQueueQty = queue
+                .filter(q => q.originalTransactionId === saleItem.id)
+                .reduce((sum, q) => sum + q.qty, 0);
+
+            const remainingQty = saleItem.qty - alreadyReturnedQty - currentlyInQueueQty;
 
             // MAP SNAPSHOTS TO UI FRIENDLY KEYS
             const displayName = saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
             const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; 
             
-            // AUDIT FIX: Prioritize the snapshot price, fallback to price column
-            // This ensures the return value matches the issuance value exactly.
             const priceSnapshot = saleItem.price_snapshot !== null ? saleItem.price_snapshot : saleItem.price;
 
             return { 
@@ -354,7 +363,7 @@ export default function TransactionForm({ onSuccess }) {
         }).filter(item => item.remainingQty > 0);
 
         if (validItems.length === 0) {
-            alert("All items in this receipt have already been returned.");
+            alert("All items in this receipt have already been returned or are currently in your queue.");
         } else {
             setPastTransactionItems(validItems);
             // Auto-fill header
@@ -687,21 +696,32 @@ export default function TransactionForm({ onSuccess }) {
                             <div className="overflow-x-auto border rounded bg-gray-50 max-h-40">
                                 <table className="table table-xs w-full">
                                     <thead>
-                                        <tr>
+                                        <tr className="bg-gray-200 sticky top-0">
                                             <th>Item</th>
-                                            <th>Orig Qty</th>
-                                            <th>Action</th>
+                                            <th className="text-center">Avail / Orig</th>
+                                            <th className="text-right">Price</th>
+                                            <th className="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {pastTransactionItems.map(item => (
                                             <tr key={item.id}>
-                                                {/* Use displayName property we mapped */}
-                                                <td>{item.displayName}</td>
-                                                <td>{item.qty}</td>
-                                                <td>
+                                                <td className="max-w-[150px] truncate" title={item.displayName}>
+                                                    <div className="font-bold">{item.displayName}</div>
+                                                    <div className="text-[10px] text-gray-500">{item.displayBarcode}</div>
+                                                </td>
+                                                <td className="text-center">
+                                                    <span className="font-bold text-green-700">{item.remainingQty}</span> 
+                                                    <span className="text-gray-400 mx-1">/</span> 
+                                                    {item.qty}
+                                                </td>
+                                                <td className="text-right font-mono">
+                                                    {/* Display correct snapshot price */}
+                                                    {(item.price_snapshot !== undefined ? Number(item.price_snapshot) : Number(item.price)).toFixed(2)}
+                                                </td>
+                                                <td className="text-center">
                                                     <button onClick={() => handleSelectReturnItem(item)} className="btn btn-xs btn-outline btn-error">
-                                                        Select to Return
+                                                        Select
                                                     </button>
                                                 </td>
                                             </tr>
