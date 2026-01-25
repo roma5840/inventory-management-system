@@ -318,20 +318,21 @@ export default function TransactionForm({ onSuccess }) {
 
     try {
         // 1. Fetch Original Sales
+        // Note: We also exclude voided sales, just in case the original issuance was voided.
         const { data: salesData, error: salesError } = await supabase
             .from('transactions')
             .select('*')
             .eq('reference_number', returnLookupRef.trim())
+            .eq('is_voided', false)
             .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
 
         if (salesError || !salesData || salesData.length === 0) {
-            alert("Receipt not found or no returnable items.");
+            alert("Receipt not found, valid items not found, or transaction was voided.");
             setLookupLoading(false);
             return;
         }
 
         if (queue.length > 0) {
-             // Check the reference number of the first item in the queue
              const activeRef = queue[0].refNumber; 
              const newRef = salesData[0].reference_number;
 
@@ -342,11 +343,12 @@ export default function TransactionForm({ onSuccess }) {
              }
         }
 
-        // 2. Fetch existing returns
+        // 2. Fetch existing returns (FIX IS HERE)
         const saleIds = salesData.map(item => item.id);
         const { data: returnsData } = await supabase
             .from('transactions')
             .select('original_transaction_id, qty')
+            .eq('is_voided', false) // <--- CRITICAL FIX: Don't count voided returns!
             .in('original_transaction_id', saleIds);
 
         // 3. Calculate Remaining Qty
@@ -379,7 +381,6 @@ export default function TransactionForm({ onSuccess }) {
             alert("All items in this receipt have already been returned or are currently in your queue.");
         } else {
             setPastTransactionItems(validItems);
-            // Auto-fill header
             if(validItems[0]) {
                 setHeaderData(prev => ({
                     ...prev,
