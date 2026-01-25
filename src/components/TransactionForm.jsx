@@ -717,7 +717,7 @@ export default function TransactionForm({ onSuccess }) {
                             )}
                         </div>
 
-                        <div className="grid grid-cols-12 gap-2 items-end">
+                         <div className="grid grid-cols-12 gap-2 items-end">
                             <div className="col-span-3">
                                 <label className="label text-[10px] font-bold text-gray-400 uppercase">Barcode</label>
                                 <input 
@@ -733,13 +733,33 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
                             
-                            <div className="col-span-5">
+                            <div className="col-span-3">
                                 <label className="label text-[10px] font-bold text-gray-400 uppercase">Item Name</label>
                                 <input 
                                     readOnly
                                     className="input input-sm input-bordered w-full bg-gray-100 text-gray-600 focus:outline-none"
                                     value={currentScan.itemName || ""} 
                                     placeholder="..."
+                                />
+                            </div>
+
+                            {/* NEW: Price Field (Editable only in RECEIVING) */}
+                            <div className="col-span-2">
+                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Price</label>
+                                <input 
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    readOnly={headerData.type !== 'RECEIVING'} // Only editable during Receiving
+                                    className={`input input-sm input-bordered w-full font-mono ${
+                                        headerData.type === 'RECEIVING' 
+                                            ? 'bg-white border-blue-300 text-blue-800' 
+                                            : 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                    value={currentScan.priceOverride}
+                                    onChange={e => setCurrentScan({...currentScan, priceOverride: e.target.value})}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="0.00"
                                 />
                             </div>
 
@@ -798,9 +818,11 @@ export default function TransactionForm({ onSuccess }) {
                                             </span>
                                         )}
                                     </td>
-                                    {headerData.type === 'RECEIVING' && (
-                                        <td>₱{item.priceOverride} / {item.location}</td>
-                                    )}
+                                    {/* Always show price now, as it is snapshotted */}
+                                    <td className="font-mono">
+                                        ₱{Number(item.priceOverride).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        {item.location && <span className="text-[10px] text-gray-400 ml-2">({item.location})</span>}
+                                    </td>
                                     <td className="text-right">
                                         <button onClick={() => handleRemoveItem(item.id)} className="btn btn-ghost btn-xs text-red-500">x</button>
                                     </td>
