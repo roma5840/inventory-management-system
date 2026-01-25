@@ -10,7 +10,8 @@ export default function TransactionHistory({ lastUpdated }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const [totalCount, setTotalCount] = useState(0);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchTransactions();
@@ -21,14 +22,18 @@ export default function TransactionHistory({ lastUpdated }) {
     const from = (page - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
-    const { data, error } = await supabase
+    const { data, count, error } = await supabase
       .from('transactions')
-      .select('*')
+      .select('*', { count: 'exact' }) // Request total row count
       .order('timestamp', { ascending: false })
       .range(from, to);
 
-    if (error) console.error(error);
-    else setTransactions(data || []);
+    if (error) {
+      console.error(error);
+    } else {
+      setTransactions(data || []);
+      setTotalCount(count || 0);
+    }
     
     setLoading(false);
   };
@@ -61,10 +66,26 @@ export default function TransactionHistory({ lastUpdated }) {
       <div className="card-body p-4">
         <div className="flex justify-between items-center mb-4">
             <h2 className="card-title text-lg">Transaction History</h2>
-            <div className="join">
-                <button className="join-item btn btn-xs" disabled={page===1} onClick={()=>setPage(p=>p-1)}>«</button>
-                <button className="join-item btn btn-xs">Page {page}</button>
-                <button className="join-item btn btn-xs" onClick={()=>setPage(p=>p+1)}>»</button>
+            <div className="flex items-center gap-4">
+                <span className="text-xs text-gray-500 font-semibold">
+                    Page {page} of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
+                </span>
+                <div className="join flex gap-2">
+                    <button 
+                        className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
+                        disabled={page === 1 || loading} 
+                        onClick={()=>setPage(p=>p-1)}
+                    >
+                        « Previous
+                    </button>
+                    <button 
+                        className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
+                        disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading} 
+                        onClick={()=>setPage(p=>p+1)}
+                    >
+                        Next »
+                    </button>
+                </div>
             </div>
         </div>
 
