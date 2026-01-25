@@ -403,6 +403,7 @@ export default function Dashboard({ lastUpdated }) {
             <thead className="bg-gray-100 text-gray-600 z-10">
               <tr>
                 <th>Barcode</th>
+                <th>AccPac Code</th>
                 <th>Product Name</th>
                 <th>Location</th>
                 <th className="text-right">Price</th>
@@ -413,13 +414,21 @@ export default function Dashboard({ lastUpdated }) {
             </thead>
             <tbody>
               {products.length === 0 && !loading ? (
-                <tr><td colSpan="7" className="text-center py-8 text-gray-400">No products found.</td></tr>
+                <tr><td colSpan="8" className="text-center py-8 text-gray-400">No products found.</td></tr>
               ) : (
                 products.map((p) => (
-                  <tr key={p.id} className="hover group border-b border-gray-100">
-                    <td className="font-mono text-xs font-bold text-gray-500">
-                        <div>{p.id}</div>
-                        {p.accpac_code && <div className="text-[10px] text-blue-600 bg-blue-50 inline-block px-1 rounded">{p.accpac_code}</div>}
+                  <tr key={p.internal_id || p.id} className="hover group border-b border-gray-100">
+                    <td className="font-mono text-xs font-bold text-gray-500">{p.id}</td>
+                    
+                    {/* NEW ACCPAC CELL */}
+                    <td className="font-mono text-xs text-blue-700">
+                        {p.accpac_code ? (
+                            <span className="bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                                {p.accpac_code}
+                            </span>
+                        ) : (
+                            <span className="text-gray-300">-</span>
+                        )}
                     </td>
                     <td className="font-semibold text-gray-700">{p.name}</td>
                     <td className="text-xs text-gray-500">{p.location || "-"}</td>
