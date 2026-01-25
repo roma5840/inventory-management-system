@@ -53,5 +53,33 @@ export const useInventory = () => {
     }
   };
 
-  return { processTransaction, loading, error };
+  const voidTransaction = async (refNumber, reason) => {
+    if (!currentUser) return { success: false, error: "Unauthorized" };
+    if (!reason) return { success: false, error: "Reason is required." };
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.rpc('void_transaction_by_ref', {
+        p_reference_number: refNumber,
+        p_reason: reason,
+        p_user_id: currentUser.auth_uid
+      });
+
+      if (error) throw error;
+      
+      // Broadcast update so other components refresh
+      await supabase.channel('app_updates').send({
+        type: 'broadcast', event: 'inventory_update', payload: {} 
+      });
+
+      return { success: true };
+    } catch (e) {
+      console.error("Void Failed:", e);
+      return { success: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { processTransaction, voidTransaction, loading, error };
 };

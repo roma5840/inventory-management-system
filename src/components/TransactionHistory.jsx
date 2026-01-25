@@ -1,91 +1,167 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { useInventory } from "../hooks/useInventory";
 
 export default function TransactionHistory({ lastUpdated }) {
+  const { userRole } = useAuth();
+  const { voidTransaction, loading: voidLoading } = useInventory();
+  
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
-    const fetchHistory = async () => {
-        const { data } = await supabase
-            .from('transactions')
-            .select('*, productName:product_name, previousStock:previous_stock, newStock:new_stock')
-            .order('timestamp', { ascending: false })
-            .limit(10);
-        
-        if (data) setTransactions(data);
-        setLoading(false);
-    };
+    fetchTransactions();
+  }, [lastUpdated, page]);
 
-    fetchHistory();
+  const fetchTransactions = async () => {
+    setLoading(true);
+    const from = (page - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
 
-    // Realtime Listener - Changed to Re-fetch to ensure Joined Data (Product Name) is present
-    const channel = supabase.channel('history_realtime')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions' }, () => {
-            fetchHistory();
-        })
-        .subscribe();
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .range(from, to);
 
-    return () => supabase.removeChannel(channel);
-  }, [lastUpdated]); // Added lastUpdated dependency
-
-
-
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "Pending...";
-    // Supabase returns an ISO string (e.g., "2023-01-01T12:00:00")
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (error) console.error(error);
+    else setTransactions(data || []);
+    
+    setLoading(false);
   };
 
-  const getBadgeColor = (type) => {
-    switch (type) {
-      case 'RECEIVING': return 'badge-success text-white'; 
-      case 'ISSUANCE_RETURN': return 'badge-info text-white'; 
-      case 'ISSUANCE': return 'badge-error text-white'; 
-      case 'PULL_OUT': return 'badge-warning'; 
-      default: return 'badge-ghost';
+  const handleVoidClick = async (refNo) => {
+    if (!window.confirm(`Are you sure you want to VOID transaction ${refNo}? This cannot be undone.`)) return;
+    
+    const reason = prompt("Please enter a reason for voiding:");
+    if (!reason) return;
+
+    const result = await voidTransaction(refNo, reason);
+    if (result.success) {
+      alert("Transaction Voided Successfully.");
+      fetchTransactions(); // Refresh UI
+    } else {
+      alert("Error: " + result.error);
     }
   };
 
+  // Helper: Group flat rows by Reference Number for cleaner display
+  const groupedTransactions = transactions.reduce((acc, curr) => {
+    const key = curr.reference_number || "NO_REF";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(curr);
+    return acc;
+  }, {});
+
   return (
-    <div className="card bg-base-100 shadow-xl mt-8">
-      <div className="card-body p-0">
-        <div className="p-4 border-b bg-gray-50 rounded-t-xl">
-          <h2 className="card-title text-lg text-gray-700">Recent Transactions</h2>
+    <div className="card bg-base-100 shadow-xl">
+      <div className="card-body p-4">
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="card-title text-lg">Transaction History</h2>
+            <div className="join">
+                <button className="join-item btn btn-xs" disabled={page===1} onClick={()=>setPage(p=>p-1)}>«</button>
+                <button className="join-item btn btn-xs">Page {page}</button>
+                <button className="join-item btn btn-xs" onClick={()=>setPage(p=>p+1)}>»</button>
+            </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="table table-xs w-full">
-            <thead className="bg-base-200">
-              <tr>
-                <th>Time</th>
+            <thead>
+              <tr className="bg-base-200">
+                <th>Date / Ref #</th>
                 <th>Type</th>
-                <th>Product</th>
-                <th className="text-center">Qty</th>
-                <th className="text-right">History</th>
+                <th>Details</th>
+                <th className="text-center">Items</th>
+                <th className="text-right">Action</th>
               </tr>
             </thead>
             <tbody>
-              {transactions.length === 0 ? (
-                <tr><td colSpan="5" className="text-center py-6 text-gray-400">No recent activity.</td></tr>
+              {loading ? (
+                 <tr><td colSpan="5" className="text-center py-4">Loading...</td></tr>
+              ) : Object.keys(groupedTransactions).length === 0 ? (
+                 <tr><td colSpan="5" className="text-center py-4">No history found.</td></tr>
               ) : (
-                transactions.map((t) => (
-                  <tr key={t.id} className="hover">
-                    <td className="font-mono text-gray-500">{formatDate(t.timestamp)}</td>
-                    <td>
-                      <div className={`badge badge-xs ${getBadgeColor(t.type)}`}>
-                        {t.type.replace('_', ' ')}
-                      </div>
-                    </td>
-                    <td className="max-w-xs truncate font-semibold" title={t.productName}>
-                      {t.productName}
-                    </td>
-                    <td className="text-center font-bold">{t.qty}</td>
-                    <td className="text-right font-mono text-xs">
-                       {t.previousStock} → {t.newStock}
-                    </td>
-                  </tr>
-                ))
+                Object.entries(groupedTransactions).map(([refNo, items]) => {
+                   const first = items[0];
+                   const isVoided = items.some(i => i.is_voided);
+                   const isVoidEntry = first.type === 'VOID';
+                   
+                   // Styles: Dim if voided, Red background if it IS a void entry
+                   const rowClass = isVoidEntry ? "bg-red-50" : isVoided ? "opacity-50 grayscale bg-gray-50" : "";
+
+                   return (
+                     <tr key={refNo} className={`border-b border-gray-100 ${rowClass}`}>
+                       {/* Column 1: Date & Ref */}
+                       <td className="align-top py-3">
+                          <div className="font-mono font-bold text-xs">{refNo}</div>
+                          <div className="text-[10px] text-gray-500">
+                            {new Date(first.timestamp).toLocaleString()}
+                          </div>
+                          {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
+                          {isVoidEntry && <span className="badge badge-xs badge-warning mt-1">REVERSAL</span>}
+                       </td>
+
+                       {/* Column 2: Type */}
+                       <td className="align-top py-3">
+                          <span className={`font-bold text-[10px] uppercase px-2 py-1 rounded-full 
+                            ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-700' : 
+                              first.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-700' :
+                              first.type === 'VOID' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                            {first.type.replace('_', ' ')}
+                          </span>
+                       </td>
+
+                       {/* Column 3: Context (Student/Supplier) */}
+                       <td className="align-top py-3">
+                          {first.student_name && (
+                             <div>
+                               <div className="font-bold">{first.student_name}</div>
+                               <div className="text-[10px]">{first.course} {first.year_level}</div>
+                             </div>
+                          )}
+                          {first.supplier && <div className="text-xs">Supp: {first.supplier}</div>}
+                          {first.void_reason && <div className="text-[10px] italic text-red-600">Reason: {first.void_reason}</div>}
+                       </td>
+
+                       {/* Column 4: Item Summary */}
+                       <td className="align-top py-3">
+                          <ul className="space-y-1">
+                             {items.map(i => (
+                               <li key={i.id} className="flex justify-between text-[10px] border-b border-dashed border-gray-200 pb-1">
+                                  <span className="truncate max-w-[150px]">{i.product_name_snapshot || "Item"}</span>
+                                  <span className="font-mono">
+                                    {i.qty} x {Number(i.price_snapshot).toFixed(2)}
+                                  </span>
+                               </li>
+                             ))}
+                          </ul>
+                       </td>
+
+                       {/* Column 5: Actions */}
+                       <td className="align-top text-right py-3">
+                          {/* ONLY Show Void Button if:
+                              1. User is ADMIN
+                              2. It is NOT already voided
+                              3. It is NOT a "VOID" entry itself
+                          */}
+                          {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && !isVoided && !isVoidEntry && (
+                              <button 
+                                onClick={() => handleVoidClick(refNo)}
+                                disabled={voidLoading}
+                                className="btn btn-xs btn-outline btn-error"
+                                title="Void this entire receipt"
+                              >
+                                VOID
+                              </button>
+                          )}
+                       </td>
+                     </tr>
+                   );
+                })
               )}
             </tbody>
           </table>
