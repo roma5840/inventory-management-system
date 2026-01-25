@@ -285,9 +285,10 @@ export default function Dashboard({ lastUpdated }) {
 
   // *Self-Correction for client-side purely:*
   const generateClientBarcode = () => {
-    // Generates a timestamp-based ID which is unique and sequential in time
-    const seq = Math.floor(Date.now() / 1000); 
-    return `SYS-${seq}`;
+    // High-resolution timestamp + Random 3-digit suffix to prevent collision
+    const seq = Date.now(); 
+    const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `SYS-${seq}-${rand}`;
   }
 
   const handleCSVImport = async (e) => {
@@ -300,51 +301,71 @@ export default function Dashboard({ lastUpdated }) {
     
     reader.onload = async (event) => {
       const text = event.target.result;
-      const rows = text.split('\n').slice(1); // Skip Header
+      const allLines = text.split('\n');
+      
+      // 1. Find the Header Row (Skip garbage lines at top)
+      const headerIndex = allLines.findIndex(line => line.toUpperCase().includes('ACCPAC ITEM CODE'));
+      
+      if (headerIndex === -1) {
+          alert("Error: Could not find 'ACCPAC ITEM CODE' header in CSV.");
+          setLoading(false);
+          return;
+      }
+
+      // 2. Process Data Rows (Start after header)
+      const rows = allLines.slice(headerIndex + 1);
       let processedCount = 0;
       let errorCount = 0;
 
       for (let row of rows) {
-        // CSV Format: ACCPAC CODE, DESCRIPTION, ...
+        // CSV Parsing: Handle commas inside quotes if necessary, but for now simple split
+        // Your CSV format: ACCPAC ITEM CODE, ITEM DESCRIPTION, ...
         const cols = row.split(','); 
         if (cols.length < 2) continue;
 
         const accpacRaw = cols[0]?.trim();
-        const descRaw = cols[1]?.trim().replace(/"/g, ''); // Remove quotes
+        // Remove quotes and extra spaces from description
+        const descRaw = cols[1]?.trim().replace(/^"|"$/g, '').replace(/""/g, '"'); 
         
-        if (!accpacRaw || !descRaw) continue;
+        if (!accpacRaw && !descRaw) continue; // Skip completely empty lines
 
         try {
-          // 1. Check if AccPac exists
+          // A. Check if AccPac exists
           const { data: existing } = await supabase
             .from('products')
-            .select('id, name')
+            .select('internal_id, barcode, name')
             .eq('accpac_code', accpacRaw)
             .maybeSingle();
 
           if (existing) {
-            // UPSERT: Update Name if changed
+            // UPDATE: Update Name if changed
             if (existing.name !== descRaw) {
-               await supabase.from('products').update({ 
+               const { error: upError } = await supabase.from('products').update({ 
                  name: descRaw, 
                  last_updated: new Date() 
-               }).eq('id', existing.id);
+               }).eq('internal_id', existing.internal_id);
+               if (upError) throw upError;
             }
           } else {
-            // INSERT: Generate Barcode
-            // Sequential simulation using timestamp to avoid collision in loop
-            const newBarcode = `SYS-${Date.now().toString().slice(-8)}-${Math.floor(Math.random()*1000)}`;
+            // INSERT: New Item
+            // Generate a safe unique Barcode
+            const seq = Date.now(); 
+            const rand = Math.floor(Math.random() * 1000);
+            const newBarcode = `SYS-${seq}-${rand}`; // e.g., SYS-1701234567890-123
             
-            await supabase.from('products').insert({
-              id: newBarcode,
-              accpac_code: accpacRaw,
-              name: descRaw,
-              price: 0, // Default
+            // IMPORTANT: Using 'barcode' column, NOT 'id'
+            const { error: insError } = await supabase.from('products').insert({
+              barcode: newBarcode,
+              accpac_code: accpacRaw || null,
+              name: descRaw || "Unknown Item",
+              price: 0, 
               min_stock_level: 10,
               current_stock: 0,
-              search_keywords: descRaw.toLowerCase().split(/\s+/),
+              search_keywords: descRaw ? descRaw.toLowerCase().split(/\s+/) : [],
               last_updated: new Date()
             });
+
+            if (insError) throw insError;
           }
           processedCount++;
         } catch (err) {
@@ -353,7 +374,7 @@ export default function Dashboard({ lastUpdated }) {
         }
       }
 
-      alert(`Import Complete.\nProcessed: ${processedCount}\nErrors: ${errorCount}`);
+      alert(`Import Complete.\nSuccessfully Processed: ${processedCount}\nErrors: ${errorCount}`);
       setIsImportModalOpen(false);
       fetchInventory();
     };
