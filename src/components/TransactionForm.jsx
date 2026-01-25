@@ -326,31 +326,40 @@ export default function TransactionForm({ onSuccess }) {
             return;
         }
 
-        // 2. Fetch existing returns from DB
+        if (queue.length > 0) {
+             // Check the reference number of the first item in the queue
+             const activeRef = queue[0].refNumber; 
+             const newRef = salesData[0].reference_number;
+
+             if (activeRef && activeRef !== newRef) {
+                 alert(`Restricted: You have pending items from Receipt #${activeRef}.\n\nPlease complete or clear the current return before switching to Receipt #${newRef}.`);
+                 setLookupLoading(false);
+                 return;
+             }
+        }
+
+        // 2. Fetch existing returns
         const saleIds = salesData.map(item => item.id);
         const { data: returnsData } = await supabase
             .from('transactions')
             .select('original_transaction_id, qty')
             .in('original_transaction_id', saleIds);
 
-        // 3. Calculate Remaining Qty (DB History + Current Queue)
+        // 3. Calculate Remaining Qty
         const validItems = salesData.map(saleItem => {
-            // A. Count what was already returned in previous sessions
             const alreadyReturnedQty = returnsData
                 ?.filter(r => r.original_transaction_id === saleItem.id)
                 .reduce((sum, r) => sum + r.qty, 0) || 0;
 
-            // B. Count what is currently sitting in the active queue (The Fix)
             const currentlyInQueueQty = queue
                 .filter(q => q.originalTransactionId === saleItem.id)
                 .reduce((sum, q) => sum + q.qty, 0);
 
             const remainingQty = saleItem.qty - alreadyReturnedQty - currentlyInQueueQty;
 
-            // MAP SNAPSHOTS TO UI FRIENDLY KEYS
+            // Map Snapshots
             const displayName = saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
             const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; 
-            
             const priceSnapshot = saleItem.price_snapshot !== null ? saleItem.price_snapshot : saleItem.price;
 
             return { 
@@ -390,23 +399,19 @@ export default function TransactionForm({ onSuccess }) {
     // Add specific past item to return queue
     const returnItem = {
         id: Date.now(),
-        // VISUALS: Show the Snapshot Barcode (what was on the receipt)
         barcode: item.displayBarcode, 
-        // VISUALS: Show the Snapshot Name
         itemName: item.displayName,
-        
-        // LOGIC: The Critical Link. 
         internalId: item.product_internal_id, 
 
         qty: item.remainingQty,
         maxQty: item.remainingQty,
         originalReceiptQty: item.qty,
         
-        // AUDIT FIX: Use the price they ORIGINALLY paid. 
-        // We prefer the snapshot if it exists, otherwise the raw price column.
         priceOverride: item.price_snapshot !== undefined ? item.price_snapshot : item.price, 
         
-        originalTransactionId: item.id 
+        originalTransactionId: item.id,
+        
+        refNumber: item.reference_number
     };
     setQueue(prev => [...prev, returnItem]);
     setPastTransactionItems(prev => prev.filter(i => i.id !== item.id));
