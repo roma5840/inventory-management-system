@@ -14,6 +14,7 @@ export default function Dashboard({ lastUpdated }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageStack, setPageStack] = useState([]); 
   const [lastVisible, setLastVisible] = useState(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Edit Modal State
   const [editingProduct, setEditingProduct] = useState(null);
@@ -22,6 +23,7 @@ export default function Dashboard({ lastUpdated }) {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
+  const [importLoading, setImportLoading] = useState(false);
   const [newItemForm, setNewItemForm] = useState({ 
     id: "", 
     accpacCode: "",
@@ -103,8 +105,6 @@ export default function Dashboard({ lastUpdated }) {
   const fetchInventory = async () => {
     setLoading(true);
     
-    // Map 'barcode' to 'id' so the rest of the UI doesn't break
-    // We also fetch 'internal_id' for editing purposes
     let query = supabase
         .from('products')
         .select('internal_id, id:barcode, accpac_code, name, price, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
@@ -120,8 +120,12 @@ export default function Dashboard({ lastUpdated }) {
     
     const { data, count, error } = await query.range(from, to);
 
-    if (error) console.error(error);
-    else setProducts(data || []);
+    if (error) {
+        console.error(error);
+    } else {
+        setProducts(data || []);
+        setTotalCount(count || 0); // Save the total count
+    }
     
     setLoading(false);
   };
@@ -141,24 +145,20 @@ export default function Dashboard({ lastUpdated }) {
   }, [debouncedTerm, currentPage, lastUpdated]);
 
 
-  const handleNext = () => {
-    if (!lastVisible) return;
-    setPageStack(prev => [...prev, lastVisible]);
+const handleNext = () => {
+    // Prevent going next if we have reached the total count
+    if (currentPage * ITEMS_PER_PAGE >= totalCount) return;
     setCurrentPage(prev => prev + 1);
   };
 
   const handlePrev = () => {
     if (currentPage === 1) return;
-    setPageStack(prev => prev.slice(0, -1));
     setCurrentPage(prev => prev - 1);
   };
 
   const handleSearch = (e) => {
-    setSearchTerm(e.target.value); // Updates Input immediately
-    // Reset pagination immediately so UI doesn't look weird
-    setCurrentPage(1);
-    setPageStack([]);
-    setLastVisible(null);
+    setSearchTerm(e.target.value); 
+    setCurrentPage(1); // Reset to page 1 on search
   }
 
   const openEditModal = (product) => {
@@ -296,41 +296,35 @@ export default function Dashboard({ lastUpdated }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    setLoading(true);
+    setImportLoading(true); // LOCK UI
     const reader = new FileReader();
     
     reader.onload = async (event) => {
       const text = event.target.result;
       const allLines = text.split('\n');
       
-      // 1. Find the Header Row (Skip garbage lines at top)
       const headerIndex = allLines.findIndex(line => line.toUpperCase().includes('ACCPAC ITEM CODE'));
       
       if (headerIndex === -1) {
           alert("Error: Could not find 'ACCPAC ITEM CODE' header in CSV.");
-          setLoading(false);
+          setImportLoading(false); // UNLOCK UI
           return;
       }
 
-      // 2. Process Data Rows (Start after header)
       const rows = allLines.slice(headerIndex + 1);
       let processedCount = 0;
       let errorCount = 0;
 
       for (let row of rows) {
-        // CSV Parsing: Handle commas inside quotes if necessary, but for now simple split
-        // Your CSV format: ACCPAC ITEM CODE, ITEM DESCRIPTION, ...
         const cols = row.split(','); 
         if (cols.length < 2) continue;
 
         const accpacRaw = cols[0]?.trim();
-        // Remove quotes and extra spaces from description
         const descRaw = cols[1]?.trim().replace(/^"|"$/g, '').replace(/""/g, '"'); 
         
-        if (!accpacRaw && !descRaw) continue; // Skip completely empty lines
+        if (!accpacRaw && !descRaw) continue;
 
         try {
-          // A. Check if AccPac exists
           const { data: existing } = await supabase
             .from('products')
             .select('internal_id, barcode, name')
@@ -338,22 +332,19 @@ export default function Dashboard({ lastUpdated }) {
             .maybeSingle();
 
           if (existing) {
-            // UPDATE: Update Name if changed
             if (existing.name !== descRaw) {
                const { error: upError } = await supabase.from('products').update({ 
                  name: descRaw, 
                  last_updated: new Date() 
                }).eq('internal_id', existing.internal_id);
+               
                if (upError) throw upError;
             }
           } else {
-            // INSERT: New Item
-            // Generate a safe unique Barcode
             const seq = Date.now(); 
             const rand = Math.floor(Math.random() * 1000);
-            const newBarcode = `SYS-${seq}-${rand}`; // e.g., SYS-1701234567890-123
+            const newBarcode = `SYS-${seq}-${rand}`;
             
-            // IMPORTANT: Using 'barcode' column, NOT 'id'
             const { error: insError } = await supabase.from('products').insert({
               barcode: newBarcode,
               accpac_code: accpacRaw || null,
@@ -374,6 +365,7 @@ export default function Dashboard({ lastUpdated }) {
         }
       }
 
+      setImportLoading(false); // UNLOCK UI
       alert(`Import Complete.\nSuccessfully Processed: ${processedCount}\nErrors: ${errorCount}`);
       setIsImportModalOpen(false);
       fetchInventory();
@@ -500,7 +492,7 @@ export default function Dashboard({ lastUpdated }) {
         {/* Pagination Controls */}
         <div className="p-4 border-t flex justify-between items-center bg-gray-50 rounded-b-xl">
            <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-             Page {currentPage}
+             Page {currentPage} of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
            </span>
            <div className="flex gap-2">
              <button 
@@ -513,7 +505,8 @@ export default function Dashboard({ lastUpdated }) {
              <button 
                className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
                onClick={handleNext} 
-               disabled={products.length < ITEMS_PER_PAGE || loading}
+               // Disable if Current items displayed >= Total items in DB
+               disabled={(currentPage * ITEMS_PER_PAGE) >= totalCount || loading}
              >
                Next »
              </button>
@@ -735,24 +728,38 @@ export default function Dashboard({ lastUpdated }) {
 
       {isImportModalOpen && (
         <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg text-gray-700 mb-4">Import AccPac CSV</h3>
-            <p className="text-xs text-gray-500 mb-4">
-                CSV Format must be: <strong>ACCPAC ITEM CODE, ITEM DESCRIPTION</strong><br/>
-                System will auto-generate barcodes if the item is new.
-                Existing AccPac codes will have their Names updated.
-            </p>
+          <div className="modal-box relative">
             
-            <input 
-                type="file" 
-                accept=".csv"
-                onChange={handleCSVImport}
-                className="file-input file-input-bordered file-input-primary w-full" 
-            />
+            {/* Loading Overlay */}
+            {importLoading ? (
+               <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                  <span className="loading loading-spinner loading-lg text-primary"></span>
+                  <div className="text-center">
+                    <h3 className="font-bold text-lg text-gray-700">Importing Data...</h3>
+                    <p className="text-sm text-gray-500">Please do not close this window.</p>
+                  </div>
+               </div>
+            ) : (
+               /* Standard Form */
+               <>
+                <h3 className="font-bold text-lg text-gray-700 mb-4">Import AccPac CSV</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                    CSV Format must be: <strong>ACCPAC ITEM CODE, ITEM DESCRIPTION</strong><br/>
+                    System will auto-generate barcodes if the item is new.
+                </p>
+                
+                <input 
+                    type="file" 
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    className="file-input file-input-bordered file-input-primary w-full" 
+                />
 
-            <div className="modal-action">
-                <button className="btn btn-ghost" onClick={() => setIsImportModalOpen(false)}>Cancel</button>
-            </div>
+                <div className="modal-action">
+                    <button className="btn btn-ghost" onClick={() => setIsImportModalOpen(false)}>Cancel</button>
+                </div>
+               </>
+            )}
           </div>
         </div>
       )}
