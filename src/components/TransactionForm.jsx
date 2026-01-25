@@ -209,17 +209,21 @@ export default function TransactionForm({ onSuccess }) {
     if (headerData.type === 'ISSUANCE_RETURN' && itemToRemove.originalTransactionId) {
         const restoredItem = {
             id: itemToRemove.originalTransactionId,
-            product_id: itemToRemove.barcode, // maintain original structure
+            product_id: itemToRemove.barcode,
             displayBarcode: itemToRemove.barcode,
             product_name: itemToRemove.itemName,
             displayName: itemToRemove.itemName,
             
-            // FIX: Restore price data so re-adding doesn't result in NaN
+            // FIX 1: Restore price data so re-adding doesn't result in NaN
             price: itemToRemove.priceOverride, 
             price_snapshot: itemToRemove.priceOverride,
 
-            qty: itemToRemove.originalReceiptQty, // Original total
-            remainingQty: itemToRemove.maxQty // What was available before we added it to queue
+            // FIX 2: CRITICAL - Restore the Reference Number
+            // This ensures if we re-add it to the queue, it still knows which receipt it belongs to.
+            reference_number: itemToRemove.refNumber,
+
+            qty: itemToRemove.originalReceiptQty, 
+            remainingQty: itemToRemove.maxQty 
         };
         setPastTransactionItems(prev => [...prev, restoredItem]);
     }
