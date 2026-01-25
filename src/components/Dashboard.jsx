@@ -540,6 +540,18 @@ export default function Dashboard({ lastUpdated }) {
                     />
                 </div>
 
+                {/* AccPac Field in Edit Mode */}
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">AccPac Code</label>
+                    <input 
+                        type="text" 
+                        className="input input-bordered w-full font-mono text-blue-900" 
+                        placeholder="Optional"
+                        value={editForm.accpacCode}
+                        onChange={e => setEditForm({...editForm, accpacCode: e.target.value.toUpperCase()})}
+                    />
+                </div>
+
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">Location / Rack</label>
                     <input 
@@ -568,6 +580,7 @@ export default function Dashboard({ lastUpdated }) {
                         <input 
                             type="number" 
                             min="0"
+                            step="1"
                             className="input input-bordered w-full" 
                             value={editForm.minStockLevel}
                             onChange={e => setEditForm({...editForm, minStockLevel: e.target.value})}
@@ -675,12 +688,15 @@ export default function Dashboard({ lastUpdated }) {
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Min Alert Level</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min Alert Level *</label>
                         <input 
-                            type="number" min="0"
+                            type="number" 
+                            min="0"
+                            step="1"
                             className="input input-bordered w-full" 
                             value={newItemForm.minStockLevel}
                             onChange={e => setNewItemForm({...newItemForm, minStockLevel: e.target.value})}
+                            required
                         />
                     </div>
                 </div>

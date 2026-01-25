@@ -210,7 +210,9 @@ export default function TransactionForm({ onSuccess }) {
         const restoredItem = {
             id: itemToRemove.originalTransactionId,
             product_id: itemToRemove.barcode,
+            displayBarcode: itemToRemove.barcode,
             product_name: itemToRemove.itemName,
+            displayName: itemToRemove.itemName,
             qty: itemToRemove.originalReceiptQty,
             remainingQty: itemToRemove.maxQty
         };
