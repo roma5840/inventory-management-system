@@ -9,6 +9,7 @@ import TransactionForm from "../components/TransactionForm";
 import AdminInvite from "../components/AdminInvite";
 import Dashboard from "../components/Dashboard";
 import TransactionHistory from "../components/TransactionHistory";
+import ReceiptLookup from "../components/ReceiptLookup";
 
 export default function DashboardPage() {
   const { userRole } = useAuth();
@@ -49,6 +50,8 @@ export default function DashboardPage() {
                {/* Pass handleRefresh as onSuccess callback */}
                <TransactionForm onSuccess={handleRefresh} />
                
+               <ReceiptLookup />
+
                <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
                  <h3 className="card-title text-gray-700 mb-2">Instructions</h3>
                  <ul className="text-sm list-disc list-inside text-gray-600 space-y-2">
