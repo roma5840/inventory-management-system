@@ -77,7 +77,7 @@ export default function TransactionForm({ onSuccess }) {
         .maybeSingle(); 
 
       if (data) {
-        setIsNewItem(false); 
+        setIsNewItem(false); // Found
         setCurrentScan(prev => ({
           ...prev, 
           barcode: data.barcode,
@@ -90,11 +90,16 @@ export default function TransactionForm({ onSuccess }) {
         }));
         setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
       } else {
-        // NOT FOUND: STRICT MODE
-        setIsNewItem(null); 
-        alert("Error: Item not found in database.\nPlease register new products in the Inventory Page.");
-        setCurrentScan(prev => ({ ...prev, barcode: "" })); 
-        if(barcodeRef.current) barcodeRef.current.focus();
+        // NOT FOUND: Update state for UI feedback instead of Alerting
+        setIsNewItem(true); 
+        // Clear details but keep the barcode so user can correct it
+        setCurrentScan(prev => ({ 
+             ...prev, 
+             itemName: "", 
+             priceOverride: "", 
+             unitCost: "", 
+             location: ""
+        })); 
       }
     } catch (err) {
       console.error("Lookup failed", err);
@@ -153,7 +158,8 @@ export default function TransactionForm({ onSuccess }) {
   // Add to Queue & Reset
   const handleAddToQueue = (e) => {
     e.preventDefault();
-    if (!currentScan.barcode) return;
+    // GUARD: Only allow adding if barcode exists AND item is explicitly found (false)
+    if (!currentScan.barcode || isNewItem !== false) return;
     
     const newItem = { 
       ...currentScan, 
@@ -181,6 +187,7 @@ export default function TransactionForm({ onSuccess }) {
     // Refocus scanner
     if(barcodeRef.current) barcodeRef.current.focus();
   };
+
 
 
   // Handle Enter Key
@@ -769,12 +776,18 @@ export default function TransactionForm({ onSuccess }) {
                 ) : (
                     /* --- STANDARD SCANNER UI (Receiving/Issuance) --- */
                     <>
-                        <div className="h-6 mb-2">
-                             {/* Removed "New Item" Indicator logic - strictly existing items only */}
+                        <div className="h-6 mb-2 flex items-center justify-between">
+                             {/* FEEDBACK INDICATORS */}
                             {isNewItem === false && (
                                 <span className="text-xs font-bold uppercase tracking-wider text-green-700 flex items-center gap-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
                                     Item Found
+                                </span>
+                            )}
+                            {isNewItem === true && (
+                                <span className="text-xs font-bold uppercase tracking-wider text-red-600 flex items-center gap-1 animate-pulse">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                                    No Records Found
                                 </span>
                             )}
                         </div>
@@ -786,7 +799,11 @@ export default function TransactionForm({ onSuccess }) {
                                     name="barcodeField"
                                     ref={barcodeRef}
                                     type="text" 
-                                    className="input input-sm input-bordered w-full font-mono text-blue-800 font-bold uppercase" 
+                                    // Visual cues: Red border if not found, Green if found
+                                    className={`input input-sm input-bordered w-full font-mono font-bold uppercase transition-colors
+                                        ${isNewItem === true ? 'border-red-400 text-red-600 focus:border-red-500' : ''}
+                                        ${isNewItem === false ? 'border-green-500 text-green-800' : 'text-blue-800'}
+                                    `}
                                     value={currentScan.barcode}
                                     onChange={handleBarcodeChange} 
                                     onKeyDown={handleKeyDown} 
@@ -818,7 +835,7 @@ export default function TransactionForm({ onSuccess }) {
                                         value={currentScan.unitCost}
                                         onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="0.00"
+                                        placeholder="Cost"
                                     />
                                 </div>
                             )}
@@ -857,9 +874,14 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
                         </div>
-                        {/* Add Button Row - Moved down for cleaner layout */}
+                        {/* Add Button Row - Disabled until valid item found */}
                         <div className="mt-2">
-                            <button onClick={handleAddToQueue} className="btn btn-sm btn-secondary w-full">
+                            <button 
+                                onClick={handleAddToQueue} 
+                                // DISABLE if no barcode OR item not explicitly found
+                                disabled={!currentScan.barcode || isNewItem !== false}
+                                className="btn btn-sm btn-secondary w-full"
+                            >
                                 ADD TO QUEUE
                             </button>
                         </div>
