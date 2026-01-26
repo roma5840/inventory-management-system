@@ -835,7 +835,7 @@ export default function TransactionForm({ onSuccess }) {
                                         value={currentScan.unitCost}
                                         onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="Cost"
+                                        placeholder="0.00"
                                     />
                                 </div>
                             )}
