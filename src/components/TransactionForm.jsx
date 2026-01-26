@@ -787,23 +787,26 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
 
-                            {/* COST FIELD: Visible Only in RECEIVING */}
-                            {headerData.type === 'RECEIVING' && (
+                            {/* COST FIELD: Editable in RECEIVING, Read-Only in PULL_OUT */}
+                            {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
                                 <div className="col-span-2">
                                     <label className="label text-[10px] font-bold text-orange-600 uppercase">Unit Cost</label>
                                     <input 
                                         type="number" min="0" step="0.01"
-                                        className="input input-sm input-bordered w-full font-mono text-orange-800 border-orange-200 focus:border-orange-500"
+                                        readOnly={headerData.type !== 'RECEIVING'} // Lock if not Receiving
+                                        className={`input input-sm input-bordered w-full font-mono text-orange-800 border-orange-200 
+                                            ${headerData.type === 'RECEIVING' ? 'focus:border-orange-500 bg-white' : 'bg-orange-50 cursor-not-allowed'}
+                                        `}
                                         value={currentScan.unitCost}
                                         onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="0.00"
+                                        placeholder="Cost"
                                     />
                                 </div>
                             )}
 
                             {/* PRICE FIELD: Editable in RECEIVING, ReadOnly otherwise */}
-                            <div className={headerData.type === 'RECEIVING' ? "col-span-2" : "col-span-4"}>
+                            <div className={['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? "col-span-2" : "col-span-4"}>
                                 <label className="label text-[10px] font-bold text-gray-400 uppercase">
                                     {headerData.type === 'RECEIVING' ? "SRP" : "Price"}
                                 </label>
@@ -853,8 +856,8 @@ export default function TransactionForm({ onSuccess }) {
                         <tr className="bg-gray-100">
                             <th>Barcode</th>
                             <th>Qty</th>
-                            {headerData.type === 'RECEIVING' && <th className="text-orange-600">Cost</th>}
-                            {headerData.type === 'RECEIVING' ? <th>Sell Price</th> : <th>Price/Loc</th>}
+                            {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && <th className="text-orange-600">Cost</th>}
+                            {headerData.type === 'RECEIVING' ? <th>Price</th> : <th>Price/Loc</th>}
                             <th className="text-right">Action</th>
                         </tr>
                     </thead>
@@ -881,8 +884,8 @@ export default function TransactionForm({ onSuccess }) {
                                         )}
                                     </td>
                                     
-                                    {/* COST COLUMN (Receiving Only) */}
-                                    {headerData.type === 'RECEIVING' && (
+                                    {/* COST COLUMN */}
+                                    {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
                                         <td className="font-mono text-orange-700">
                                             ₱{Number(item.unitCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>

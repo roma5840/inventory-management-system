@@ -203,15 +203,47 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           {first.void_reason && <div className="text-[10px] font-bold text-red-600 mt-1">Void Reason: {first.void_reason}</div>}
                        </td>
 
-                       {/* Column 4: Item Summary */}
+                      {/* Column 4: Item Summary */}
                        <td className="align-top py-3">
-                          <ul className="space-y-1">
+                          <ul className="space-y-2">
                              {items.map(i => (
-                               <li key={i.id} className="flex justify-between text-[10px] border-b border-dashed border-gray-200 pb-1">
-                                  <span className="truncate max-w-[150px]">{i.product_name_snapshot || "Item"}</span>
-                                  <span className="font-mono">
-                                    {i.qty} x {Number(i.price_snapshot).toFixed(2)}
-                                  </span>
+                               <li key={i.id} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
+                                  {/* Row Top: Name and Qty */}
+                                  <div className="flex justify-between font-medium">
+                                      <span className="truncate max-w-[150px]" title={i.product_name_snapshot}>
+                                        {i.product_name_snapshot || "Item"}
+                                      </span>
+                                      <span>
+                                          {i.qty} x ₱{Number(i.price_snapshot).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      </span>
+                                  </div>
+
+                                  {/* Row Bottom: COST DATA (Visible to Admin Only) */}
+                                  {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                                    <div className="flex justify-end gap-2 mt-0.5 font-mono">
+                                        
+                                        {/* CASE 1: RECEIVING (Show Total Cost of this batch) */}
+                                        {first.type === 'RECEIVING' && (
+                                            <span className="text-orange-700 bg-orange-50 px-1 rounded">
+                                                Cost: ₱{Number(i.unit_cost_snapshot).toFixed(2)} ea
+                                            </span>
+                                        )}
+
+                                        {/* CASE 2: PULL OUT (Show Asset Value Removed) */}
+                                        {first.type === 'PULL_OUT' && (
+                                            <span className="text-red-700 bg-red-50 px-1 rounded">
+                                                Asset Val: ₱{Number(i.unit_cost_snapshot).toFixed(2)} ea
+                                            </span>
+                                        )}
+
+                                        {/* CASE 3: ISSUANCE (Show Profit Margin) */}
+                                        {(first.type === 'ISSUANCE' || first.type === 'ISSUANCE_RETURN') && i.unit_cost_snapshot > 0 && (
+                                            <span className="text-gray-400">
+                                                (GP: ₱{(i.price_snapshot - i.unit_cost_snapshot).toFixed(2)})
+                                            </span>
+                                        )}
+                                    </div>
+                                  )}
                                </li>
                              ))}
                           </ul>

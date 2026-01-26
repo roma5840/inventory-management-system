@@ -18,7 +18,7 @@ export default function Dashboard({ lastUpdated }) {
 
   // Edit Modal State
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", price: "", minStockLevel: "", accpacCode: "" });
+  const [editForm, setEditForm] = useState({ name: "", price: "", unitCost: "", minStockLevel: "", accpacCode: "" });
   const [updateLoading, setUpdateLoading] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -29,6 +29,7 @@ export default function Dashboard({ lastUpdated }) {
     accpacCode: "",
     name: "", 
     price: "", 
+    unitCost: "",
     minStockLevel: "10",
     location: "",
     initialStock: "0" 
@@ -70,6 +71,7 @@ export default function Dashboard({ lastUpdated }) {
             accpac_code: sanitizedAccPac,
             name: sanitizedName,
             price: Number(newItemForm.price),
+            unit_cost: Number(newItemForm.unitCost),
             min_stock_level: Number(newItemForm.minStockLevel),
             current_stock: Number(newItemForm.initialStock), 
             location: sanitizedLocation,
@@ -113,7 +115,7 @@ export default function Dashboard({ lastUpdated }) {
     
     let query = supabase
         .from('products')
-        .select('internal_id, id:barcode, accpac_code, name, price, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
+        .select('internal_id, id:barcode, accpac_code, name, price, unit_cost, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
     if (debouncedTerm.trim()) {
         query = query.or(`name.ilike.%${debouncedTerm}%,barcode.ilike.%${debouncedTerm}%,accpac_code.ilike.%${debouncedTerm}%`);
@@ -130,7 +132,7 @@ export default function Dashboard({ lastUpdated }) {
         console.error(error);
     } else {
         setProducts(data || []);
-        setTotalCount(count || 0); // Save the total count
+        setTotalCount(count || 0); 
     }
     
     setLoading(false);
@@ -168,12 +170,11 @@ const handleNext = () => {
   }
 
   const openEditModal = (product) => {
-    // product.id now holds the Barcode text (due to the alias in fetchInventory)
-    // product.internal_id holds the UUID
     setEditingProduct(product);
     setEditForm({
         name: product.name,
         price: product.price,
+        unitCost: product.unit_cost || 0,
         minStockLevel: product.minStockLevel,
         location: product.location || "",
         accpacCode: product.accpac_code || ""
@@ -214,13 +215,14 @@ const handleNext = () => {
                 barcode: sanitizedBarcode, 
                 name: sanitizedName,
                 price: Number(editForm.price),
+                unit_cost: Number(editForm.unitCost),
                 min_stock_level: Number(editForm.minStockLevel),
                 location: sanitizedLocation,
                 accpac_code: sanitizedAccPac,
                 search_keywords: sanitizedName.toLowerCase().split(/\s+/),
                 last_updated: new Date()
             })
-            .eq('internal_id', editingProduct.internal_id); 
+            .eq('internal_id', editingProduct.internal_id);
 
         if (error) throw error;
         
@@ -429,6 +431,7 @@ const handleNext = () => {
                 <th>AccPac Code</th>
                 <th>Product Name</th>
                 <th>Location</th>
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right text-orange-600">Cost</th>}
                 <th className="text-right">Price</th>
                 <th className="text-center">Stock</th>
                 <th className="text-center">Status</th>
@@ -455,6 +458,9 @@ const handleNext = () => {
                     </td>
                     <td className="font-semibold text-gray-700">{p.name}</td>
                     <td className="text-xs text-gray-500">{p.location || "-"}</td>
+                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                        <td className="text-right font-mono text-orange-700">₱{p.unit_cost?.toLocaleString()}</td>
+                    )}
                     <td className="text-right font-mono">₱{p.price.toLocaleString()}</td>
                     <td className="text-center">
                       <span className={`font-bold ${p.currentStock <= p.minStockLevel ? 'text-red-600' : 'text-gray-700'}`}>
