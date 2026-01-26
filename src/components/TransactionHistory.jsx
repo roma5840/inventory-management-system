@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useInventory } from "../hooks/useInventory";
 
-export default function TransactionHistory({ lastUpdated }) {
+export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const { userRole } = useAuth();
   const { voidTransaction, loading: voidLoading } = useInventory();
   
@@ -75,6 +75,10 @@ export default function TransactionHistory({ lastUpdated }) {
       alert("Transaction Voided Successfully.");
       fetchTransactions();
       if (onUpdate) onUpdate(); 
+      await supabase.channel('app_updates').send({
+          type: 'broadcast', event: 'inventory_update', payload: {} 
+      });
+      
     } else {
       alert("Error: " + result.error);
     }
