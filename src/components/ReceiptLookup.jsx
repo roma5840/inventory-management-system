@@ -36,7 +36,7 @@ export default function ReceiptLookup() {
             const { data: userData } = await supabase
                 .from('authorized_users')
                 .select('full_name')
-                .eq('auth_uid', header.user_id) // Matches Transaction User ID to Auth Table
+                .eq('auth_uid', header.user_id)
                 .maybeSingle();
             
             if (userData?.full_name) {
@@ -49,20 +49,22 @@ export default function ReceiptLookup() {
         const formattedReceipt = {
           refNumber: header.reference_number,
           type: header.type,
+          transactionMode: header.transaction_mode,
           date: new Date(header.timestamp).toLocaleString(),
           studentName: header.student_name,
           studentId: header.student_id,
           course: header.course,
           yearLevel: header.year_level,
           supplier: header.supplier,
-          staffName: resolvedStaffName, // Now uses the fetched name
+          staffName: resolvedStaffName,
           remarks: header.remarks,
           isVoided: isVoided,
           voidReason: header.void_reason,
           items: data.map(item => ({
              itemName: item.product_name_snapshot || item.product_name,
              qty: item.qty,
-             price: item.price_snapshot !== null ? item.price_snapshot : 0
+             price: item.price_snapshot !== null ? item.price_snapshot : 0,
+             cost: item.unit_cost_snapshot !== null ? item.unit_cost_snapshot : 0
           }))
         };
         setReceiptData(formattedReceipt);
@@ -141,6 +143,10 @@ export default function ReceiptLookup() {
                     <p><strong>Ref #:</strong> {receiptData.refNumber}</p>
                     <p><strong>Type:</strong> {receiptData.type}</p>
                     
+                    {['ISSUANCE', 'ISSUANCE_RETURN'].includes(receiptData.type) && receiptData.transactionMode && (
+                        <p><strong>Mode:</strong> {receiptData.transactionMode}</p>
+                    )}
+
                     {receiptData.studentName && (
                         <>
                             <p><strong>Student:</strong> {receiptData.studentName}</p>
@@ -167,6 +173,12 @@ export default function ReceiptLookup() {
                         <tr>
                             <th className="text-left pb-1">Item</th>
                             <th className="text-center pb-1">Qty</th>
+                            {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
+                                <>
+                                    <th className="text-right pb-1">Cost</th>
+                                    <th className="text-right pb-1">SRP</th>
+                                </>
+                            )}
                             <th className="text-right pb-1">Amt</th>
                         </tr>
                     </thead>
@@ -174,9 +186,22 @@ export default function ReceiptLookup() {
                         {receiptData.items.map((item, idx) => (
                             <tr key={idx}>
                                 <td className="py-1">{item.itemName.substring(0, 15)}</td>
-                                <td className="text-center">{item.qty}</td>
+                                <td className="text-center">
+                                    {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
+                                </td>
+                                
+                                {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
+                                    <>
+                                        <td className="text-right">{Number(item.cost).toFixed(2)}</td>
+                                        <td className="text-right">{Number(item.price).toFixed(2)}</td>
+                                    </>
+                                )}
+
                                 <td className="text-right">
-                                    {(item.price * item.qty).toFixed(2)}
+                                     {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) 
+                                        ? (item.cost * item.qty).toFixed(2)
+                                        : (item.price * item.qty).toFixed(2)
+                                    }
                                 </td>
                             </tr>
                         ))}

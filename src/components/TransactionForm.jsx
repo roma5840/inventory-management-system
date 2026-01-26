@@ -256,11 +256,15 @@ export default function TransactionForm({ onSuccess }) {
           course: finalHeaderData.course,
           yearLevel: finalHeaderData.yearLevel,
           type: finalHeaderData.type,
+          transactionMode: finalHeaderData.transactionMode,
           supplier: finalHeaderData.supplier, 
           remarks: finalHeaderData.remarks,   
           staffName: currentStaffName,        
           date: new Date().toLocaleString(),
-          items: [...queue]
+          items: queue.map(q => ({
+            ...q,
+            unitCost: q.unitCost // Ensure cost is captured for Receiving/Pull Out
+          }))
       });
 
       // 2. CLEAR FORM
@@ -279,7 +283,7 @@ export default function TransactionForm({ onSuccess }) {
       // Reset Scanner
       setIsNewStudent(null);
       setCurrentScan({
-        barcode: "", qty: 1, priceOverride: "", itemName: "", category: "TEXTBOOK", location: "", 
+        barcode: "", qty: 1, priceOverride: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
       });
       if(barcodeRef.current) barcodeRef.current.focus();
 
@@ -940,6 +944,11 @@ export default function TransactionForm({ onSuccess }) {
                     <p><strong>Ref #:</strong> {receiptData.refNumber}</p>
                     <p><strong>Type:</strong> {receiptData.type}</p>
                     
+                    {/* Transaction Mode (Issuance/Return) */}
+                    {['ISSUANCE', 'ISSUANCE_RETURN'].includes(receiptData.type) && receiptData.transactionMode && (
+                        <p><strong>Mode:</strong> {receiptData.transactionMode}</p>
+                    )}
+                    
                     {/* Student Info (Issuance/Return) */}
                     {receiptData.studentName && (
                         <>
@@ -954,10 +963,8 @@ export default function TransactionForm({ onSuccess }) {
                         <p><strong>Supplier:</strong> {receiptData.supplier}</p>
                     )}
 
-                    {/* Staff Info (Issuance/Return) */}
-                    {['ISSUANCE', 'ISSUANCE_RETURN'].includes(receiptData.type) && (
-                        <p><strong>Staff:</strong> {receiptData.staffName}</p>
-                    )}
+                    {/* Staff Info - Show for ALL types */}
+                    <p><strong>Staff:</strong> {receiptData.staffName}</p>
 
                     {/* Remarks */}
                     {receiptData.remarks && (
@@ -970,6 +977,12 @@ export default function TransactionForm({ onSuccess }) {
                         <tr>
                             <th className="text-left pb-1">Item</th>
                             <th className="text-center pb-1">Qty</th>
+                            {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
+                                <>
+                                    <th className="text-right pb-1">Cost</th>
+                                    <th className="text-right pb-1">SRP</th>
+                                </>
+                            )}
                             <th className="text-right pb-1">Amt</th>
                         </tr>
                     </thead>
@@ -980,12 +993,25 @@ export default function TransactionForm({ onSuccess }) {
                                 <td className="text-center">
                                     {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
                                 </td>
+                                
+                                {/* Cost/Price Columns for Receiving/PullOut */}
+                                {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
+                                    <>
+                                        <td className="text-right">{Number(item.unitCost).toFixed(2)}</td>
+                                        <td className="text-right">{Number(item.priceOverride).toFixed(2)}</td>
+                                    </>
+                                )}
+
                                 <td className="text-right">
-                                    {item.priceOverride > 0 
-                                      ? (receiptData.type === 'ISSUANCE_RETURN' 
-                                          ? `(${(item.priceOverride * item.qty).toFixed(2)})` 
-                                          : (item.priceOverride * item.qty).toFixed(2))
-                                      : '-'}
+                                    {/* Logic: Receiving/PullOut = Cost * Qty, Others = Price * Qty */}
+                                    {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) 
+                                        ? (item.unitCost * item.qty).toFixed(2)
+                                        : (item.priceOverride > 0 
+                                            ? (receiptData.type === 'ISSUANCE_RETURN' 
+                                                ? `(${(item.priceOverride * item.qty).toFixed(2)})` 
+                                                : (item.priceOverride * item.qty).toFixed(2))
+                                            : '-')
+                                    }
                                 </td>
                             </tr>
                         ))}
