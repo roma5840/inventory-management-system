@@ -298,11 +298,25 @@ export default function TransactionForm({ onSuccess }) {
 
   // Reset status when user manually types in barcode field
   const handleBarcodeChange = (e) => {
-      const newVal = e.target.value;
+      const input = e.target;
+      // 1. Capture current cursor position provided by the browser event
+      const cursorStart = input.selectionStart;
+      const cursorEnd = input.selectionEnd;
+
+      // 2. Force Uppercase
+      const newVal = input.value.toUpperCase();
+      
       setCurrentScan(prev => ({ ...prev, barcode: newVal }));
       
+      // 3. Restore cursor position after React re-renders
+      // requestAnimationFrame ensures this runs after the DOM update
+      window.requestAnimationFrame(() => {
+          if (input) {
+              input.setSelectionRange(cursorStart, cursorEnd);
+          }
+      });
+      
       // If user changes text, reset "New/Found" status immediately
-      // This ensures we don't show old data while they are typing a new barcode
       if (isNewItem !== null) {
           setIsNewItem(null);
       }
@@ -772,7 +786,7 @@ export default function TransactionForm({ onSuccess }) {
                                     name="barcodeField"
                                     ref={barcodeRef}
                                     type="text" 
-                                    className="input input-sm input-bordered w-full font-mono text-blue-800 font-bold" 
+                                    className="input input-sm input-bordered w-full font-mono text-blue-800 font-bold uppercase" 
                                     value={currentScan.barcode}
                                     onChange={handleBarcodeChange} 
                                     onKeyDown={handleKeyDown} 
