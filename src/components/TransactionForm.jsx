@@ -42,6 +42,7 @@ export default function TransactionForm({ onSuccess }) {
     barcode: "",
     qty: 1,
     priceOverride: "",
+    unitCost: "",
     itemName: "",     
     category: "TEXTBOOK", 
     location: "", 
@@ -69,10 +70,9 @@ export default function TransactionForm({ onSuccess }) {
     if (!barcodeToSearch) return;
 
     try {
-      // Search by barcode column
       const { data, error } = await supabase
         .from('products')
-        .select('internal_id, barcode, name, price, location, accpac_code') 
+        .select('internal_id, barcode, name, price, unit_cost, location, accpac_code') 
         .eq('barcode', barcodeToSearch)
         .maybeSingle(); 
 
@@ -81,11 +81,9 @@ export default function TransactionForm({ onSuccess }) {
         setCurrentScan(prev => ({
           ...prev, 
           barcode: data.barcode,
-          // We don't strictly need internal_id in currentScan state for display,
-          // but we might want it if we were doing specific logic. 
-          // For now, the backend lookup handles the ID link based on the barcode sent.
           itemName: data.name || "", 
-          priceOverride: data.price || "", 
+          priceOverride: data.price || "",
+          unitCost: data.unit_cost || "",
           location: data.location || "",
           accpacCode: data.accpac_code || "",
           qty: 1
@@ -93,10 +91,9 @@ export default function TransactionForm({ onSuccess }) {
         setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
       } else {
         // NOT FOUND: STRICT MODE
-        // We do NOT allow creation here anymore.
-        setIsNewItem(null); // Reset status
+        setIsNewItem(null); 
         alert("Error: Item not found in database.\nPlease register new products in the Inventory Page.");
-        setCurrentScan(prev => ({ ...prev, barcode: "" })); // Clear bad input
+        setCurrentScan(prev => ({ ...prev, barcode: "" })); 
         if(barcodeRef.current) barcodeRef.current.focus();
       }
     } catch (err) {
@@ -161,7 +158,8 @@ export default function TransactionForm({ onSuccess }) {
     const newItem = { 
       ...currentScan, 
       priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
-      accpacCode: currentScan.accpacCode, // Pass it here
+      unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost, // Pass Cost
+      accpacCode: currentScan.accpacCode, 
       id: Date.now() 
     };
 
@@ -173,11 +171,12 @@ export default function TransactionForm({ onSuccess }) {
       barcode: "",
       qty: 1,
       priceOverride: "",
+      unitCost: "", // Reset Cost
       itemName: "",
       location: ""
     }));
     
-    setIsNewItem(null); // Reset to Unknown status
+    setIsNewItem(null); 
     
     // Refocus scanner
     if(barcodeRef.current) barcodeRef.current.focus();
@@ -457,7 +456,7 @@ export default function TransactionForm({ onSuccess }) {
     setIsNewItem(null);
     
     setCurrentScan({
-        barcode: "", qty: 1, priceOverride: "", itemName: "", category: "TEXTBOOK", location: "", 
+        barcode: "", qty: 1, priceOverride: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
     });
     
     if(barcodeRef.current) barcodeRef.current.focus();
@@ -788,18 +787,33 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
 
-                            {/* Modified Price Field: Editable for RECEIVING AND PULL_OUT */}
-                            <div className="col-span-2">
-                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Price</label>
+                            {/* COST FIELD: Visible Only in RECEIVING */}
+                            {headerData.type === 'RECEIVING' && (
+                                <div className="col-span-2">
+                                    <label className="label text-[10px] font-bold text-orange-600 uppercase">Unit Cost</label>
+                                    <input 
+                                        type="number" min="0" step="0.01"
+                                        className="input input-sm input-bordered w-full font-mono text-orange-800 border-orange-200 focus:border-orange-500"
+                                        value={currentScan.unitCost}
+                                        onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
+                                        onKeyDown={handleKeyDown}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            )}
+
+                            {/* PRICE FIELD: Editable in RECEIVING, ReadOnly otherwise */}
+                            <div className={headerData.type === 'RECEIVING' ? "col-span-2" : "col-span-4"}>
+                                <label className="label text-[10px] font-bold text-gray-400 uppercase">
+                                    {headerData.type === 'RECEIVING' ? "SRP" : "Price"}
+                                </label>
                                 <input 
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    /* LOGIC CHANGE: Unlock for Receiving OR Pull Out */
-                                    readOnly={!['RECEIVING', 'PULL_OUT'].includes(headerData.type)}
+                                    readOnly={headerData.type !== 'RECEIVING'}
                                     className={`input input-sm input-bordered w-full font-mono ${
-                                        /* VISUAL CHANGE: Blue text for editable modes */
-                                        ['RECEIVING', 'PULL_OUT'].includes(headerData.type)
+                                        headerData.type === 'RECEIVING'
                                             ? 'bg-white border-blue-300 text-blue-800' 
                                             : 'bg-gray-100 text-gray-500 cursor-not-allowed'
                                     }`}
@@ -821,12 +835,12 @@ export default function TransactionForm({ onSuccess }) {
                                     onKeyDown={handleKeyDown}
                                 />
                             </div>
-                            
-                            <div className="col-span-2">
-                                <button onClick={handleAddToQueue} className="btn btn-sm btn-secondary w-full">
-                                    ADD
-                                </button>
-                            </div>
+                        </div>
+                        {/* Add Button Row - Moved down for cleaner layout */}
+                        <div className="mt-2">
+                            <button onClick={handleAddToQueue} className="btn btn-sm btn-secondary w-full">
+                                ADD TO QUEUE
+                            </button>
                         </div>
                     </>
                 )}
@@ -839,13 +853,14 @@ export default function TransactionForm({ onSuccess }) {
                         <tr className="bg-gray-100">
                             <th>Barcode</th>
                             <th>Qty</th>
-                            {headerData.type === 'RECEIVING' && <th>Price/Loc</th>}
+                            {headerData.type === 'RECEIVING' && <th className="text-orange-600">Cost</th>}
+                            {headerData.type === 'RECEIVING' ? <th>Sell Price</th> : <th>Price/Loc</th>}
                             <th className="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {queue.length === 0 ? (
-                            <tr><td colSpan="4" className="text-center py-8 text-gray-300 italic">Queue is empty. Scan items to add.</td></tr>
+                            <tr><td colSpan="5" className="text-center py-8 text-gray-300 italic">Queue is empty. Scan items to add.</td></tr>
                         ) : (
                             queue.map((item, index) => (
                                 <tr key={item.id} className="hover">
@@ -865,10 +880,17 @@ export default function TransactionForm({ onSuccess }) {
                                             </span>
                                         )}
                                     </td>
-                                    {/* Always show price now, as it is snapshotted */}
+                                    
+                                    {/* COST COLUMN (Receiving Only) */}
+                                    {headerData.type === 'RECEIVING' && (
+                                        <td className="font-mono text-orange-700">
+                                            ₱{Number(item.unitCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
+                                    )}
+
                                     <td className="font-mono">
                                         ₱{Number(item.priceOverride).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        {item.location && <span className="text-[10px] text-gray-400 ml-2">({item.location})</span>}
+                                        {item.location && headerData.type !== 'RECEIVING' && <span className="text-[10px] text-gray-400 ml-2">({item.location})</span>}
                                     </td>
                                     <td className="text-right">
                                         <button onClick={() => handleRemoveItem(item.id)} className="btn btn-ghost btn-xs text-red-500">x</button>
