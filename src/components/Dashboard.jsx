@@ -405,7 +405,7 @@ const handleNext = () => {
                       onClick={() => setIsImportModalOpen(true)}
                       className="btn btn-sm btn-outline btn-success shadow-sm"
                     >
-                      Upload CSV
+                      Import CSV
                     </button>
                   </div>
               )}
