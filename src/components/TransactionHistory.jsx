@@ -22,20 +22,46 @@ export default function TransactionHistory({ lastUpdated }) {
     const from = (page - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
-    const { data, count, error } = await supabase
-      .from('transactions')
-      .select('*', { count: 'exact' }) // Request total row count
-      .order('timestamp', { ascending: false })
-      .range(from, to);
+    try {
+      // 1. Fetch Transactions
+      const { data: txData, count, error } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact' })
+        .order('timestamp', { ascending: false })
+        .range(from, to);
 
-    if (error) {
-      console.error(error);
-    } else {
-      setTransactions(data || []);
+      if (error) throw error;
+
+      // 2. Fetch User Names (Manual Join)
+      // We fetch the directory of users to map UUIDs to Names
+      const userIds = [...new Set(txData.map(t => t.user_id).filter(Boolean))];
+      let userMap = {};
+      
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
+          .from('authorized_users')
+          .select('auth_uid, full_name, email')
+          .in('auth_uid', userIds);
+          
+        users?.forEach(u => {
+            userMap[u.auth_uid] = u.full_name || u.email;
+        });
+      }
+
+      // 3. Merge Data
+      const enrichedData = txData.map(t => ({
+        ...t,
+        staff_name: userMap[t.user_id] || 'Unknown Staff'
+      }));
+
+      setTransactions(enrichedData || []);
       setTotalCount(count || 0);
+
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleVoidClick = async (refNo) => {
@@ -136,16 +162,41 @@ export default function TransactionHistory({ lastUpdated }) {
                           </span>
                        </td>
 
-                       {/* Column 3: Context (Student/Supplier) */}
+                       {/* Column 3: Context (Student/Supplier/Staff/Remarks) */}
                        <td className="align-top py-3">
+                          {/* Student Info */}
                           {first.student_name && (
-                             <div>
-                               <div className="font-bold">{first.student_name}</div>
-                               <div className="text-[10px]">{first.course} {first.year_level}</div>
+                             <div className="mb-1">
+                               <div className="font-bold text-xs">{first.student_name}</div>
+                               <div className="text-[10px] text-gray-500">{first.course} {first.year_level}</div>
                              </div>
                           )}
-                          {first.supplier && <div className="text-xs">Supp: {first.supplier}</div>}
-                          {first.void_reason && <div className="text-[10px] italic text-red-600">Reason: {first.void_reason}</div>}
+                          
+                          {/* Supplier Info */}
+                          {first.supplier && (
+                             <div className="text-xs mb-1">
+                                <span className="font-semibold text-gray-500">Supp:</span> {first.supplier}
+                             </div>
+                          )}
+
+                          {/* Remarks */}
+                          {first.remarks && (
+                             <div className="text-[10px] italic text-gray-600 mb-1 bg-yellow-50 p-1 rounded border border-yellow-100 inline-block">
+                                Note: {first.remarks}
+                             </div>
+                          )}
+
+                          {/* Staff / Processor Info */}
+                          <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.793 2.39A9.916 9.916 0 0010 18c2.695 0 5.145-1.052 6.793-2.61A5.99 5.99 0 0010 12z" clipRule="evenodd" />
+                             </svg>
+                             {isVoidEntry ? "Voided by: " : "Staff: "} 
+                             <span className="font-semibold">{first.staff_name}</span>
+                          </div>
+
+                          {/* Void Reason */}
+                          {first.void_reason && <div className="text-[10px] font-bold text-red-600 mt-1">Void Reason: {first.void_reason}</div>}
                        </td>
 
                        {/* Column 4: Item Summary */}
@@ -164,11 +215,6 @@ export default function TransactionHistory({ lastUpdated }) {
 
                        {/* Column 5: Actions */}
                        <td className="align-top text-right py-3">
-                          {/* ONLY Show Void Button if:
-                              1. User is ADMIN
-                              2. It is NOT already voided
-                              3. It is NOT a "VOID" entry itself
-                          */}
                           {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && !isVoided && !isVoidEntry && (
                               <button 
                                 onClick={() => handleVoidClick(refNo)}

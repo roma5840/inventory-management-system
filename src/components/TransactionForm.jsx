@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useInventory } from "../hooks/useInventory";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 
 export default function TransactionForm({ onSuccess }) {
+  const { currentUser } = useAuth();
   const { processTransaction, loading, error } = useInventory();
   const barcodeRef = useRef(null);
 
@@ -237,12 +239,15 @@ export default function TransactionForm({ onSuccess }) {
         ...headerData,
         studentName: headerData.studentName?.toUpperCase() || "",
         yearLevel: headerData.yearLevel?.toUpperCase() || "",
-        course: headerData.course || "", // Dropdowns are usually already fixed values
+        course: headerData.course || "", 
         remarks: headerData.remarks || ""
     };
 
     const resultRef = await processTransaction(finalHeaderData, queue);
     
+    // Use the variable from the top-level scope
+    const currentStaffName = currentUser?.full_name || currentUser?.email || "Staff";
+
     if (resultRef) {
       // 1. SAVE DATA FOR THE RECEIPT POPUP
       setReceiptData({
@@ -252,6 +257,9 @@ export default function TransactionForm({ onSuccess }) {
           course: finalHeaderData.course,
           yearLevel: finalHeaderData.yearLevel,
           type: finalHeaderData.type,
+          supplier: finalHeaderData.supplier, 
+          remarks: finalHeaderData.remarks,   
+          staffName: currentStaffName,        
           date: new Date().toLocaleString(),
           items: [...queue]
       });
@@ -903,15 +911,32 @@ export default function TransactionForm({ onSuccess }) {
                     <p className="text-xs mt-1">{receiptData.date}</p>
                 </div>
 
-                <div className="border-b-2 border-dashed border-gray-300 pb-2 mb-2">
+                <div className="border-b-2 border-dashed border-gray-300 pb-2 mb-2 text-xs">
                     <p><strong>Ref #:</strong> {receiptData.refNumber}</p>
                     <p><strong>Type:</strong> {receiptData.type}</p>
+                    
+                    {/* Student Info (Issuance/Return) */}
                     {receiptData.studentName && (
                         <>
                             <p><strong>Student:</strong> {receiptData.studentName}</p>
                             <p><strong>ID:</strong> {receiptData.studentId}</p>
                             <p><strong>Course/Yr:</strong> {receiptData.course} {receiptData.yearLevel}</p>
                         </>
+                    )}
+
+                    {/* Supplier Info (Receiving/Pull Out) */}
+                    {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && receiptData.supplier && (
+                        <p><strong>Supplier:</strong> {receiptData.supplier}</p>
+                    )}
+
+                    {/* Staff Info (Issuance/Return) */}
+                    {['ISSUANCE', 'ISSUANCE_RETURN'].includes(receiptData.type) && (
+                        <p><strong>Staff:</strong> {receiptData.staffName}</p>
+                    )}
+
+                    {/* Remarks */}
+                    {receiptData.remarks && (
+                        <p className="mt-1"><strong>Note:</strong> {receiptData.remarks}</p>
                     )}
                 </div>
 
@@ -928,14 +953,12 @@ export default function TransactionForm({ onSuccess }) {
                             <tr key={idx}>
                                 <td className="py-1">{item.itemName.substring(0, 15)}</td>
                                 <td className="text-center">
-                                    {/* If it's a return, show negative sign for clarity in audit */}
                                     {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
                                 </td>
                                 <td className="text-right">
-                                    {/* Show the Value. For returns, usually denoted with () or - in accounting */}
                                     {item.priceOverride > 0 
                                       ? (receiptData.type === 'ISSUANCE_RETURN' 
-                                          ? `(${(item.priceOverride * item.qty).toFixed(2)})` // Accounting format for negative
+                                          ? `(${(item.priceOverride * item.qty).toFixed(2)})` 
                                           : (item.priceOverride * item.qty).toFixed(2))
                                       : '-'}
                                 </td>
