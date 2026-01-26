@@ -28,7 +28,12 @@ export default function ReceiptLookup() {
       if (!data || data.length === 0) {
         setError("Reference number not found.");
       } else {
-        const header = data[0];
+        // Filter out 'VOID' entries (reversals) to avoid duplicates in the UI
+        // We prefer showing the original items (which are likely marked is_voided=true)
+        const displayItems = data.filter(item => item.type !== 'VOID');
+        const finalItems = displayItems.length > 0 ? displayItems : data;
+
+        const header = finalItems[0];
         
         // 2. Fetch Staff Name (Resolve User ID -> Full Name)
         let resolvedStaffName = "Unknown Staff";
@@ -60,7 +65,7 @@ export default function ReceiptLookup() {
           remarks: header.remarks,
           isVoided: isVoided,
           voidReason: header.void_reason,
-          items: data.map(item => ({
+          items: finalItems.map(item => ({
              itemName: item.product_name_snapshot || item.product_name,
              qty: item.qty,
              price: item.price_snapshot !== null ? item.price_snapshot : 0,

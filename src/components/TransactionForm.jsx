@@ -359,7 +359,7 @@ export default function TransactionForm({ onSuccess }) {
         const { data: returnsData } = await supabase
             .from('transactions')
             .select('original_transaction_id, qty')
-            .eq('is_voided', false) // <--- CRITICAL FIX: Don't count voided returns!
+            .eq('is_voided', false) // Don't count voided returns!
             .in('original_transaction_id', saleIds);
 
         // 3. Calculate Remaining Qty
@@ -804,7 +804,7 @@ export default function TransactionForm({ onSuccess }) {
                                         value={currentScan.unitCost}
                                         onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="Cost"
+                                        placeholder="0.00"
                                     />
                                 </div>
                             )}

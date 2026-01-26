@@ -137,12 +137,23 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                  <tr><td colSpan="5" className="text-center py-4">No history found.</td></tr>
               ) : (
                 Object.entries(groupedTransactions).map(([refNo, items]) => {
-                   const first = items[0];
-                   const isVoided = items.some(i => i.is_voided);
-                   const isVoidEntry = first.type === 'VOID';
+                   // 1. Identify Reversal/Void Rows to get Admin Info & Reason
+                   // The "Voider" is the user attached to the row with type 'VOID'
+                   const voidEntry = items.find(i => i.type === 'VOID');
                    
+                   // 2. Filter out 'VOID' rows for the visual item list (to prevent duplication)
+                   const nonVoidItems = items.filter(i => i.type !== 'VOID');
+                   // Fallback: If for some reason only void rows exist, show them
+                   const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
+                   
+                   const first = displayItems[0];
+                   
+                   // 3. Determine Status
+                   const isVoided = items.some(i => i.is_voided);
+                   const isReversalView = first.type === 'VOID'; 
+
                    // Styles: Dim if voided, Red background if it IS a void entry
-                   const rowClass = isVoidEntry ? "bg-red-50" : isVoided ? "opacity-50 grayscale bg-gray-50" : "";
+                   const rowClass = isReversalView ? "bg-red-50" : isVoided ? "opacity-50 grayscale bg-gray-50" : "";
 
                    return (
                      <tr key={refNo} className={`border-b border-gray-100 ${rowClass}`}>
@@ -153,7 +164,6 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                             {new Date(first.timestamp).toLocaleString()}
                           </div>
                           {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
-                          {isVoidEntry && <span className="badge badge-xs badge-warning mt-1">REVERSAL</span>}
                        </td>
 
                        {/* Column 2: Type */}
@@ -190,25 +200,37 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                              </div>
                           )}
 
-                          {/* Staff / Processor Info */}
+                          {/* Original Encoder Info */}
                           <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.793 2.39A9.916 9.916 0 0010 18c2.695 0 5.145-1.052 6.793-2.61A5.99 5.99 0 0010 12z" clipRule="evenodd" />
                              </svg>
-                             {isVoidEntry ? "Voided by: " : "Staff: "} 
-                             <span className="font-semibold">{first.staff_name}</span>
+                             Encoder: <span className="font-semibold">{first.staff_name}</span>
                           </div>
 
-                          {/* Void Reason */}
-                          {first.void_reason && <div className="text-[10px] font-bold text-red-600 mt-1">Void Reason: {first.void_reason}</div>}
+                          {/* VOID DETAILS BLOCK */}
+                          {(isVoided || voidEntry) && (
+                              <div className="mt-2 p-2 border-l-2 border-red-500 bg-red-50 text-[10px] rounded-r">
+                                  <div className="font-bold text-red-600 uppercase tracking-wider mb-1">VOID DETAILS</div>
+                                  
+                                  <div className="text-gray-700">
+                                      <span className="font-semibold">Reason:</span> {voidEntry?.void_reason || first.void_reason || "N/A"}
+                                  </div>
+                                  
+                                  {voidEntry && (
+                                      <div className="text-gray-700 mt-1">
+                                          <span className="font-semibold">Voided By:</span> {voidEntry.staff_name}
+                                      </div>
+                                  )}
+                              </div>
+                          )}
                        </td>
 
                       {/* Column 4: Item Summary */}
                        <td className="align-top py-3">
                           <ul className="space-y-2">
-                             {items.map(i => (
+                             {displayItems.map(i => (
                                <li key={i.id} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
-                                  {/* Row Top: Name and Qty */}
                                   <div className="flex justify-between font-medium">
                                       <span className="truncate max-w-[150px]" title={i.product_name_snapshot}>
                                         {i.product_name_snapshot || "Item"}
@@ -224,7 +246,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
 
                        {/* Column 5: Actions */}
                        <td className="align-top text-right py-3">
-                          {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && !isVoided && !isVoidEntry && (
+                          {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && !isVoided && !isReversalView && (
                               <button 
                                 onClick={() => handleVoidClick(refNo)}
                                 disabled={voidLoading}
