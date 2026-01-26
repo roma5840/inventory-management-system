@@ -44,30 +44,36 @@ export default function Dashboard({ lastUpdated }) {
         setCreateLoading(false); return;
     }
 
+    // Sanitize inputs to Uppercase explicitly here (since we removed it from onChange)
+    const sanitizedId = newItemForm.id.toUpperCase();
+    const sanitizedAccPac = newItemForm.accpacCode ? newItemForm.accpacCode.toUpperCase() : null;
+    const sanitizedName = newItemForm.name.toUpperCase();
+    const sanitizedLocation = newItemForm.location ? newItemForm.location.toUpperCase() : "";
+
     try {
         // Check uniqueness for Barcode OR AccPac
         const { data: existing } = await supabase
             .from('products')
             .select('barcode, accpac_code')
-            .or(`barcode.eq.${newItemForm.id},accpac_code.eq.${newItemForm.accpacCode}`)
+            .or(`barcode.eq.${sanitizedId},accpac_code.eq.${sanitizedAccPac}`)
             .maybeSingle();
             
         if (existing) {
-            if (existing.barcode === newItemForm.id) alert("Error: Barcode already exists.");
+            if (existing.barcode === sanitizedId) alert("Error: Barcode already exists.");
             else alert("Error: AccPac Code already exists.");
             setCreateLoading(false); return;
         }
 
-        // INSERT: Note we map 'id' (form) to 'barcode' (db)
+        // INSERT
         const { error } = await supabase.from('products').insert({
-            barcode: newItemForm.id, 
-            accpac_code: newItemForm.accpacCode || null,
-            name: newItemForm.name.toUpperCase(),
+            barcode: sanitizedId, 
+            accpac_code: sanitizedAccPac,
+            name: sanitizedName,
             price: Number(newItemForm.price),
             min_stock_level: Number(newItemForm.minStockLevel),
             current_stock: Number(newItemForm.initialStock), 
-            location: newItemForm.location,
-            search_keywords: newItemForm.name.toLowerCase().split(/\s+/),
+            location: sanitizedLocation,
+            search_keywords: sanitizedName.toLowerCase().split(/\s+/),
             last_updated: new Date()
         });
 
@@ -196,18 +202,22 @@ const handleNext = () => {
     }
 
     try {
-        const newKeywords = editForm.name.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+        // Sanitize inputs
+        const sanitizedBarcode = editingProduct.id.toUpperCase();
+        const sanitizedName = editForm.name.toUpperCase();
+        const sanitizedLocation = editForm.location ? editForm.location.toUpperCase() : "";
+        const sanitizedAccPac = editForm.accpacCode ? editForm.accpacCode.toUpperCase() : null;
 
         const { error } = await supabase
             .from('products')
             .update({
-                barcode: editingProduct.id, // We are sending the new barcode text here
-                name: editForm.name,
+                barcode: sanitizedBarcode, 
+                name: sanitizedName,
                 price: Number(editForm.price),
                 min_stock_level: Number(editForm.minStockLevel),
-                location: editForm.location,
-                accpac_code: editForm.accpacCode || null,
-                search_keywords: editForm.name.toLowerCase().split(/\s+/),
+                location: sanitizedLocation,
+                accpac_code: sanitizedAccPac,
+                search_keywords: sanitizedName.toLowerCase().split(/\s+/),
                 last_updated: new Date()
             })
             .eq('internal_id', editingProduct.internal_id); 
@@ -528,9 +538,9 @@ const handleNext = () => {
                         <label className="label text-xs uppercase font-bold text-gray-500">Barcode / ISBN</label>
                         <input 
                             type="text" 
-                            value={editingProduct.id} // This is bound to local state in a real implementation, simplified here
-                            onChange={(e) => setEditingProduct({...editingProduct, id: e.target.value.toUpperCase()})}
-                            className="input input-bordered input-sm font-mono font-bold text-blue-800" 
+                            value={editingProduct.id} 
+                            onChange={(e) => setEditingProduct({...editingProduct, id: e.target.value})}
+                            className="input input-bordered input-sm font-mono font-bold text-blue-800 uppercase" 
                         />
                     </div>
                     <div className="form-control">
@@ -547,9 +557,9 @@ const handleNext = () => {
                     <label className="label text-xs uppercase font-bold text-gray-500">Item Name *</label>
                     <input 
                         type="text" 
-                        className="input input-bordered w-full" 
+                        className="input input-bordered w-full uppercase" 
                         value={editForm.name}
-                        onChange={e => setEditForm({...editForm, name: e.target.value.toUpperCase()})}
+                        onChange={e => setEditForm({...editForm, name: e.target.value})}
                         required
                     />
                 </div>
@@ -559,10 +569,10 @@ const handleNext = () => {
                     <label className="label text-xs uppercase font-bold text-gray-500">AccPac Code</label>
                     <input 
                         type="text" 
-                        className="input input-bordered w-full font-mono text-blue-900" 
+                        className="input input-bordered w-full font-mono text-blue-900 uppercase" 
                         placeholder="Optional"
                         value={editForm.accpacCode}
-                        onChange={e => setEditForm({...editForm, accpacCode: e.target.value.toUpperCase()})}
+                        onChange={e => setEditForm({...editForm, accpacCode: e.target.value})}
                     />
                 </div>
 
@@ -570,9 +580,9 @@ const handleNext = () => {
                     <label className="label text-xs uppercase font-bold text-gray-500">Location / Rack</label>
                     <input 
                         type="text" 
-                        className="input input-bordered w-full" 
+                        className="input input-bordered w-full uppercase" 
                         value={editForm.location}
-                        onChange={e => setEditForm({...editForm, location: e.target.value.toUpperCase()})}
+                        onChange={e => setEditForm({...editForm, location: e.target.value})}
                     />
                 </div>
 
@@ -631,10 +641,10 @@ const handleNext = () => {
                         <div className="flex gap-1">
                             <input 
                                 type="text" 
-                                className="input input-bordered w-full font-mono font-bold text-blue-800" 
+                                className="input input-bordered w-full font-mono font-bold text-blue-800 uppercase" 
                                 placeholder="Scan/Type"
                                 value={newItemForm.id}
-                                onChange={e => setNewItemForm({...newItemForm, id: e.target.value.toUpperCase()})}
+                                onChange={e => setNewItemForm({...newItemForm, id: e.target.value})}
                                 required
                             />
                             <button type="button" 
@@ -652,10 +662,10 @@ const handleNext = () => {
                         <label className="label text-xs uppercase font-bold text-gray-500">AccPac Code</label>
                         <input 
                             type="text" 
-                            className="input input-bordered w-full font-mono text-gray-700" 
+                            className="input input-bordered w-full font-mono text-gray-700 uppercase" 
                             placeholder="Optional"
                             value={newItemForm.accpacCode}
-                            onChange={e => setNewItemForm({...newItemForm, accpacCode: e.target.value.toUpperCase()})}
+                            onChange={e => setNewItemForm({...newItemForm, accpacCode: e.target.value})}
                         />
                     </div>
                 </div>
@@ -664,10 +674,10 @@ const handleNext = () => {
                     <label className="label text-xs uppercase font-bold text-gray-500">Item Name *</label>
                     <input 
                         type="text" 
-                        className="input input-bordered w-full" 
+                        className="input input-bordered w-full uppercase" 
                         placeholder="Product Title"
                         value={newItemForm.name}
-                        onChange={e => setNewItemForm({...newItemForm, name: e.target.value.toUpperCase()})}
+                        onChange={e => setNewItemForm({...newItemForm, name: e.target.value})}
                         required
                     />
                 </div>
@@ -687,10 +697,10 @@ const handleNext = () => {
                         <label className="label text-xs uppercase font-bold text-gray-500">Location</label>
                         <input 
                             type="text" 
-                            className="input input-bordered w-full" 
+                            className="input input-bordered w-full uppercase" 
                             placeholder="Rack/Shelf"
                             value={newItemForm.location}
-                            onChange={e => setNewItemForm({...newItemForm, location: e.target.value.toUpperCase()})}
+                            onChange={e => setNewItemForm({...newItemForm, location: e.target.value})}
                         />
                     </div>
                 </div>
@@ -720,7 +730,10 @@ const handleNext = () => {
                 </div>
 
                 <div className="modal-action">
-                    <button type="button" className="btn btn-ghost" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                    <button type="button" className="btn btn-ghost" onClick={() => {
+                        setIsAddModalOpen(false);
+                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
+                    }}>Cancel</button>
                     <button type="submit" className={`btn btn-primary ${createLoading ? 'loading' : ''}`}>
                         Register Item
                     </button>
