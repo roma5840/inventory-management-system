@@ -347,6 +347,9 @@ export default function TransactionForm({ onSuccess }) {
     if (!returnLookupRef) return;
     setLookupLoading(true);
     setPastTransactionItems([]);
+    
+    // Force Uppercase for consistency
+    const refToSearch = returnLookupRef.trim().toUpperCase();
 
     try {
         // 1. Fetch Original Sales
@@ -354,7 +357,7 @@ export default function TransactionForm({ onSuccess }) {
         const { data: salesData, error: salesError } = await supabase
             .from('transactions')
             .select('*')
-            .eq('reference_number', returnLookupRef.trim())
+            .eq('reference_number', refToSearch)
             .eq('is_voided', false)
             .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
 
@@ -375,7 +378,7 @@ export default function TransactionForm({ onSuccess }) {
              }
         }
 
-        // 2. Fetch existing returns (FIX IS HERE)
+        // 2. Fetch existing returns
         const saleIds = salesData.map(item => item.id);
         const { data: returnsData } = await supabase
             .from('transactions')
@@ -721,7 +724,7 @@ export default function TransactionForm({ onSuccess }) {
                                 className="input input-sm input-bordered flex-1 font-mono uppercase" 
                                 placeholder="Enter Reference # (e.g. REF-2025...)"
                                 value={returnLookupRef}
-                                onChange={(e) => setReturnLookupRef(e.target.value)}
+                                onChange={(e) => setReturnLookupRef(e.target.value.toUpperCase())}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         handleLookupReceipt(e);

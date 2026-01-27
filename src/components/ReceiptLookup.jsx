@@ -15,13 +15,16 @@ export default function ReceiptLookup() {
     setLoading(true);
     setError("");
     setReceiptData(null);
+    
+    // Force Uppercase
+    const term = searchRef.trim().toUpperCase();
 
     try {
       // 1. Fetch Transaction Data
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('reference_number', searchRef.trim());
+        .eq('reference_number', term);
 
       if (error) throw error;
 
@@ -112,7 +115,7 @@ export default function ReceiptLookup() {
               className="input input-sm input-bordered w-full font-mono uppercase" 
               placeholder="Enter REF-..." 
               value={searchRef}
-              onChange={(e) => setSearchRef(e.target.value)}
+              onChange={(e) => setSearchRef(e.target.value.toUpperCase())}
             />
             <button type="submit" disabled={loading} className="btn btn-sm btn-outline btn-info w-full">
                 {loading ? "Searching..." : "Find Receipt"}
