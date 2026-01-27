@@ -272,22 +272,6 @@ const handleNext = () => {
     }
   }
 
-  const generateNextBarcode = async () => {
-    try {
-      // Call a raw SQL query or function to get next sequence val
-      // Since we can't easily call raw SQL, we can fetch the count or use a custom RPC
-      // For now, we will use a simple RPC wrapping the sequence, or client-side logic + count.
-      // Easiest reliable method:
-      const { data, error } = await supabase.rpc('get_next_barcode_seq'); 
-      // *Note: You need to create this simple RPC: return nextval('product_barcode_seq');*
-      // Fallback if RPC not made: Use timestamp
-      if (error) return `GEN-${Date.now().toString().slice(-6)}`;
-      return `GEN-${String(data).padStart(5, '0')}`;
-    } catch (e) {
-      return `GEN-${Math.floor(Math.random() * 100000)}`;
-    }
-  };
-
   // *Self-Correction for client-side purely:*
   const generateClientBarcode = () => {
     // High-resolution timestamp + Random 3-digit suffix to prevent collision

@@ -161,7 +161,7 @@ export default function TransactionsManager() {
                 "Supplier": item.supplier || "",
 
                 // Item Fields
-                "Accpac/Barcode": item.product_id, // assuming product_id stores the scanned barcode
+                "Accpac Item Code": item.accpac_code_snapshot,
                 "Item Name": item.product_name_snapshot || item.product_name,
                 "Qty": item.qty,
                 "Unit Price": item.price_snapshot ?? item.price,
