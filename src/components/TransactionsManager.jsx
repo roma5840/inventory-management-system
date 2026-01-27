@@ -279,7 +279,9 @@ export default function TransactionsManager() {
               ) : (
                   Object.entries(groupedTransactions).map(([refNo, items]) => {
                       const first = items.find(i => i.type !== 'VOID') || items[0];
-                      const isVoided = items.some(i => i.is_voided);
+                      // Find the specific VOID entry to get the voiding staff/time
+                      const voidRow = items.find(i => i.type === 'VOID'); 
+                      const isVoided = items.some(i => i.is_voided) || !!voidRow;
                       const isReversal = first.type === 'VOID';
 
                       // Calculate Total Value for this Receipt
@@ -291,7 +293,7 @@ export default function TransactionsManager() {
 
                       return (
                           <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-60 bg-gray-50' : ''} ${isReversal ? 'bg-red-50' : ''}`}>
-                              {/* 1. Ref & Date - Reduced padding from py-4 to py-2 */}
+                              {/* 1. Ref & Date */}
                               <td className="py-2">
                                   <div className="font-mono font-bold text-xs">{refNo}</div>
                                   <div className="text-[10px] text-gray-500">{new Date(first.timestamp).toLocaleDateString()}</div>
@@ -299,7 +301,7 @@ export default function TransactionsManager() {
                                   {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
                               </td>
 
-                              {/* 2. Type & Mode - Reduced padding */}
+                              {/* 2. Type & Mode */}
                               <td className="py-2">
                                   <div className={`badge badge-sm font-bold border-0 
                                       ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
@@ -316,7 +318,7 @@ export default function TransactionsManager() {
                                   )}
                               </td>
 
-                              {/* 3. Entity - Reduced padding */}
+                              {/* 3. Entity */}
                               <td className="py-2">
                                   {first.student_name ? (
                                       <div>
@@ -338,15 +340,21 @@ export default function TransactionsManager() {
                                   )}
                               </td>
 
-                              {/* 4. Items List - Reduced padding */}
+                              {/* 4. Items List (Updated with Barcode) */}
                               <td className="py-2">
                                   <div className="space-y-1">
                                       {items.filter(i => i.type !== 'VOID').map(item => (
-                                          <div key={item.id} className="flex justify-between items-center text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
-                                              <span className="truncate max-w-[200px]" title={item.product_name_snapshot || item.product_name}>
-                                                  {item.product_name_snapshot || "Item"}
-                                              </span>
-                                              <span className="font-mono text-gray-500 whitespace-nowrap ml-2">
+                                          <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
+                                              <div className="flex flex-col max-w-[200px]">
+                                                  <span className="truncate font-medium" title={item.product_name_snapshot || item.product_name}>
+                                                      {item.product_name_snapshot || "Item"}
+                                                  </span>
+                                                  {/* Barcode/ID Display */}
+                                                  <span className="text-[9px] text-gray-400 font-mono tracking-tighter">
+                                                    {item.barcode_snapshot || item.product_id}
+                                                  </span>
+                                              </div>
+                                              <span className="font-mono text-gray-500 whitespace-nowrap ml-2 mt-0.5">
                                                   {item.qty} x {Number(item.price_snapshot ?? item.price).toFixed(2)}
                                               </span>
                                           </div>
@@ -354,19 +362,29 @@ export default function TransactionsManager() {
                                   </div>
                               </td>
 
-                              {/* 5. Total Value - Reduced padding */}
+                              {/* 5. Total Value */}
                               <td className="py-2 text-right font-mono font-bold text-sm">
                                   {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
                                   {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
 
-                              {/* 6. Staff - Reduced padding */}
+                              {/* 6. Staff (Updated with Void Details) */}
                               <td className="py-2 text-right">
                                   <div className="text-xs font-semibold">{first.staff_name}</div>
-                                  {/* If Voided, show who voided it if available in the void row */}
+                                  
+                                  {/* Enhanced Void Metadata */}
                                   {isVoided && (
-                                      <div className="text-[10px] text-red-500 mt-1">
-                                          Void Reason: {items.find(i => i.type === 'VOID')?.void_reason || first.void_reason || "N/A"}
+                                      <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
+                                          <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
+                                          <div className="text-[10px] text-red-700 font-medium">
+                                              {voidRow?.staff_name || "Unknown"}
+                                          </div>
+                                          <div className="text-[9px] text-red-400">
+                                              {voidRow ? new Date(voidRow.timestamp).toLocaleString() : "Unknown Time"}
+                                          </div>
+                                          <div className="text-[9px] text-red-500 italic mt-0.5 max-w-[100px] truncate" title={voidRow?.void_reason || first.void_reason}>
+                                              "{voidRow?.void_reason || first.void_reason || "N/A"}"
+                                          </div>
                                       </div>
                                   )}
                               </td>
