@@ -45,14 +45,12 @@ export default function Dashboard({ lastUpdated }) {
         setCreateLoading(false); return;
     }
 
-    // Sanitize inputs to Uppercase explicitly here (since we removed it from onChange)
     const sanitizedId = newItemForm.id.toUpperCase();
     const sanitizedAccPac = newItemForm.accpacCode ? newItemForm.accpacCode.toUpperCase() : null;
     const sanitizedName = newItemForm.name.toUpperCase();
     const sanitizedLocation = newItemForm.location ? newItemForm.location.toUpperCase() : "";
 
     try {
-        // Check uniqueness for Barcode OR AccPac
         const { data: existing } = await supabase
             .from('products')
             .select('barcode, accpac_code')
@@ -65,7 +63,6 @@ export default function Dashboard({ lastUpdated }) {
             setCreateLoading(false); return;
         }
 
-        // INSERT
         const { error } = await supabase.from('products').insert({
             barcode: sanitizedId, 
             accpac_code: sanitizedAccPac,
@@ -75,7 +72,6 @@ export default function Dashboard({ lastUpdated }) {
             min_stock_level: Number(newItemForm.minStockLevel),
             current_stock: Number(newItemForm.initialStock), 
             location: sanitizedLocation,
-            search_keywords: sanitizedName.toLowerCase().split(/\s+/),
             last_updated: new Date()
         });
 
@@ -118,6 +114,7 @@ export default function Dashboard({ lastUpdated }) {
         .select('internal_id, id:barcode, accpac_code, name, price, unit_cost, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
     if (debouncedTerm.trim()) {
+        // UPDATED: Search directly on name/barcode/accpac using standard text match
         query = query.or(`name.ilike.%${debouncedTerm}%,barcode.ilike.%${debouncedTerm}%,accpac_code.ilike.%${debouncedTerm}%`);
     } else {
         query = query.order('name', { ascending: true });
@@ -203,7 +200,6 @@ const handleNext = () => {
     }
 
     try {
-        // Sanitize inputs
         const sanitizedBarcode = editingProduct.id.toUpperCase();
         const sanitizedName = editForm.name.toUpperCase();
         const sanitizedLocation = editForm.location ? editForm.location.toUpperCase() : "";
@@ -219,7 +215,6 @@ const handleNext = () => {
                 min_stock_level: Number(editForm.minStockLevel),
                 location: sanitizedLocation,
                 accpac_code: sanitizedAccPac,
-                search_keywords: sanitizedName.toLowerCase().split(/\s+/),
                 last_updated: new Date()
             })
             .eq('internal_id', editingProduct.internal_id);
@@ -229,10 +224,8 @@ const handleNext = () => {
         setEditingProduct(null);
         alert("Product Details Updated Successfully.");
 
-        // 1. Refresh Local UI immediately
         fetchInventory();
 
-        // 2. Broadcast update to other tabs
         await supabase.channel('app_updates').send({
           type: 'broadcast', event: 'inventory_update', payload: {} 
         });
@@ -308,7 +301,7 @@ const handleNext = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setImportLoading(true); // LOCK UI
+    setImportLoading(true); 
     const reader = new FileReader();
     
     reader.onload = async (event) => {
@@ -319,7 +312,7 @@ const handleNext = () => {
       
       if (headerIndex === -1) {
           alert("Error: Could not find 'ACCPAC ITEM CODE' header in CSV.");
-          setImportLoading(false); // UNLOCK UI
+          setImportLoading(false);
           return;
       }
 
@@ -364,7 +357,6 @@ const handleNext = () => {
               price: 0, 
               min_stock_level: 10,
               current_stock: 0,
-              search_keywords: descRaw ? descRaw.toLowerCase().split(/\s+/) : [],
               last_updated: new Date()
             });
 
@@ -377,7 +369,7 @@ const handleNext = () => {
         }
       }
 
-      setImportLoading(false); // UNLOCK UI
+      setImportLoading(false); 
       alert(`Import Complete.\nSuccessfully Processed: ${processedCount}\nErrors: ${errorCount}`);
       setIsImportModalOpen(false);
       fetchInventory();
