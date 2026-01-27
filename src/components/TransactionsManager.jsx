@@ -1,56 +1,100 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import * as XLSX from 'xlsx';
 
 export default function TransactionsManager() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Filters
-  const [dateFilter, setDateFilter] = useState("7DAYS"); // TODAY, 7DAYS, 30DAYS, ALL
+  const [dateFilter, setDateFilter] = useState("7DAYS"); 
   const [typeFilter, setTypeFilter] = useState("ALL");
-  const [modeFilter, setModeFilter] = useState("ALL"); // Only for Issuance
+  const [modeFilter, setModeFilter] = useState("ALL"); 
   const [searchRef, setSearchRef] = useState("");
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [jumpPage, setJumpPage] = useState(1); // For the manual input
+  const ITEMS_PER_PAGE = 10;
+  
+  // Export State
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+    setJumpPage(1);
+  }, [dateFilter, typeFilter, modeFilter, searchRef]);
 
   useEffect(() => {
     fetchTransactions();
-  }, [dateFilter, typeFilter, modeFilter]);
+  }, [page, dateFilter, typeFilter, modeFilter, searchRef]); // Re-fetch on page change
+
+  // Helper to build the base query based on filters
+  const buildQuery = (isForExport = false) => {
+    let query = supabase
+        .from('transactions')
+        .select('*', { count: isForExport ? 'exact' : 'exact' }) // Always get count
+        .order('timestamp', { ascending: false });
+
+    // 1. Date Filter
+    const now = new Date();
+    if (dateFilter === "TODAY") {
+        const startOfDay = new Date(now.setHours(0,0,0,0)).toISOString();
+        query = query.gte('timestamp', startOfDay);
+    } else if (dateFilter === "7DAYS") {
+        const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7)).toISOString();
+        query = query.gte('timestamp', sevenDaysAgo);
+    } else if (dateFilter === "30DAYS") {
+        const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30)).toISOString();
+        query = query.gte('timestamp', thirtyDaysAgo);
+    }
+
+    // 2. Type Filter
+    if (typeFilter !== "ALL") query = query.eq('type', typeFilter);
+
+    // 3. Mode Filter
+    if (modeFilter !== "ALL") query = query.eq('transaction_mode', modeFilter);
+
+    // 4. Search Filter (Server-side for pagination efficiency)
+    if (searchRef) {
+        // Note: OR syntax in Supabase for text search
+        query = query.or(`reference_number.ilike.%${searchRef}%,student_name.ilike.%${searchRef}%`);
+    }
+
+    return query;
+  };
 
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('transactions')
-        .select('*')
-        .order('timestamp', { ascending: false });
+      let query = buildQuery(false);
 
-      // 1. Date Filter Logic
-      const now = new Date();
-      if (dateFilter === "TODAY") {
-        const startOfDay = new Date(now.setHours(0,0,0,0)).toISOString();
-        query = query.gte('timestamp', startOfDay);
-      } else if (dateFilter === "7DAYS") {
-        const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7)).toISOString();
-        query = query.gte('timestamp', sevenDaysAgo);
-      } else if (dateFilter === "30DAYS") {
-        const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30)).toISOString();
-        query = query.gte('timestamp', thirtyDaysAgo);
-      }
+      // Pagination Range
+      const from = (page - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+      query = query.range(from, to);
 
-      // 2. Type Filter
-      if (typeFilter !== "ALL") {
-        query = query.eq('type', typeFilter);
-      }
-
-      // 3. Mode Filter (Only applies if Type is Issuance or All)
-      if (modeFilter !== "ALL") {
-        query = query.eq('transaction_mode', modeFilter);
-      }
-
-      const { data: txData, error } = await query;
+      const { data: txData, count, error } = await query;
       if (error) throw error;
 
-      // 4. Fetch Staff Names manually (Join)
-      const userIds = [...new Set(txData.map(t => t.user_id).filter(Boolean))];
+      // Fetch Staff Names
+      const enriched = await enrichWithStaffNames(txData);
+
+      setTransactions(enriched);
+      setTotalCount(count || 0);
+
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enrichWithStaffNames = async (data) => {
+      if (!data || data.length === 0) return [];
+      const userIds = [...new Set(data.map(t => t.user_id).filter(Boolean))];
       let userMap = {};
       if (userIds.length > 0) {
         const { data: users } = await supabase
@@ -59,20 +103,10 @@ export default function TransactionsManager() {
           .in('auth_uid', userIds); 
         users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
       }
-
-      // 5. Enrich Data
-      const enriched = txData.map(t => ({
+      return data.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown'
       }));
-
-      setTransactions(enriched);
-
-    } catch (err) {
-      console.error("Error fetching transactions:", err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Grouping Logic
@@ -89,6 +123,73 @@ export default function TransactionsManager() {
     return acc;
   }, {});
 
+  const handleExport = async () => {
+    if (totalCount > 5000) {
+        if(!window.confirm(`You are about to export ${totalCount} rows. This might take a moment. Continue?`)) return;
+    }
+    
+    setIsExporting(true);
+    try {
+        // 1. Fetch ALL data matching filters (No pagination range)
+        const { data: rawData, error } = await buildQuery(true);
+        if (error) throw error;
+
+        // 2. Enrich with Staff Names
+        const fullData = await enrichWithStaffNames(rawData);
+
+        // 3. Map to Excel Structure
+        const excelRows = fullData.map(item => {
+            const dateObj = new Date(item.timestamp);
+            
+            // Base Object (Common Fields)
+            const row = {
+                "Type": item.type,
+                "Transac Mode": item.transaction_mode || "N/A",
+                "Date Encoded": dateObj.toLocaleDateString(),
+                "Time Encoded": dateObj.toLocaleTimeString(),
+                "Month": dateObj.toLocaleString('default', { month: 'long' }),
+                "Encoder": item.staff_name,
+                "Ref #": item.reference_number,
+                
+                // Student Fields
+                "Student ID": item.student_id || "",
+                "Student Name": item.student_name || "",
+                "Year Level": item.year_level || "",
+                "Course": item.course || "",
+                
+                // Supplier Fields (For Receiving/PullOut)
+                "Supplier": item.supplier || "",
+
+                // Item Fields
+                "Accpac/Barcode": item.product_id, // assuming product_id stores the scanned barcode
+                "Item Name": item.product_name_snapshot || item.product_name,
+                "Qty": item.qty,
+                "Unit Price": item.price_snapshot ?? item.price,
+                "Total Amount": (item.price_snapshot ?? item.price) * item.qty,
+                "Remarks": item.remarks || "",
+                "Void Status": item.is_voided ? "VOIDED" : "Active"
+            };
+
+            return row;
+        });
+
+        // 4. Generate Excel
+        const worksheet = XLSX.utils.json_to_sheet(excelRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
+        
+        // Dynamic Filename
+        const fname = `TransHistory_${typeFilter}_${dateFilter}_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(workbook, fname);
+
+    } catch (err) {
+        console.error("Export failed:", err);
+        alert("Failed to export data. See console.");
+    } finally {
+        setIsExporting(false);
+    }
+  };
+
   return (
     <div className="card bg-white shadow-lg border border-gray-200">
       <div className="card-body p-6">
@@ -101,6 +202,21 @@ export default function TransactionsManager() {
             </div>
             
             <div className="flex flex-wrap gap-2">
+                {/* Export Button */}
+                <button 
+                    onClick={handleExport} 
+                    disabled={isExporting || totalCount === 0}
+                    className="btn btn-sm btn-success text-white gap-2"
+                >
+                    {isExporting ? (
+                        <span className="loading loading-spinner loading-xs"></span>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                    )}
+                    Export Excel
+                </button>
                 {/* Date Filter */}
                 <select className="select select-sm select-bordered" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
                     <option value="TODAY">Today</option>
@@ -258,6 +374,57 @@ export default function TransactionsManager() {
               )}
             </tbody>
           </table>
+        </div>
+        {/* PAGINATION FOOTER */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-4 border-t pt-4 gap-4">
+            <div className="text-xs text-gray-500">
+                Showing {transactions.length} of {totalCount} records
+            </div>
+
+            <div className="flex items-center gap-2">
+                <button 
+                    className="btn btn-sm btn-outline"
+                    disabled={page === 1 || loading}
+                    onClick={() => {
+                        setPage(p => p - 1);
+                        setJumpPage(p => p - 1);
+                    }}
+                >
+                    « Prev
+                </button>
+                
+                <div className="flex items-center gap-1">
+                    <span className="text-sm">Page</span>
+                    <input 
+                        type="number" 
+                        min="1" 
+                        max={Math.ceil(totalCount / ITEMS_PER_PAGE)}
+                        value={jumpPage}
+                        onChange={(e) => setJumpPage(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                let p = parseInt(jumpPage);
+                                if (p > 0 && p <= Math.ceil(totalCount / ITEMS_PER_PAGE)) {
+                                    setPage(p);
+                                }
+                            }
+                        }}
+                        className="input input-sm input-bordered w-16 text-center"
+                    />
+                    <span className="text-sm">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
+                </div>
+
+                <button 
+                    className="btn btn-sm btn-outline"
+                    disabled={page >= Math.ceil(totalCount / ITEMS_PER_PAGE) || loading}
+                    onClick={() => {
+                        setPage(p => p + 1);
+                        setJumpPage(p => p + 1);
+                    }}
+                >
+                    Next »
+                </button>
+            </div>
         </div>
       </div>
     </div>
