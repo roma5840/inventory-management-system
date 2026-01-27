@@ -195,28 +195,13 @@ export default function TransactionsManager() {
       <div className="card-body p-6">
         
         {/* HEADER & FILTERS */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b pb-4">
+        <div className="flex flex-col gap-4 mb-6 border-b pb-4">
             <div>
                 <h2 className="text-2xl font-bold text-gray-800">Transaction Ledger</h2>
                 <p className="text-sm text-gray-500">View and audit all inventory movements</p>
             </div>
             
-            <div className="flex flex-wrap gap-2">
-                {/* Export Button */}
-                <button 
-                    onClick={handleExport} 
-                    disabled={isExporting || totalCount === 0}
-                    className="btn btn-sm btn-success text-white gap-2"
-                >
-                    {isExporting ? (
-                        <span className="loading loading-spinner loading-xs"></span>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                        </svg>
-                    )}
-                    Export Excel
-                </button>
+            <div className="flex flex-wrap items-center gap-2">
                 {/* Date Filter */}
                 <select className="select select-sm select-bordered" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
                     <option value="TODAY">Today</option>
@@ -234,7 +219,7 @@ export default function TransactionsManager() {
                     <option value="PULL_OUT">Pull Out</option>
                 </select>
 
-                {/* Mode Filter - Only show if relevant */}
+                {/* Mode Filter */}
                 {(typeFilter === "ALL" || typeFilter === "ISSUANCE") && (
                      <select className="select select-sm select-bordered" value={modeFilter} onChange={e => setModeFilter(e.target.value)}>
                         <option value="ALL">All Modes</option>
@@ -244,12 +229,29 @@ export default function TransactionsManager() {
                         <option value="TRANSMITTAL">Transmittal</option>
                     </select>
                 )}
+
+                {/* Export Button - Placed immediately after filters */}
+                <button 
+                    onClick={handleExport} 
+                    disabled={isExporting || totalCount === 0}
+                    className="btn btn-sm btn-outline btn-success gap-2"
+                    title="Download as Excel"
+                >
+                    {isExporting ? (
+                        <span className="loading loading-spinner loading-xs"></span>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                    )}
+                    Export
+                </button>
                 
-                {/* Search */}
+                {/* Search - Pushed to the right on larger screens */}
                 <input 
                     type="text" 
                     placeholder="Search Ref or Student..." 
-                    className="input input-sm input-bordered"
+                    className="input input-sm input-bordered w-full sm:w-64 sm:ml-auto"
                     value={searchRef}
                     onChange={e => setSearchRef(e.target.value)}
                 />
@@ -289,16 +291,16 @@ export default function TransactionsManager() {
 
                       return (
                           <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-60 bg-gray-50' : ''} ${isReversal ? 'bg-red-50' : ''}`}>
-                              {/* 1. Ref & Date */}
-                              <td className="py-4">
+                              {/* 1. Ref & Date - Reduced padding from py-4 to py-2 */}
+                              <td className="py-2">
                                   <div className="font-mono font-bold text-xs">{refNo}</div>
                                   <div className="text-[10px] text-gray-500">{new Date(first.timestamp).toLocaleDateString()}</div>
                                   <div className="text-[10px] text-gray-400">{new Date(first.timestamp).toLocaleTimeString()}</div>
                                   {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
                               </td>
 
-                              {/* 2. Type & Mode */}
-                              <td className="py-4">
+                              {/* 2. Type & Mode - Reduced padding */}
+                              <td className="py-2">
                                   <div className={`badge badge-sm font-bold border-0 
                                       ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
                                         first.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
@@ -314,8 +316,8 @@ export default function TransactionsManager() {
                                   )}
                               </td>
 
-                              {/* 3. Entity */}
-                              <td className="py-4">
+                              {/* 3. Entity - Reduced padding */}
+                              <td className="py-2">
                                   {first.student_name ? (
                                       <div>
                                           <div className="font-bold text-xs">{first.student_name}</div>
@@ -336,8 +338,8 @@ export default function TransactionsManager() {
                                   )}
                               </td>
 
-                              {/* 4. Items List */}
-                              <td className="py-4">
+                              {/* 4. Items List - Reduced padding */}
+                              <td className="py-2">
                                   <div className="space-y-1">
                                       {items.filter(i => i.type !== 'VOID').map(item => (
                                           <div key={item.id} className="flex justify-between items-center text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
@@ -352,14 +354,14 @@ export default function TransactionsManager() {
                                   </div>
                               </td>
 
-                              {/* 5. Total Value */}
-                              <td className="py-4 text-right font-mono font-bold text-sm">
+                              {/* 5. Total Value - Reduced padding */}
+                              <td className="py-2 text-right font-mono font-bold text-sm">
                                   {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
                                   {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
 
-                              {/* 6. Staff */}
-                              <td className="py-4 text-right">
+                              {/* 6. Staff - Reduced padding */}
+                              <td className="py-2 text-right">
                                   <div className="text-xs font-semibold">{first.staff_name}</div>
                                   {/* If Voided, show who voided it if available in the void row */}
                                   {isVoided && (

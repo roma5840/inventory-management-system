@@ -100,33 +100,35 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-end mb-4">
             <div>
                 <h2 className="card-title text-lg">Daily Activity Log</h2>
-                <div className="text-xs text-gray-500">
-                    Showing transactions for <span className="font-bold text-blue-600">Today Only</span>
+                <div className="text-xs text-gray-500 mt-1">
+                    {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>
             </div>
             
             <div className="flex flex-col items-end gap-2">
-                <Link to="/transactions" className="btn btn-xs btn-primary text-white">
+                <Link to="/transactions" className="btn btn-xs btn-ghost text-primary hover:bg-blue-50">
                     View Full History &rarr;
                 </Link>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <span className="text-[10px] text-gray-400">
-                        {totalCount} records
+                        {totalCount > 0 
+                            ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                            : "No records found"}
                     </span>
-                    <div className="join">
+                    <div className="flex gap-2">
                         <button 
-                            className="btn btn-xs join-item" 
+                            className="btn btn-xs btn-outline" 
                             disabled={page === 1 || loading} 
                             onClick={()=>setPage(p=>p-1)}
                         >
                             « Previous
                         </button>
                         <button 
-                            className="btn btn-xs join-item"
+                            className="btn btn-xs btn-outline"
                             disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading} 
                             onClick={()=>setPage(p=>p+1)}
                         >
