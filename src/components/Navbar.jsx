@@ -16,6 +16,9 @@ export default function Navbar() {
              <Link to="/students" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">
                  Students
              </Link>
+             <Link to="/transactions" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">
+                 Transactions
+             </Link>
              {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                <Link to="/staff" className="text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors">
                  Manage Staff

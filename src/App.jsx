@@ -5,6 +5,7 @@ import Register from "./components/Register";
 import DashboardPage from "./pages/DashboardPage";
 import StaffPage from "./pages/StaffPage";
 import StudentPage from "./pages/StudentPage"; 
+import TransactionsPage from "./pages/TransactionsPage";
 
 // Helper for Protected Routes
 const ProtectedRoute = ({ children }) => {
@@ -37,6 +38,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <StudentPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Transactions Route */}
+      <Route 
+        path="/transactions" 
+        element={
+          <ProtectedRoute>
+            <TransactionsPage />
           </ProtectedRoute>
         } 
       />
