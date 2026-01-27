@@ -396,7 +396,6 @@ export default function TransactionsManager() {
                 </button>
                 
                 <div className="flex items-center gap-1">
-                    <span className="text-sm">Page</span>
                     <input 
                         type="number" 
                         min="1" 
