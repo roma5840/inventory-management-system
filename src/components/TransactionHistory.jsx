@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useInventory } from "../hooks/useInventory";
+import { Link } from "react-router-dom";
 
 export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const { userRole } = useAuth();
@@ -23,10 +24,15 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
     const to = from + ITEMS_PER_PAGE - 1;
 
     try {
-      // 1. Fetch Transactions
+      // DATE FILTER: Start of Today (00:00:00)
+      const now = new Date();
+      const startOfDay = new Date(now.setHours(0,0,0,0)).toISOString();
+
+      // 1. Fetch Transactions (Scoped to TODAY)
       const { data: txData, count, error } = await supabase
         .from('transactions')
         .select('*', { count: 'exact' })
+        .gte('timestamp', startOfDay) // <--- Force Today Only
         .order('timestamp', { ascending: false })
         .range(from, to);
 
@@ -95,26 +101,38 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-4">
         <div className="flex justify-between items-center mb-4">
-            <h2 className="card-title text-lg">Transaction History</h2>
-            <div className="flex items-center gap-4">
-                <span className="text-xs text-gray-500 font-semibold">
-                    Page {page} of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-                </span>
-                <div className="join flex gap-2">
-                    <button 
-                        className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
-                        disabled={page === 1 || loading} 
-                        onClick={()=>setPage(p=>p-1)}
-                    >
-                        « Previous
-                    </button>
-                    <button 
-                        className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
-                        disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading} 
-                        onClick={()=>setPage(p=>p+1)}
-                    >
-                        Next »
-                    </button>
+            <div>
+                <h2 className="card-title text-lg">Daily Activity Log</h2>
+                <div className="text-xs text-gray-500">
+                    Showing transactions for <span className="font-bold text-blue-600">Today Only</span>
+                </div>
+            </div>
+            
+            <div className="flex flex-col items-end gap-2">
+                <Link to="/transactions" className="btn btn-xs btn-primary text-white">
+                    View Full History &rarr;
+                </Link>
+                
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400">
+                        {totalCount} records
+                    </span>
+                    <div className="join">
+                        <button 
+                            className="btn btn-xs join-item" 
+                            disabled={page === 1 || loading} 
+                            onClick={()=>setPage(p=>p-1)}
+                        >
+                            « Previous
+                        </button>
+                        <button 
+                            className="btn btn-xs join-item"
+                            disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading} 
+                            onClick={()=>setPage(p=>p+1)}
+                        >
+                            Next »
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
