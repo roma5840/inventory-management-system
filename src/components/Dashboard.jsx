@@ -12,6 +12,7 @@ export default function Dashboard({ lastUpdated }) {
   // Pagination State
   const ITEMS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState(1);
   const [pageStack, setPageStack] = useState([]); 
   const [lastVisible, setLastVisible] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -148,6 +149,10 @@ export default function Dashboard({ lastUpdated }) {
 
     return () => supabase.removeChannel(channel);
   }, [debouncedTerm, currentPage, lastUpdated]);
+
+  useEffect(() => {
+    setJumpPage(currentPage);
+  }, [currentPage]);
 
 
 const handleNext = () => {
@@ -482,11 +487,14 @@ const handleNext = () => {
         </div>
 
         {/* Pagination Controls */}
-        <div className="p-4 border-t flex justify-between items-center bg-gray-50 rounded-b-xl">
-           <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-             Page {currentPage} of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-           </span>
-           <div className="flex gap-2">
+        <div className="p-4 border-t flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-b-xl gap-4">
+           <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+             {totalCount > 0 
+                ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                : "No records found"}
+           </div>
+
+           <div className="flex items-center gap-2">
              <button 
                className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
                onClick={handlePrev} 
@@ -494,10 +502,31 @@ const handleNext = () => {
              >
                « Previous
              </button>
+
+             <div className="flex items-center gap-1 mx-2">
+                <input 
+                    type="number" 
+                    min="1" 
+                    max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
+                    value={jumpPage}
+                    onChange={(e) => setJumpPage(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            let p = parseInt(jumpPage);
+                            const maxPage = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+                            if (p > 0 && p <= maxPage) {
+                                setCurrentPage(p);
+                            }
+                        }
+                    }}
+                    className="input input-sm input-bordered w-16 text-center"
+                />
+                <span className="text-sm">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
+            </div>
+
              <button 
                className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
                onClick={handleNext} 
-               // Disable if Current items displayed >= Total items in DB
                disabled={(currentPage * ITEMS_PER_PAGE) >= totalCount || loading}
              >
                Next »

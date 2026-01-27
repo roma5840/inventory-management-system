@@ -398,7 +398,9 @@ export default function TransactionsManager() {
         {/* PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row justify-between items-center mt-4 border-t pt-4 gap-4">
             <div className="text-xs text-gray-500">
-                Showing {transactions.length} of {totalCount} records
+                {totalCount > 0 
+                  ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                  : "No records found"}
             </div>
 
             <div className="flex items-center gap-2">
@@ -417,7 +419,7 @@ export default function TransactionsManager() {
                     <input 
                         type="number" 
                         min="1" 
-                        max={Math.ceil(totalCount / ITEMS_PER_PAGE)}
+                        max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
                         value={jumpPage}
                         onChange={(e) => setJumpPage(e.target.value)}
                         onKeyDown={(e) => {
