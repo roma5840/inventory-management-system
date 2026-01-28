@@ -120,7 +120,7 @@ export default function StatsComprehensive({ lastUpdated }) {
         <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Current Stock × Current Supplier Cost">
             <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Current Asset Value</div>
             <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.ending.val)}</div>
-            <div className="stat-desc text-xs mt-1 text-gray-400">Total Inventory Value (Now)</div>
+            <div className="stat-desc text-xs mt-1 text-gray-400">Total Inventory Value as of Period End</div>
         </div>
       </div>
 
