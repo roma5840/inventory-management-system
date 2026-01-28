@@ -12,6 +12,8 @@ export default function StudentPage() {
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 30;
+  const [totalCount, setTotalCount] = useState(0);
+  const [jumpPage, setJumpPage] = useState(1);
 
   // Edit State
   const [editingStudent, setEditingStudent] = useState(null);
@@ -50,10 +52,9 @@ export default function StudentPage() {
   useEffect(() => {
     const fetchStudents = async () => {
         setLoading(true);
-        let query = supabase.from('students').select('*', { count: 'exact' });
+        let query = supabase.from('students').select('*', { count: 'exact' }); // count is requested here
 
         if (debouncedTerm.trim()) {
-            // Search by Name or ID
             query = query.or(`name.ilike.%${debouncedTerm}%,student_id.ilike.%${debouncedTerm}%`);
         } else {
             query = query.order('name', { ascending: true });
@@ -62,10 +63,14 @@ export default function StudentPage() {
         const from = (page - 1) * ITEMS_PER_PAGE;
         const to = from + ITEMS_PER_PAGE - 1;
 
-        const { data, error } = await query.range(from, to);
+        const { data, count, error } = await query.range(from, to);
         
-        if (error) console.error("Error fetching students:", error);
-        else setStudents(data || []);
+        if (error) {
+            console.error("Error fetching students:", error);
+        } else {
+            setStudents(data || []);
+            setTotalCount(count || 0); // Save the total count
+        }
         
         setLoading(false);
     };
@@ -86,6 +91,20 @@ export default function StudentPage() {
         supabase.removeChannel(appChannel);
     };
   }, [debouncedTerm, page]);
+
+  useEffect(() => {
+    setJumpPage(page);
+  }, [page]);
+
+  const handleNext = () => {
+    if (page * ITEMS_PER_PAGE >= totalCount) return;
+    setPage(prev => prev + 1);
+  };
+
+  const handlePrev = () => {
+    if (page === 1) return;
+    setPage(prev => prev - 1);
+  };
 
 
   // 3. Handlers
@@ -331,25 +350,56 @@ export default function StudentPage() {
                 </table>
             </div>
 
-            {/* Pagination */}
-            <div className="p-4 border-t flex justify-between items-center bg-gray-50 rounded-b-xl">
-                <span className="text-xs text-gray-500 font-bold">PAGE {page}</span>
-                <div className="flex gap-2">
-                    <button 
-                        className="btn btn-xs btn-outline bg-white" 
-                        disabled={page === 1 || loading}
-                        onClick={() => setPage(p => p - 1)}
-                    >
-                        « Prev
-                    </button>
-                    <button 
-                        className="btn btn-xs btn-outline bg-white" 
-                        disabled={students.length < ITEMS_PER_PAGE || loading}
-                        onClick={() => setPage(p => p + 1)}
-                    >
-                        Next »
-                    </button>
+            {/* Pagination Controls */}
+            <div className="p-4 border-t flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-b-xl gap-4">
+               
+               {/* "Showing X - Y of Z" Text */}
+               <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                 {totalCount > 0 
+                    ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                    : "No records found"}
+               </div>
+
+               {/* Controls */}
+               <div className="flex items-center gap-2">
+                 <button 
+                   className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
+                   onClick={handlePrev} 
+                   disabled={page === 1 || loading}
+                 >
+                   « Previous
+                 </button>
+
+                 {/* Jump Page Input */}
+                 <div className="flex items-center gap-1 mx-2">
+                    <input 
+                        type="number" 
+                        min="1" 
+                        max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
+                        value={jumpPage}
+                        onChange={(e) => setJumpPage(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                let p = parseInt(jumpPage);
+                                const maxPage = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+                                if (p > 0 && p <= maxPage) {
+                                    setPage(p);
+                                }
+                            }
+                        }}
+                        className="input input-sm input-bordered w-16 text-center"
+                    />
+                    <span className="text-sm text-gray-500">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
                 </div>
+
+                 <button 
+                   className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
+                   onClick={handleNext} 
+                   disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading}
+                 >
+                   Next »
+                 </button>
+               </div>
             </div>
         </div>
       </main>
