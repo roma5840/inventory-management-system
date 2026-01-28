@@ -389,15 +389,15 @@ export default function TransactionsManager() {
                                   <div className="space-y-1">
                                       {displayItems.map(item => (
                                           <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
-                                              <div className="flex flex-col max-w-[200px]">
-                                                  <span className="truncate font-medium" title={item.product_name_snapshot || item.product_name}>
+                                              <div className="flex flex-col pr-2">
+                                                  <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
                                                       {item.product_name_snapshot || "Item"}
                                                   </span>
-                                                  <span className="text-[9px] text-gray-400 font-mono tracking-tighter">
+                                                  <span className="text-[9px] text-gray-400 font-mono tracking-tighter mt-0.5">
                                                     {item.barcode_snapshot || item.product_id}
                                                   </span>
                                               </div>
-                                              <span className="font-mono text-gray-500 whitespace-nowrap ml-2 mt-0.5">
+                                              <span className="font-mono text-gray-500 whitespace-nowrap mt-0.5 shrink-0">
                                                   {item.qty} x {Number(item.price_snapshot ?? item.price).toFixed(2)}
                                               </span>
                                           </div>
