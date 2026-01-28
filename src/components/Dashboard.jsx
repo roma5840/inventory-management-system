@@ -368,11 +368,11 @@ const handleNext = () => {
                     }
                 } else {
                     // NEW ITEM: Needs a Barcode because your schema says barcode is NOT NULL
-                    const seq = Date.now();
+                    const seq = Date.now() + index; 
                     const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
                     
                     toInsert.push({
-                        barcode: `SYS-${seq}-${index}-${rand}`, // Ensure Uniqueness
+                        barcode: `SYS-${seq}-${rand}`,  // Ensure Uniqueness
                         accpac_code: row.accpac,
                         name: row.name,
                         price: 0,
