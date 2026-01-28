@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import Papa from "papaparse";
 
 export default function Dashboard({ lastUpdated }) {
   const { userRole } = useAuth();
@@ -285,86 +286,151 @@ const handleNext = () => {
     return `SYS-${seq}-${rand}`;
   }
 
-  const handleCSVImport = async (e) => {
+  const handleCSVImport = (e) => {
     e.preventDefault();
     const file = e.target.files[0];
     if (!file) return;
 
-    setImportLoading(true); 
-    const reader = new FileReader();
-    
-    reader.onload = async (event) => {
-      const text = event.target.result;
-      const allLines = text.split('\n');
-      
-      const headerIndex = allLines.findIndex(line => line.toUpperCase().includes('ACCPAC ITEM CODE'));
-      
-      if (headerIndex === -1) {
-          alert("Error: Could not find 'ACCPAC ITEM CODE' header in CSV.");
-          setImportLoading(false);
-          return;
-      }
+    setImportLoading(true);
 
-      const rows = allLines.slice(headerIndex + 1);
-      let processedCount = 0;
-      let errorCount = 0;
-
-      for (let row of rows) {
-        const cols = row.split(','); 
-        if (cols.length < 2) continue;
-
-        const accpacRaw = cols[0]?.trim();
-        const descRaw = cols[1]?.trim().replace(/^"|"$/g, '').replace(/""/g, '"'); 
+    Papa.parse(file, {
+      header: true, // Auto-detects columns
+      skipEmptyLines: true,
+      // Logic to find the header row if it's not on line 1
+      beforeFirstChunk: (chunk) => {
+        const lines = chunk.split('\n');
+        const headerIndex = lines.findIndex(line => 
+            line.toUpperCase().includes('ACCPAC ITEM CODE')
+        );
+        return headerIndex > -1 ? lines.slice(headerIndex).join('\n') : chunk;
+      },
+      complete: async (results) => {
+        const rows = results.data;
         
-        if (!accpacRaw && !descRaw) continue;
+        if (rows.length === 0) {
+            alert("No data found or invalid header.");
+            setImportLoading(false);
+            return;
+        }
+
+        // 1. Clean and Normalize Data
+        // We look for flexible headers to avoid issues with CSV formatting
+        const cleanRows = rows.map(r => {
+            const keys = Object.keys(r);
+            const accpacKey = keys.find(k => k.toUpperCase().includes('ACCPAC ITEM CODE'));
+            const descKey = keys.find(k => k.toUpperCase().includes('ITEM DESCRIPTION') || k.toUpperCase().includes('DESCRIPTION'));
+            
+            return {
+                accpac: r[accpacKey]?.trim(),
+                name: r[descKey]?.trim()
+            };
+        }).filter(r => r.accpac && r.name); // Remove empty rows
+
+        if (cleanRows.length === 0) {
+            alert("Could not parse columns. Ensure 'ACCPAC ITEM CODE' and 'ITEM DESCRIPTION' headers exist.");
+            setImportLoading(false);
+            return;
+        }
+
+        const accpacCodes = cleanRows.map(r => r.accpac);
 
         try {
-          const { data: existing } = await supabase
-            .from('products')
-            .select('internal_id, barcode, name')
-            .eq('accpac_code', accpacRaw)
-            .maybeSingle();
+            // 2. Bulk Fetch Existing Items (Respecting your Unique Constraint)
+            const { data: existingItems, error: fetchError } = await supabase
+                .from('products')
+                .select('internal_id, accpac_code, name') // We need internal_id for updates
+                .in('accpac_code', accpacCodes);
 
-          if (existing) {
-            if (existing.name !== descRaw) {
-               const { error: upError } = await supabase.from('products').update({ 
-                 name: descRaw, 
-                 last_updated: new Date() 
-               }).eq('internal_id', existing.internal_id);
-               
-               if (upError) throw upError;
-            }
-          } else {
-            const seq = Date.now(); 
-            const rand = Math.floor(Math.random() * 1000);
-            const newBarcode = `SYS-${seq}-${rand}`;
-            
-            const { error: insError } = await supabase.from('products').insert({
-              barcode: newBarcode,
-              accpac_code: accpacRaw || null,
-              name: descRaw || "Unknown Item",
-              price: 0, 
-              min_stock_level: 10,
-              current_stock: 0,
-              last_updated: new Date()
+            if (fetchError) throw fetchError;
+
+            // Map for O(1) Lookup: "A100" -> { internal_id: "uuid...", name: "Hammer" }
+            const existingMap = new Map();
+            existingItems.forEach(item => existingMap.set(item.accpac_code, item));
+
+            const toInsert = [];
+            const toUpdate = [];
+
+            // 3. Separate Inserts vs Updates
+            cleanRows.forEach((row, index) => {
+                const existing = existingMap.get(row.accpac);
+
+                if (existing) {
+                    // ONLY update if the name changed (Optimization)
+                    if (existing.name !== row.name) {
+                        toUpdate.push({
+                            internal_id: existing.internal_id, // Use UUID from your schema
+                            name: row.name,
+                            last_updated: new Date()
+                        });
+                    }
+                } else {
+                    // NEW ITEM: Needs a Barcode because your schema says barcode is NOT NULL
+                    const seq = Date.now();
+                    const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                    
+                    toInsert.push({
+                        barcode: `SYS-${seq}-${index}-${rand}`, // Ensure Uniqueness
+                        accpac_code: row.accpac,
+                        name: row.name,
+                        price: 0,
+                        unit_cost: 0, // Added based on your 14th query
+                        min_stock_level: 10,
+                        current_stock: 0,
+                        location: 'UNSORTED',
+                        last_updated: new Date()
+                    });
+                }
             });
 
-            if (insError) throw insError;
-          }
-          processedCount++;
+            // 4. Execute Database Operations
+            let processedMsg = "";
+
+            // A. Bulk Insert
+            if (toInsert.length > 0) {
+                const { error: insError } = await supabase.from('products').insert(toInsert);
+                if (insError) throw insError;
+                processedMsg += `Added ${toInsert.length} new items.\n`;
+            }
+
+            // B. Updates
+            // Supabase doesn't support bulk-update-different-values easily, so we promise.all
+            // This is safe because updates are usually fewer than inserts during migration
+            if (toUpdate.length > 0) {
+                const updatePromises = toUpdate.map(item => 
+                    supabase
+                        .from('products')
+                        .update({ name: item.name, last_updated: new Date() })
+                        .eq('internal_id', item.internal_id) // Updating via UUID is safest
+                );
+                await Promise.all(updatePromises);
+                processedMsg += `Updated descriptions for ${toUpdate.length} items.`;
+            }
+
+            if (!toInsert.length && !toUpdate.length) {
+                processedMsg = "No changes needed. All items match database.";
+            }
+
+            // 5. Success
+            alert("Import Successful!\n\n" + processedMsg);
+            setIsImportModalOpen(false);
+            
+            // Your existing Realtime Listener in Dashboard.jsx will catch this and refresh the table automatically.
+            // But we call fetchInventory just in case.
+            fetchInventory();
+
         } catch (err) {
-          console.error("Import Row Error:", err);
-          errorCount++;
+            console.error("Import Error:", err);
+            // Handle Unique Constraint Violation (e.g. if Barcode collides, though unlikely)
+            if (err.code === '23505') {
+                 alert("Database Error: Duplicate Key Violation. This usually means an AccPac code or Barcode already exists but conflicts were found.");
+            } else {
+                 alert("Import Failed: " + err.message);
+            }
+        } finally {
+            setImportLoading(false);
         }
       }
-
-      setImportLoading(false); 
-      alert(`Import Complete.\nSuccessfully Processed: ${processedCount}\nErrors: ${errorCount}`);
-      setIsImportModalOpen(false);
-      fetchInventory();
-    };
-
-    reader.readAsText(file);
+    });
   };
 
   return (
