@@ -251,7 +251,10 @@ const handleNext = () => {
     
     if(window.confirm(`Are you sure you want to delete "${product.name}" permanently?`)) {
         try {
-            const { error } = await supabase.from('products').delete().eq('id', product.id);
+            const { error } = await supabase
+                .from('products')
+                .delete()
+                .eq('internal_id', product.internal_id);
             
             if (error) throw error;
 
