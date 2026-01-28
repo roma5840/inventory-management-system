@@ -1,0 +1,239 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import Navbar from "../components/Navbar";
+
+export default function ProductDetailsPage() {
+  const { id } = useParams(); // This maps to internal_id
+  const navigate = useNavigate();
+  
+  const [product, setProduct] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProductAudit();
+  }, [id]);
+
+  const fetchProductAudit = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Master Data
+      const { data: prod, error: prodError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('internal_id', id)
+        .single();
+
+      if (prodError) throw prodError;
+      setProduct(prod);
+
+      // 2. Fetch Transaction History
+      const { data: txs, error: txError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('product_internal_id', id)
+        .order('timestamp', { ascending: false });
+
+      if (txError) throw txError;
+
+      // 3. Enrich with Staff Names (Manual Join pattern used in this project)
+      const userIds = [...new Set(txs.map(t => t.user_id).filter(Boolean))];
+      let userMap = {};
+      
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
+          .from('authorized_users')
+          .select('auth_uid, full_name, email')
+          .in('auth_uid', userIds);
+        users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
+      }
+
+      const enriched = txs.map(t => ({
+        ...t,
+        staff_name: userMap[t.user_id] || 'Unknown'
+      }));
+
+      setHistory(enriched);
+
+    } catch (err) {
+      console.error(err);
+      alert("Error loading product details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="min-h-screen bg-slate-100 flex items-center justify-center"><span className="loading loading-spinner loading-lg"></span></div>;
+  if (!product) return <div className="p-10 text-center">Product not found.</div>;
+
+  return (
+    <div className="min-h-screen bg-slate-100 pb-10">
+      <Navbar />
+      
+      <main className="container mx-auto px-4 mt-6">
+        <button onClick={() => navigate(-1)} className="btn btn-sm btn-ghost gap-2 mb-4 text-gray-500">
+            ← Back to Dashboard
+        </button>
+
+        {/* HEADER CARD: MASTER DATA */}
+        <div className="card bg-white shadow-lg border-t-4 border-primary mb-8">
+            <div className="card-body">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
+                            {product.accpac_code && <span className="badge badge-primary badge-outline">{product.accpac_code}</span>}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-500 font-mono">
+                            <span className="bg-gray-100 px-2 py-1 rounded">BARCODE: {product.barcode}</span>
+                            <span>LOC: {product.location || "N/A"}</span>
+                        </div>
+                    </div>
+
+                    <div className="stats shadow bg-slate-50 border border-slate-200">
+                        <div className="stat place-items-center">
+                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Current Stock</div>
+                            <div className={`stat-value text-2xl ${product.current_stock <= product.min_stock_level ? 'text-red-600' : 'text-gray-700'}`}>
+                                {product.current_stock}
+                            </div>
+                        </div>
+                        <div className="stat place-items-center">
+                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Price</div>
+                            <div className="stat-value text-xl text-primary">₱{product.price.toLocaleString()}</div>
+                        </div>
+                        <div className="stat place-items-center">
+                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
+                            <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* AUDIT TRAIL TABLE */}
+        <div className="card bg-white shadow-lg">
+            <div className="card-body p-0">
+                <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-gray-700">Audit Trail (Transaction History)</h2>
+                    <span className="text-xs text-gray-500">Total Records: {history.length}</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="table w-full text-sm">
+                        <thead className="bg-gray-100 text-gray-600">
+                            <tr>
+                                <th>Date / Reference</th>
+                                <th>Activity Type</th>
+                                <th>Entity / Details</th>
+                                <th className="text-right">Price Snapshot</th>
+                                <th className="text-right">Cost Snapshot</th>
+                                <th className="text-center">Qty Change</th>
+                                <th className="text-center">Stock Balance</th>
+                                <th className="text-right">Encoded By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {history.length === 0 ? (
+                                <tr><td colSpan="8" className="text-center py-8 text-gray-400">No transactions found for this item.</td></tr>
+                            ) : history.map((tx) => {
+                                const isIncoming = tx.type === 'RECEIVING' || tx.type === 'ISSUANCE_RETURN';
+                                const isVoid = tx.type === 'VOID' || tx.is_voided;
+                                
+                                return (
+                                    <tr key={tx.id} className={`hover ${tx.is_voided ? 'opacity-50 bg-red-50' : ''}`}>
+                                        
+                                        {/* 1. Date & Ref */}
+                                        <td className="align-top">
+                                            <div className="font-mono font-bold text-xs">{tx.reference_number}</div>
+                                            <div className="text-[10px] text-gray-500">
+                                                {new Date(tx.timestamp).toLocaleDateString()} {new Date(tx.timestamp).toLocaleTimeString()}
+                                            </div>
+                                            {tx.is_voided && <span className="badge badge-xs badge-error">VOIDED</span>}
+                                        </td>
+
+                                        {/* 2. Type */}
+                                        <td className="align-top">
+                                            <div className={`badge badge-sm border-0 font-bold 
+                                                ${tx.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
+                                                  tx.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
+                                                  tx.type === 'VOID' ? 'bg-red-100 text-red-800' : 
+                                                  'bg-gray-100 text-gray-800'}`}>
+                                                {tx.type.replace('_', ' ')}
+                                            </div>
+                                            {tx.transaction_mode && (
+                                                <div className="text-[10px] mt-1 font-semibold text-gray-400 uppercase">
+                                                    {tx.transaction_mode}
+                                                </div>
+                                            )}
+                                        </td>
+
+                                        {/* 3. Entity (Student/Supplier) */}
+                                        <td className="align-top">
+                                            {tx.supplier && (
+                                                <div>
+                                                    <span className="text-[9px] text-gray-400 uppercase">Supplier:</span>
+                                                    <div className="font-bold text-gray-700">{tx.supplier}</div>
+                                                </div>
+                                            )}
+                                            {tx.student_name && (
+                                                <div>
+                                                    <span className="text-[9px] text-gray-400 uppercase">Student:</span>
+                                                    <div className="font-bold text-gray-700">{tx.student_name}</div>
+                                                    <div className="text-[10px] text-gray-500">{tx.course} - {tx.year_level}</div>
+                                                </div>
+                                            )}
+                                            {tx.remarks && (
+                                                <div className="mt-1 text-[10px] text-orange-600 bg-orange-50 inline-block px-1 rounded">
+                                                    Note: {tx.remarks}
+                                                </div>
+                                            )}
+                                        </td>
+
+                                        {/* 4. Price Snapshot */}
+                                        <td className="text-right font-mono align-top text-gray-600">
+                                            {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString()}` : '-'}
+                                        </td>
+
+                                        {/* 5. Cost Snapshot */}
+                                        <td className="text-right font-mono align-top text-orange-700">
+                                            {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
+                                        </td>
+
+                                        {/* 6. Qty Change */}
+                                        <td className="text-center align-top">
+                                            <span className={`font-bold text-lg ${isIncoming ? 'text-green-600' : 'text-red-600'}`}>
+                                                {isIncoming ? '+' : '-'}{tx.qty}
+                                            </span>
+                                        </td>
+
+                                        {/* 7. Stock Balance Snapshot */}
+                                        <td className="text-center align-top">
+                                            <div className="flex flex-col items-center">
+                                                <span className="font-bold text-gray-700">{tx.new_stock}</span>
+                                                <span className="text-[9px] text-gray-400">prev: {tx.previous_stock}</span>
+                                            </div>
+                                        </td>
+
+                                        {/* 8. Staff */}
+                                        <td className="text-right align-top text-xs font-semibold text-gray-600">
+                                            {tx.staff_name}
+                                            {tx.type === 'VOID' && (
+                                                <div className="text-[9px] text-red-500 italic mt-1 max-w-[120px] ml-auto">
+                                                    Reason: {tx.void_reason}
+                                                </div>
+                                            )}
+                                        </td>
+
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+      </main>
+    </div>
+  );
+}
