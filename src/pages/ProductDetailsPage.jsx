@@ -148,8 +148,8 @@ export default function ProductDetailsPage() {
                                 <th>Date / Reference</th>
                                 <th>Activity Type</th>
                                 <th>Entity / Details</th>
-                                <th className="text-right">Price Snapshot</th>
                                 <th className="text-right">Cost Snapshot</th>
+                                <th className="text-right">Price Snapshot</th>
                                 <th className="text-center">Qty Change</th>
                                 <th className="text-center">Stock Balance</th>
                                 <th className="text-right">Encoded By</th>
@@ -220,14 +220,14 @@ export default function ProductDetailsPage() {
                                                 )}
                                             </td>
 
-                                            {/* 4. Price Snapshot */}
-                                            <td className="text-right font-mono align-top py-3 text-gray-600">
-                                                {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString()}` : '-'}
-                                            </td>
-
-                                            {/* 5. Cost Snapshot */}
+                                            {/* 4. Cost Snapshot */}
                                             <td className="text-right font-mono align-top py-3 text-orange-700">
                                                 {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
+                                            </td>
+
+                                            {/* 5. Price Snapshot */}
+                                            <td className="text-right font-mono align-top py-3 text-gray-600">
+                                                {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString()}` : '-'}
                                             </td>
 
                                             {/* 6. Qty Change */}
