@@ -11,6 +11,12 @@ export default function ProductDetailsPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpPage, setJumpPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+
   useEffect(() => {
     fetchProductAudit();
   }, [id]);
@@ -135,7 +141,7 @@ export default function ProductDetailsPage() {
                     <span className="text-xs text-gray-500">Total Records: {history.length}</span>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto min-h-[400px]">
                     <table className="table w-full text-sm">
                         <thead className="bg-gray-100 text-gray-600">
                             <tr>
@@ -152,114 +158,173 @@ export default function ProductDetailsPage() {
                         <tbody>
                             {history.length === 0 ? (
                                 <tr><td colSpan="8" className="text-center py-8 text-gray-400">No transactions found for this item.</td></tr>
-                            ) : history.map((tx) => {
-                                const isIncoming = tx.type === 'RECEIVING' || tx.type === 'ISSUANCE_RETURN';
-                                
-                                return (
-                                    <tr key={tx.id} className={`hover transition-colors border-b border-gray-50 ${tx.is_voided ? 'bg-gray-50 opacity-60 grayscale' : ''}`}>
-                                        
-                                        {/* 1. Date & Ref */}
-                                        <td className="align-top py-3">
-                                            <div className="font-mono font-bold text-xs">{tx.reference_number}</div>
-                                            <div className="text-[10px] text-gray-500">
-                                                {new Date(tx.timestamp).toLocaleDateString()} {new Date(tx.timestamp).toLocaleTimeString()}
-                                            </div>
-                                            {tx.is_voided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
-                                        </td>
-
-                                        {/* 2. Type */}
-                                        <td className="align-top py-3">
-                                            <div className={`badge badge-sm border-0 font-bold 
-                                                ${tx.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
-                                                  tx.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
-                                                  tx.type === 'ISSUANCE_RETURN' ? 'bg-indigo-100 text-indigo-800' :
-                                                  tx.type === 'PULL_OUT' ? 'bg-orange-100 text-orange-800' : 
-                                                  'bg-gray-100 text-gray-800'}`}>
-                                                {tx.type.replace('_', ' ')}
-                                            </div>
-                                            {tx.transaction_mode && (
-                                                <div className="text-[10px] mt-1 font-semibold text-gray-400 uppercase">
-                                                    {tx.transaction_mode}
-                                                </div>
-                                            )}
-                                        </td>
-
-                                        {/* 3. Entity (Student/Supplier) - UPDATED STRUCTURE */}
-                                        <td className="align-top py-3">
-                                            {tx.student_name ? (
-                                                <div>
-                                                    <div className="font-bold text-xs text-gray-700">{tx.student_name}</div>
-                                                    <div className="text-[10px] text-gray-500 mt-0.5">
-                                                        {tx.student_id && <span className="font-mono text-gray-400 mr-1">{tx.student_id} •</span>}
-                                                        {tx.course} {tx.year_level}
-                                                    </div>
-                                                </div>
-                                            ) : tx.supplier ? (
-                                                <div>
-                                                    <span className="text-[9px] text-gray-400 uppercase">Supplier:</span>
-                                                    <div className="font-bold text-gray-700 text-xs">{tx.supplier}</div>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-400 italic text-xs">N/A</span>
-                                            )}
-                                            {tx.remarks && (
-                                                <div className="mt-2 text-[10px] text-orange-600 bg-orange-50 inline-block px-1.5 py-0.5 rounded border border-orange-100">
-                                                    Note: {tx.remarks}
-                                                </div>
-                                            )}
-                                        </td>
-
-                                        {/* 4. Price Snapshot */}
-                                        <td className="text-right font-mono align-top py-3 text-gray-600">
-                                            {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString()}` : '-'}
-                                        </td>
-
-                                        {/* 5. Cost Snapshot */}
-                                        <td className="text-right font-mono align-top py-3 text-orange-700">
-                                            {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
-                                        </td>
-
-                                        {/* 6. Qty Change */}
-                                        <td className="text-center align-top py-3">
-                                            <span className={`font-bold text-lg ${isIncoming ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isIncoming ? '+' : '-'}{tx.qty}
-                                            </span>
-                                        </td>
-
-                                        {/* 7. Stock Balance Snapshot */}
-                                        <td className="text-center align-top py-3">
-                                            <div className="flex flex-col items-center">
-                                                <span className="font-bold text-gray-700">{tx.new_stock}</span>
-                                                <span className="text-[9px] text-gray-400">prev: {tx.previous_stock}</span>
-                                            </div>
-                                        </td>
-
-                                        {/* 8. Staff & Void Reason */}
-                                        <td className="text-right align-top py-3">
-                                            <div className="text-xs font-semibold text-gray-600">{tx.staff_name}</div>
+                            ) : (
+                                // PAGINATION SLICE LOGIC
+                                history.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((tx) => {
+                                    const isIncoming = tx.type === 'RECEIVING' || tx.type === 'ISSUANCE_RETURN';
+                                    
+                                    return (
+                                        <tr key={tx.id} className={`hover transition-colors border-b border-gray-50 ${tx.is_voided ? 'bg-gray-50 opacity-60 grayscale' : ''}`}>
                                             
-                                            {/* UPDATED VOID METADATA DISPLAY */}
-                                            {tx.is_voided && tx.void_details && (
-                                                <div className="mt-2 pt-1 border-t border-red-200 flex flex-col items-end">
-                                                    <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
-                                                    <div className="text-[10px] text-red-700 font-medium">
-                                                        {tx.void_details.who}
-                                                    </div>
-                                                    <div className="text-[9px] text-red-400">
-                                                        {new Date(tx.void_details.when).toLocaleDateString()}
-                                                    </div>
-                                                    <div className="text-[9px] text-red-600 italic mt-0.5 max-w-[120px] text-right">
-                                                        "{tx.void_details.reason}"
-                                                    </div>
+                                            {/* 1. Date & Ref */}
+                                            <td className="align-top py-3">
+                                                <div className="font-mono font-bold text-xs">{tx.reference_number}</div>
+                                                <div className="text-[10px] text-gray-500">
+                                                    {new Date(tx.timestamp).toLocaleDateString()}
                                                 </div>
-                                            )}
-                                        </td>
+                                                <div className="text-[10px] text-gray-400">
+                                                    {new Date(tx.timestamp).toLocaleTimeString()}
+                                                </div>
+                                                {tx.is_voided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
+                                            </td>
 
-                                    </tr>
-                                );
-                            })}
+                                            {/* 2. Type */}
+                                            <td className="align-top py-3">
+                                                <div className={`badge badge-sm border-0 font-bold 
+                                                    ${tx.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
+                                                      tx.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
+                                                      tx.type === 'ISSUANCE_RETURN' ? 'bg-indigo-100 text-indigo-800' :
+                                                      tx.type === 'PULL_OUT' ? 'bg-orange-100 text-orange-800' : 
+                                                      'bg-gray-100 text-gray-800'}`}>
+                                                    {tx.type.replace('_', ' ')}
+                                                </div>
+                                                {tx.transaction_mode && (
+                                                    <div className="text-[10px] mt-1 font-semibold text-gray-400 uppercase">
+                                                        {tx.transaction_mode}
+                                                    </div>
+                                                )}
+                                            </td>
+
+                                            {/* 3. Entity (Student/Supplier) */}
+                                            <td className="align-top py-3">
+                                                {tx.student_name ? (
+                                                    <div>
+                                                        <div className="font-bold text-xs text-gray-700">{tx.student_name}</div>
+                                                        <div className="text-[10px] text-gray-500 mt-0.5">
+                                                            {tx.student_id && <span className="font-mono text-gray-400 mr-1">{tx.student_id} •</span>}
+                                                            {tx.course} {tx.year_level}
+                                                        </div>
+                                                    </div>
+                                                ) : tx.supplier ? (
+                                                    <div>
+                                                        <span className="text-[9px] text-gray-400 uppercase">Supplier:</span>
+                                                        <div className="font-bold text-gray-700 text-xs">{tx.supplier}</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400 italic text-xs">N/A</span>
+                                                )}
+                                                {tx.remarks && (
+                                                    <div className="mt-2 text-[10px] text-orange-600 bg-orange-50 inline-block px-1.5 py-0.5 rounded border border-orange-100">
+                                                        Note: {tx.remarks}
+                                                    </div>
+                                                )}
+                                            </td>
+
+                                            {/* 4. Price Snapshot */}
+                                            <td className="text-right font-mono align-top py-3 text-gray-600">
+                                                {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString()}` : '-'}
+                                            </td>
+
+                                            {/* 5. Cost Snapshot */}
+                                            <td className="text-right font-mono align-top py-3 text-orange-700">
+                                                {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
+                                            </td>
+
+                                            {/* 6. Qty Change */}
+                                            <td className="text-center align-top py-3">
+                                                <span className={`font-bold text-lg ${isIncoming ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {isIncoming ? '+' : '-'}{tx.qty}
+                                                </span>
+                                            </td>
+
+                                            {/* 7. Stock Balance Snapshot */}
+                                            <td className="text-center align-top py-3">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="font-bold text-gray-700">{tx.new_stock}</span>
+                                                    <span className="text-[9px] text-gray-400">prev: {tx.previous_stock}</span>
+                                                </div>
+                                            </td>
+
+                                            {/* 8. Staff & Void Details */}
+                                            <td className="text-right align-top py-3">
+                                                <div className="text-xs font-semibold text-gray-600">{tx.staff_name}</div>
+                                                
+                                                {tx.is_voided && tx.void_details && (
+                                                    <div className="mt-2 pt-1 border-t border-red-200 flex flex-col items-end">
+                                                        <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
+                                                        <div className="text-[10px] text-red-700 font-medium">
+                                                            {tx.void_details.who}
+                                                        </div>
+                                                        <div className="text-[9px] text-red-400 flex flex-col items-end">
+                                                            <span>{new Date(tx.void_details.when).toLocaleDateString()}</span>
+                                                            <span>{new Date(tx.void_details.when).toLocaleTimeString()}</span>
+                                                        </div>
+                                                        <div className="text-[9px] text-red-600 italic mt-0.5 max-w-[120px] text-right">
+                                                            "{tx.void_details.reason}"
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </td>
+
+                                        </tr>
+                                    );
+                                })
+                            )}
                         </tbody>
                     </table>
+                </div>
+                 {/* PAGINATION FOOTER */}
+                <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-gray-50 gap-4 rounded-b-lg">
+                    <div className="text-xs text-gray-500">
+                        {history.length > 0 
+                        ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, history.length)} of ${history.length} records`
+                        : "No records found"}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button 
+                            className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
+                            disabled={currentPage === 1}
+                            onClick={() => {
+                                setCurrentPage(p => p - 1);
+                                setJumpPage(p => p - 1);
+                            }}
+                        >
+                            « Prev
+                        </button>
+                        
+                        <div className="flex items-center gap-1 mx-2">
+                            <input 
+                                type="number" 
+                                min="1" 
+                                max={Math.ceil(history.length / ITEMS_PER_PAGE) || 1}
+                                value={jumpPage}
+                                onChange={(e) => setJumpPage(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        let p = parseInt(jumpPage);
+                                        const max = Math.ceil(history.length / ITEMS_PER_PAGE) || 1;
+                                        if (p > 0 && p <= max) {
+                                            setCurrentPage(p);
+                                        }
+                                    }
+                                }}
+                                className="input input-sm input-bordered w-16 text-center"
+                            />
+                            <span className="text-sm">of {Math.ceil(history.length / ITEMS_PER_PAGE) || 1}</span>
+                        </div>
+
+                        <button 
+                            className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
+                            disabled={currentPage >= Math.ceil(history.length / ITEMS_PER_PAGE)}
+                            onClick={() => {
+                                setCurrentPage(p => p + 1);
+                                setJumpPage(p => p + 1);
+                            }}
+                        >
+                            Next »
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
