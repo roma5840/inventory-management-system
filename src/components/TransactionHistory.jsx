@@ -236,7 +236,14 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           {first.student_name && (
                              <div className="mb-1">
                                <div className="font-bold text-xs">{first.student_name}</div>
-                               <div className="text-[10px] text-gray-500">{first.course} {first.year_level}</div>
+                               <div className="text-[10px] text-gray-500">
+                                  {first.student_id && (
+                                      <span className="font-mono bg-gray-100 px-1 rounded mr-1 text-gray-600">
+                                          {first.student_id}
+                                      </span>
+                                  )}
+                                  {first.course} {first.year_level}
+                               </div>
                              </div>
                           )}
                           

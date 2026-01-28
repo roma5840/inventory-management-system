@@ -364,7 +364,10 @@ export default function TransactionsManager() {
                                   {first.student_name ? (
                                       <div>
                                           <div className="font-bold text-xs">{first.student_name}</div>
-                                          <div className="text-[10px] text-gray-500">{first.course} {first.year_level}</div>
+                                          <div className="text-[10px] text-gray-500">
+                                              {first.student_id && <span className="font-mono text-gray-400 mr-1">{first.student_id} •</span>}
+                                              {first.course} {first.year_level}
+                                          </div>
                                       </div>
                                   ) : first.supplier ? (
                                       <div>
