@@ -78,21 +78,39 @@ export default function TransactionForm({ onSuccess }) {
 
       if (data) {
         setIsNewItem(false); // Found
+        const cost = data.unit_cost || "";
+        const price = data.price || "";
+
         setCurrentScan(prev => ({
           ...prev, 
           barcode: data.barcode,
           itemName: data.name || "", 
-          priceOverride: data.price || "",
-          unitCost: data.unit_cost || "",
+          priceOverride: price,
+          unitCost: cost,
           location: data.location || "",
           accpacCode: data.accpac_code || "",
           qty: 1
         }));
-        setTimeout(() => document.getElementById('qtyInput')?.focus(), 50); 
+        
+        // Intelligent Focus Logic
+        setTimeout(() => {
+            // 1. If receiving and no cost, go to Cost
+            if (headerData.type === 'RECEIVING' && (!cost || parseFloat(cost) === 0)) {
+                document.getElementById('unitCostInput')?.focus();
+            } 
+            // 2. If receiving/pullout and no price, go to Price
+            else if (['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (!price || parseFloat(price) === 0)) {
+                 document.getElementById('priceInput')?.focus();
+            } 
+            // 3. Otherwise, go to Qty
+            else {
+                document.getElementById('qtyInput')?.focus();
+            }
+        }, 50); 
+
       } else {
-        // NOT FOUND: Update state for UI feedback instead of Alerting
+        // NOT FOUND
         setIsNewItem(true); 
-        // Clear details but keep the barcode so user can correct it
         setCurrentScan(prev => ({ 
              ...prev, 
              itemName: "", 
@@ -490,24 +508,41 @@ export default function TransactionForm({ onSuccess }) {
     if(barcodeRef.current) barcodeRef.current.focus();
   };
 
-  // Handle manual qty change in queue table
+  // Handle manual qty change in queue table (Allows empty string while typing)
   const handleQueueQtyChange = (id, newQty) => {
     setQueue(prev => prev.map(item => {
       if (item.id === id) {
-        let finalQty = parseInt(newQty) || 0;
+        // Allow empty string so user can delete and retype "50"
+        if (newQty === "") return { ...item, qty: "" };
+
+        let finalQty = parseInt(newQty);
         
-        // If it's a return, enforce the limit
+        // Block NaN (non-numeric input) but allow empty string flow above
+        if (isNaN(finalQty)) return item;
+
+        // If it's a return, enforce the limit immediately
         if (item.maxQty && finalQty > item.maxQty) {
-           // Optional: Alert the user or just clamp the value
-           // alert(`Cannot return more than purchased. Max: ${item.maxQty}`);
            finalQty = item.maxQty;
         }
         
-        if (finalQty < 1) finalQty = 1;
+        // We do NOT enforce min(1) here to allow backspacing
         return { ...item, qty: finalQty };
       }
       return item;
     }));
+  };
+
+  // Enforce minimums when user leaves the input field
+  const handleQueueBlur = (id) => {
+      setQueue(prev => prev.map(item => {
+          if (item.id === id) {
+              // If empty or 0, reset to 1
+              if (!item.qty || parseInt(item.qty) < 1) {
+                  return { ...item, qty: 1 };
+              }
+          }
+          return item;
+      }));
   };
 
   return (
@@ -802,7 +837,6 @@ export default function TransactionForm({ onSuccess }) {
                                     name="barcodeField"
                                     ref={barcodeRef}
                                     type="text" 
-                                    // Visual cues: Red border if not found, Green if found
                                     className={`input input-sm input-bordered w-full font-mono font-bold uppercase transition-colors
                                         ${isNewItem === true ? 'border-red-400 text-red-600 focus:border-red-500' : ''}
                                         ${isNewItem === false ? 'border-green-500 text-green-800' : 'text-blue-800'}
@@ -825,30 +859,35 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
 
-                            {/* COST FIELD: Editable in RECEIVING, Read-Only in PULL_OUT */}
+                            {/* COST FIELD */}
                             {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
                                 <div className="col-span-2">
                                     <label className="label text-[10px] font-bold text-orange-600 uppercase">Unit Cost</label>
                                     <input 
+                                        id="unitCostInput"
                                         type="number" min="0" step="0.01"
-                                        readOnly={headerData.type !== 'RECEIVING'} // Lock if not Receiving
+                                        readOnly={headerData.type !== 'RECEIVING'} 
                                         className={`input input-sm input-bordered w-full font-mono text-orange-800 border-orange-200 
                                             ${headerData.type === 'RECEIVING' ? 'focus:border-orange-500 bg-white' : 'bg-orange-50 cursor-not-allowed'}
                                         `}
                                         value={currentScan.unitCost}
                                         onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
-                                        onKeyDown={handleKeyDown}
+                                        onKeyDown={(e) => {
+                                            if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
+                                            handleKeyDown(e);
+                                        }}
                                         placeholder="0.00"
                                     />
                                 </div>
                             )}
 
-                            {/* PRICE FIELD: Editable in RECEIVING, ReadOnly otherwise */}
+                            {/* PRICE FIELD */}
                             <div className={['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? "col-span-2" : "col-span-4"}>
                                 <label className="label text-[10px] font-bold text-gray-400 uppercase">
                                     {headerData.type === 'RECEIVING' ? "SRP" : "Price"}
                                 </label>
                                 <input 
+                                    id="priceInput"
                                     type="number"
                                     min="0"
                                     step="0.01"
@@ -860,7 +899,10 @@ export default function TransactionForm({ onSuccess }) {
                                     }`}
                                     value={currentScan.priceOverride}
                                     onChange={e => setCurrentScan({...currentScan, priceOverride: e.target.value})}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={(e) => {
+                                        if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
+                                        handleKeyDown(e);
+                                    }}
                                     placeholder="0.00"
                                 />
                             </div>
@@ -873,7 +915,10 @@ export default function TransactionForm({ onSuccess }) {
                                     className="input input-sm input-bordered w-full" 
                                     value={currentScan.qty}
                                     onChange={e => setCurrentScan({...currentScan, qty: e.target.value})}
-                                    onKeyDown={handleKeyDown}
+                                    onKeyDown={(e) => {
+                                        if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
+                                        handleKeyDown(e);
+                                    }}
                                 />
                             </div>
                         </div>
@@ -919,6 +964,8 @@ export default function TransactionForm({ onSuccess }) {
                                             min="1"
                                             max={item.maxQty || 999}
                                             onChange={(e) => handleQueueQtyChange(item.id, e.target.value)}
+                                            onBlur={() => handleQueueBlur(item.id)}
+                                            onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
                                         />
                                         {item.maxQty && (
                                             <span className="text-[10px] text-gray-400 ml-1">
