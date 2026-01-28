@@ -79,8 +79,34 @@ export default function TransactionsManager() {
       const { data: txData, count, error } = await query;
       if (error) throw error;
 
+      // --- ORPHAN VOID FIX START ---
+      // If we have a VOID row but pagination/filters hid the original, fetch it now.
+      let combinedData = [...(txData || [])];
+      
+      const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
+      const orphanRefs = [];
+
+      distinctRefs.forEach(ref => {
+          const items = combinedData.filter(t => t.reference_number === ref);
+          const hasOriginal = items.some(t => t.type !== 'VOID');
+          if (!hasOriginal) orphanRefs.push(ref);
+      });
+
+      if (orphanRefs.length > 0) {
+          const { data: originals } = await supabase
+              .from('transactions')
+              .select('*')
+              .in('reference_number', orphanRefs)
+              .neq('type', 'VOID'); // Fetch the original context
+          
+          if (originals?.length > 0) {
+              combinedData = [...combinedData, ...originals];
+          }
+      }
+      // --- ORPHAN VOID FIX END ---
+
       // Fetch Staff Names
-      const enriched = await enrichWithStaffNames(txData);
+      const enriched = await enrichWithStaffNames(combinedData);
 
       setTransactions(enriched);
       setTotalCount(count || 0);
@@ -278,21 +304,29 @@ export default function TransactionsManager() {
                   <tr><td colSpan="6" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
               ) : (
                   Object.entries(groupedTransactions).map(([refNo, items]) => {
-                      const first = items.find(i => i.type !== 'VOID') || items[0];
-                      // Find the specific VOID entry to get the voiding staff/time
+                      // 1. Determine "Original" vs "Void" rows
+                      const nonVoidItems = items.filter(i => i.type !== 'VOID');
                       const voidRow = items.find(i => i.type === 'VOID'); 
+                      
+                      // 2. Select data to display (Handle orphans where original is on another page)
+                      const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
+                      const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
+                      
                       const isVoided = items.some(i => i.is_voided) || !!voidRow;
-                      const isReversal = first.type === 'VOID';
+                      const isOrphanVoid = items.every(i => i.type === 'VOID');
 
-                      // Calculate Total Value for this Receipt
-                      const totalValue = items.reduce((sum, item) => {
-                          if (item.type === 'VOID') return sum;
+                      // 3. Calculate Total Value (Use displayItems to ensure orphans still show value)
+                      const totalValue = displayItems.reduce((sum, item) => {
                           const price = item.price_snapshot !== null ? item.price_snapshot : item.price;
                           return sum + (price * item.qty);
                       }, 0);
 
+                      // 4. Void Metadata source
+                      // If we have a dedicated voidRow, use it. If we are an orphan void, 'first' IS the void row.
+                      const voidSource = voidRow || (isOrphanVoid ? first : null);
+
                       return (
-                          <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-60 bg-gray-50' : ''} ${isReversal ? 'bg-red-50' : ''}`}>
+                          <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
                               {/* 1. Ref & Date */}
                               <td className="py-2">
                                   <div className="font-mono font-bold text-xs">{refNo}</div>
@@ -303,14 +337,21 @@ export default function TransactionsManager() {
 
                               {/* 2. Type & Mode */}
                               <td className="py-2">
-                                  <div className={`badge badge-sm font-bold border-0 
-                                      ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
-                                        first.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
-                                        first.type === 'ISSUANCE_RETURN' ? 'bg-indigo-100 text-indigo-800' :
-                                        first.type === 'PULL_OUT' ? 'bg-orange-100 text-orange-800' : 'bg-gray-200 text-gray-800'}`
-                                  }>
-                                      {first.type.replace('_', ' ')}
-                                  </div>
+                                  {isOrphanVoid ? (
+                                    <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800">
+                                        TRANSACTION
+                                    </div>
+                                  ) : (
+                                    <div className={`badge badge-sm font-bold border-0 
+                                        ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
+                                            first.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
+                                            first.type === 'ISSUANCE_RETURN' ? 'bg-indigo-100 text-indigo-800' :
+                                            first.type === 'PULL_OUT' ? 'bg-orange-100 text-orange-800' : 
+                                            'bg-gray-200 text-gray-800'}`}>
+                                        {first.type.replace('_', ' ')}
+                                    </div>
+                                  )}
+                                  
                                   {first.transaction_mode && (
                                       <div className="mt-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                                           {first.transaction_mode}
@@ -340,16 +381,15 @@ export default function TransactionsManager() {
                                   )}
                               </td>
 
-                              {/* 4. Items List (Updated with Barcode) */}
+                              {/* 4. Items List (Uses displayItems to show content even for orphan voids) */}
                               <td className="py-2">
                                   <div className="space-y-1">
-                                      {items.filter(i => i.type !== 'VOID').map(item => (
+                                      {displayItems.map(item => (
                                           <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
                                               <div className="flex flex-col max-w-[200px]">
                                                   <span className="truncate font-medium" title={item.product_name_snapshot || item.product_name}>
                                                       {item.product_name_snapshot || "Item"}
                                                   </span>
-                                                  {/* Barcode/ID Display */}
                                                   <span className="text-[9px] text-gray-400 font-mono tracking-tighter">
                                                     {item.barcode_snapshot || item.product_id}
                                                   </span>
@@ -368,22 +408,22 @@ export default function TransactionsManager() {
                                   {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
 
-                              {/* 6. Staff (Updated with Void Details) */}
+                              {/* 6. Staff & Void Details */}
                               <td className="py-2 text-right">
                                   <div className="text-xs font-semibold">{first.staff_name}</div>
                                   
                                   {/* Enhanced Void Metadata */}
-                                  {isVoided && (
+                                  {isVoided && voidSource && (
                                       <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
                                           <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
                                           <div className="text-[10px] text-red-700 font-medium">
-                                              {voidRow?.staff_name || "Unknown"}
+                                              {voidSource.staff_name || "Unknown"}
                                           </div>
                                           <div className="text-[9px] text-red-400">
-                                              {voidRow ? new Date(voidRow.timestamp).toLocaleString() : "Unknown Time"}
+                                              {new Date(voidSource.timestamp).toLocaleString()}
                                           </div>
-                                          <div className="text-[9px] text-red-500 italic mt-0.5 max-w-[100px] truncate" title={voidRow?.void_reason || first.void_reason}>
-                                              "{voidRow?.void_reason || first.void_reason || "N/A"}"
+                                          <div className="text-[9px] text-red-500 italic mt-0.5 max-w-[100px] truncate" title={voidSource.void_reason || first.void_reason}>
+                                              "{voidSource.void_reason || first.void_reason || "N/A"}"
                                           </div>
                                       </div>
                                   )}
