@@ -4,12 +4,12 @@ import { supabase } from "../lib/supabase"; // Added Import
 
 // Components moved here
 import Navbar from "../components/Navbar";
-import Stats from "../components/Stats";
 import TransactionForm from "../components/TransactionForm";
 import AdminInvite from "../components/AdminInvite";
 import Dashboard from "../components/Dashboard";
 import TransactionHistory from "../components/TransactionHistory";
 import ReceiptLookup from "../components/ReceiptLookup";
+import StatsComprehensive from "../components/StatsComprehensive"; 
 
 export default function DashboardPage() {
   const { userRole } = useAuth();
@@ -40,7 +40,7 @@ export default function DashboardPage() {
       
       <main className="container mx-auto px-4">
         {/* Pass refreshTrigger so Stats re-calculates immediately */}
-        <Stats key={refreshTrigger} />
+        <StatsComprehensive key={refreshTrigger} lastUpdated={refreshTrigger} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
