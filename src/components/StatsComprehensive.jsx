@@ -21,11 +21,8 @@ export default function StatsComprehensive({ lastUpdated }) {
     const fetchMetrics = async () => {
       setLoading(true);
       
-      const startIso = new Date(dateRange.start).toISOString();
-      // Ensure End Date covers the full day (23:59:59)
-      const endObj = new Date(dateRange.end);
-      endObj.setHours(23, 59, 59, 999);
-      const endIso = endObj.toISOString();
+      const startIso = new Date(`${dateRange.start}T00:00:00`).toISOString();
+      const endIso = new Date(`${dateRange.end}T23:59:59.999`).toISOString();
 
       const { data: stats, error } = await supabase.rpc('get_period_stats', {
         start_date: startIso,

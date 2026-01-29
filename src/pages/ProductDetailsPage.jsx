@@ -34,10 +34,8 @@ export default function ProductDetailsPage() {
 
   const fetchProductStats = async () => {
     setStatsLoading(true);
-    const startIso = new Date(statsDateRange.start).toISOString();
-    const endObj = new Date(statsDateRange.end);
-    endObj.setHours(23, 59, 59, 999);
-    const endIso = endObj.toISOString();
+    const startIso = new Date(`${statsDateRange.start}T00:00:00`).toISOString();
+    const endIso = new Date(`${statsDateRange.end}T23:59:59.999`).toISOString();
 
     const { data: s, error } = await supabase.rpc('get_product_period_stats', {
       target_id: id,
