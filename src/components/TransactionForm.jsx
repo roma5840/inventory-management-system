@@ -916,7 +916,7 @@ export default function TransactionForm({ onSuccess }) {
                                     value={currentScan.qty}
                                     onChange={e => setCurrentScan({...currentScan, qty: e.target.value})}
                                     onKeyDown={(e) => {
-                                        if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
+                                        if (['-', '+', 'e', 'E', '.'].includes(e.key)) e.preventDefault();
                                         handleKeyDown(e);
                                     }}
                                 />
@@ -965,7 +965,7 @@ export default function TransactionForm({ onSuccess }) {
                                             max={item.maxQty || 999}
                                             onChange={(e) => handleQueueQtyChange(item.id, e.target.value)}
                                             onBlur={() => handleQueueBlur(item.id)}
-                                            onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+                                            onKeyDown={(e) => ['-', '+', 'e', 'E', '.'].includes(e.key) && e.preventDefault()}
                                         />
                                         {item.maxQty && (
                                             <span className="text-[10px] text-gray-400 ml-1">
