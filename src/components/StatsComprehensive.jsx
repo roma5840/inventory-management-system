@@ -134,15 +134,15 @@ export default function StatsComprehensive({ lastUpdated }) {
             </div>
 
             {/* Box 2: Inflow */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Total Receiving + Returns">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Purchases (In)</div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Receiving + Returns">
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.inflow.val)}</div>
             </div>
 
             {/* Box 3: Outflow */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Total Sales + Issuances + Pull Outs">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Sold/Out (Out)</div>
+            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Issuances + Pull Outs">
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Outflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.outflow.val)}</div>
             </div>

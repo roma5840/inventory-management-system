@@ -258,7 +258,7 @@ export default function ProductDetailsPage() {
 
                             {/* Inflow */}
                             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Purchases / Receiving">
-                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Purchases (In)</div>
+                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                                 <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.inflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
@@ -267,7 +267,7 @@ export default function ProductDetailsPage() {
 
                             {/* Outflow */}
                             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Sales / Issuances / Voids">
-                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Sold/Out (Out)</div>
+                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Outflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                                 <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
