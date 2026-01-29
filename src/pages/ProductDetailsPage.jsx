@@ -16,6 +16,58 @@ export default function ProductDetailsPage() {
   const [jumpPage, setJumpPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  const [statsDateRange, setStatsDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [statsData, setStatsData] = useState({
+    beginning: { qty: 0, val: 0 },
+    inflow: { qty: 0, val: 0 },
+    outflow: { qty: 0, val: 0, revenue: 0 },
+    ending: { qty: 0, val: 0 }
+  });
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  useEffect(() => {
+    if (id) fetchProductStats();
+  }, [id, statsDateRange]);
+
+  const fetchProductStats = async () => {
+    setStatsLoading(true);
+    const startIso = new Date(statsDateRange.start).toISOString();
+    const endObj = new Date(statsDateRange.end);
+    endObj.setHours(23, 59, 59, 999);
+    const endIso = endObj.toISOString();
+
+    const { data: s, error } = await supabase.rpc('get_product_period_stats', {
+      target_id: id,
+      start_date: startIso,
+      end_date: endIso
+    });
+
+    if (!error && s) {
+      // Calculate derived stats
+      const endQty = Number(s.current_qty) || 0;
+      const endVal = Number(s.current_val) || 0;
+      const inQty = Number(s.inflow_qty) || 0;
+      const inCost = Number(s.inflow_cost) || 0;
+      const outQty = Number(s.outflow_qty) || 0;
+      const rev = Number(s.sales_revenue) || 0;
+      const cogs = Number(s.cogs) || 0;
+
+      // Reverse engineering Beginning
+      const begQty = endQty - inQty + outQty;
+      const begVal = endVal - inCost + cogs;
+
+      setStatsData({
+        beginning: { qty: begQty, val: begVal },
+        inflow: { qty: inQty, val: inCost },
+        outflow: { qty: outQty, val: cogs, revenue: rev },
+        ending: { qty: endQty, val: endVal }
+      });
+    }
+    setStatsLoading(false);
+  };
 
   useEffect(() => {
     fetchProductAudit();
@@ -127,6 +179,112 @@ export default function ProductDetailsPage() {
                         <div className="stat place-items-center">
                             <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
                             <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* PRODUCT PERFORMANCE STATS */}
+        <div className="card bg-white shadow-lg mb-8 border border-gray-200">
+            <div className="card-body p-6">
+                
+                {/* Header & Controls */}
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
+                        </svg>
+                        Performance Metrics
+                    </h3>
+                    
+                    <div className="flex items-center gap-3 bg-gray-50 p-2 px-3 rounded-lg border border-gray-100 shadow-sm">
+                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Period:</span>
+                        <input 
+                            type="date" 
+                            className="input input-xs input-ghost focus:bg-white text-gray-600 font-mono w-32"
+                            value={statsDateRange.start}
+                            onChange={(e) => setStatsDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        />
+                        <span className="text-gray-300">→</span>
+                        <input 
+                            type="date" 
+                            className="input input-xs input-ghost focus:bg-white text-gray-600 font-mono w-32"
+                            value={statsDateRange.end}
+                            onChange={(e) => setStatsDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        />
+                        {statsLoading && <span className="loading loading-dots loading-xs text-primary ml-2"></span>}
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    {/* 1. Financial KPI Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Revenue */}
+                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Total Revenue from Sales">
+                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Total Sales</div>
+                            <div className="stat-value text-primary text-2xl">₱{statsData.outflow.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Gross Revenue</div>
+                        </div>
+
+                        {/* COGS */}
+                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Cost of Goods Sold">
+                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Cost of Sales (COGS)</div>
+                            <div className="stat-value text-gray-700 text-2xl">₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Based on historical unit cost</div>
+                        </div>
+
+                        {/* Profit */}
+                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Revenue - COGS">
+                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Est. Gross Profit</div>
+                            <div className={`stat-value text-2xl ${(statsData.outflow.revenue - statsData.outflow.val) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ₱{(statsData.outflow.revenue - statsData.outflow.val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </div>
+                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Net Margin for Period</div>
+                        </div>
+                    </div>
+
+                    {/* 2. Inventory Flow (4 Boxes) */}
+                    <div>
+                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Inventory Reconciliation Flow</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            
+                            {/* Beginning */}
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Starting Stock">
+                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Beginning Inv</div>
+                                <div className="text-xl font-bold text-gray-700">{statsData.beginning.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
+                                <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
+                                    Est: ₱{statsData.beginning.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </div>
+                            </div>
+
+                            {/* Inflow */}
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Purchases / Receiving">
+                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Purchases (In)</div>
+                                <div className="text-xl font-bold text-gray-700">{statsData.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
+                                <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
+                                    Cost: ₱{statsData.inflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </div>
+                            </div>
+
+                            {/* Outflow */}
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Sales / Issuances / Voids">
+                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Sold/Out (Out)</div>
+                                <div className="text-xl font-bold text-gray-700">{statsData.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
+                                <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
+                                    Cost: ₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </div>
+                            </div>
+
+                            {/* Ending */}
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm" title="Final Stock for Period">
+                                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wider">Ending Inv</div>
+                                <div className="text-xl font-bold text-gray-900">{statsData.ending.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
+                                <div className="text-[10px] font-mono mt-1 text-gray-600 border-t border-gray-200 pt-1">
+                                    Val: ₱{statsData.ending.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
