@@ -166,7 +166,7 @@ export default function ProductDetailsPage() {
                         </div>
                     </div>
 
-                    <div className="stats shadow bg-slate-50 border border-slate-200">
+                   <div className="stats shadow bg-slate-50 border border-slate-200">
                         <div className="stat place-items-center">
                             <div className="stat-title text-xs uppercase font-bold text-gray-400">Current Stock</div>
                             <div className={`stat-value text-2xl ${product.current_stock <= product.min_stock_level ? 'text-red-600' : 'text-gray-700'}`}>
@@ -177,12 +177,10 @@ export default function ProductDetailsPage() {
                             <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Price</div>
                             <div className="stat-value text-xl text-primary">₱{product.price.toLocaleString()}</div>
                         </div>
-                        {SHOW_PROFIT_MARGIN && (
-                            <div className="stat place-items-center">
-                                <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
-                                <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
-                            </div>
-                        )}
+                        <div className="stat place-items-center">
+                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
+                            <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -230,16 +228,16 @@ export default function ProductDetailsPage() {
                             <div className="stat-desc text-[10px] text-gray-400 mt-1">Gross Revenue</div>
                         </div>
 
-                        {/* COGS */}
-                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Cost of Goods Sold">
-                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Cost of Sales (COGS)</div>
+                        {/* Outflow Cost (Renamed from COGS for accuracy) */}
+                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Sum of (Qty × Unit Cost) for Sales + Pull Outs">
+                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Total Outflow Cost</div>
                             <div className="stat-value text-gray-700 text-2xl">₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Based on historical unit cost</div>
+                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Cost of Goods + Pull Outs</div>
                         </div>
 
                         {/* Profit (HIDDEN BY DEFAULT) */}
                         {SHOW_PROFIT_MARGIN && (
-                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Revenue - COGS">
+                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Revenue - Outflow Cost">
                                 <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Est. Gross Profit</div>
                                 <div className={`stat-value text-2xl ${(statsData.outflow.revenue - statsData.outflow.val) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     ₱{(statsData.outflow.revenue - statsData.outflow.val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
