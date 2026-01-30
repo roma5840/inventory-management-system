@@ -292,11 +292,11 @@ export default function StudentPage() {
                         className="hidden" 
                     />
                     
-                    {/* Action Buttons */}
-                    <div className="join">
+                    {/* Action Buttons - Separated */}
+                    <div className="flex items-center gap-2">
                         <button 
                             onClick={handleDownloadTemplate}
-                            className="btn btn-sm join-item btn-outline btn-info gap-2"
+                            className="btn btn-sm btn-outline btn-info gap-2"
                             title="Download CSV Template"
                         >
                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -308,7 +308,7 @@ export default function StudentPage() {
                         <button 
                             onClick={() => fileInputRef.current.click()}
                             disabled={importing}
-                            className="btn btn-sm join-item btn-outline btn-success gap-2"
+                            className="btn btn-sm btn-outline btn-success gap-2"
                         >
                             {importing ? <span className="loading loading-spinner loading-xs"></span> : (
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -320,7 +320,7 @@ export default function StudentPage() {
                         
                         <button 
                             onClick={() => setShowCourseModal(true)}
-                            className="btn btn-sm join-item btn-outline gap-2"
+                            className="btn btn-sm btn-outline gap-2"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -346,25 +346,26 @@ export default function StudentPage() {
                         <tr>
                             <th>Student ID</th>
                             <th>Full Name</th>
-                            <th>Course / Year</th>
+                            <th>Course</th>
+                            <th>Year Level</th>
                             <th className="text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan="4" className="text-center py-10">Loading Data...</td></tr>
+                            <tr><td colSpan="5" className="text-center py-10">Loading Data...</td></tr>
                         ) : students.length === 0 ? (
-                            <tr><td colSpan="4" className="text-center py-10 text-gray-400">No students found.</td></tr>
+                            <tr><td colSpan="5" className="text-center py-10 text-gray-400">No students found.</td></tr>
                         ) : (
                             students.map(s => (
                                 <tr key={s.id || s.student_id} className="hover">
                                     <td className="font-mono font-bold text-gray-500">{s.student_id}</td>
                                     <td className="font-semibold text-gray-700">{s.name}</td>
                                     <td>
-                                        <div className="flex gap-2">
-                                            <span className="badge badge-ghost badge-sm">{s.course || "N/A"}</span>
-                                            {s.year_level && <span className="badge badge-outline badge-sm">{s.year_level}</span>}
-                                        </div>
+                                        <span className="badge badge-ghost badge-sm">{s.course || "N/A"}</span>
+                                    </td>
+                                    <td>
+                                        {s.year_level ? <span className="badge badge-outline badge-sm">{s.year_level}</span> : "-"}
                                     </td>
                                     <td className="text-right">
                                         <button 
