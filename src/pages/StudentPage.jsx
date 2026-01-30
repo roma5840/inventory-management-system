@@ -248,6 +248,29 @@ export default function StudentPage() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    // Using Papa.unparse ensures fields with commas (like Name) are automatically wrapped in quotes
+    // so Excel reads "DOE, JOHN SMITH" as one column, not two.
+    const csvContent = Papa.unparse({
+      fields: ["STUDENT ID", "NAME", "SEMESTER", "COURSE"],
+      data: [
+        ["03-01-2425-XXXXX", "DOE, JOHN SMITH", "Y1S2", "Bachelor of Science in Information Technology"]
+      ]
+    });
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", "enrollment_summary_template.csv");
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
@@ -271,6 +294,17 @@ export default function StudentPage() {
                     
                     {/* Action Buttons */}
                     <div className="join">
+                        <button 
+                            onClick={handleDownloadTemplate}
+                            className="btn btn-sm join-item btn-outline btn-info gap-2"
+                            title="Download CSV Template"
+                        >
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Template
+                        </button>
+
                         <button 
                             onClick={() => fileInputRef.current.click()}
                             disabled={importing}
