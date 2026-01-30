@@ -27,8 +27,8 @@ export default function StudentPage() {
   const [courseLoading, setCourseLoading] = useState(false);
 
   // Bulk Import State
-  const fileInputRef = useRef(null);
-  const [importing, setImporting] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
 
   // Fetch Courses Logic
   useEffect(() => {
@@ -154,61 +154,117 @@ export default function StudentPage() {
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleStudentImport = (e) => {
+    e.preventDefault();
     const file = e.target.files[0];
     if (!file) return;
 
-    setImporting(true);
+    setImportLoading(true);
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
         try {
-          // 1. Map CSV Headers to DB Columns
-          const formattedData = results.data
+          // 1. Map CSV Headers to DB Columns & Clean Data
+          const cleanRows = results.data
             .filter(row => row['STUDENT ID'] && row['NAME'])
             .map(row => ({
               student_id: row['STUDENT ID'].trim(),
               name: row['NAME'].trim().toUpperCase(),
               course: row['COURSE'] ? row['COURSE'].trim().toUpperCase() : '',
-              year_level: row['SEMESTER'] ? row['SEMESTER'].trim().toUpperCase() : '', // Map Semester -> Year Level
-              last_updated: new Date()
+              year_level: row['SEMESTER'] ? row['SEMESTER'].trim().toUpperCase() : ''
             }));
 
-          if (formattedData.length === 0) throw new Error("No valid data found in CSV.");
+          if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV headers: STUDENT ID, NAME");
 
-          // 2. Extract Unique Courses and Update 'courses' table
-          const uniqueCourses = [...new Set(formattedData.map(d => d.course).filter(Boolean))];
-          const courseInserts = uniqueCourses.map(c => ({ code: c }));
-          
-          // Upsert courses (ignore duplicates)
-          if (courseInserts.length > 0) {
+          // 2. Handle Courses (Upsert unique courses first)
+          const uniqueCourses = [...new Set(cleanRows.map(d => d.course).filter(Boolean))];
+          if (uniqueCourses.length > 0) {
+             const courseInserts = uniqueCourses.map(c => ({ code: c }));
              await supabase.from('courses').upsert(courseInserts, { onConflict: 'code' });
-             // Refresh local course list
+             // Refresh local list
              setAvailableCourses(prev => [...new Set([...prev, ...uniqueCourses])].sort());
           }
 
-          // 3. Perform Batch Upsert for Students
-          const { error } = await supabase
+          // 3. Batch Fetch Existing Students for Comparison
+          const studentIds = cleanRows.map(r => r.student_id);
+          const { data: existingStudents, error: fetchError } = await supabase
             .from('students')
-            .upsert(formattedData, { onConflict: 'student_id' });
+            .select('student_id, name, course, year_level')
+            .in('student_id', studentIds);
+            
+          if (fetchError) throw fetchError;
 
-          if (error) throw error;
+          const existingMap = new Map();
+          existingStudents.forEach(s => existingMap.set(s.student_id, s));
 
-          alert(`Successfully processed ${formattedData.length} students.`);
-          if (fileInputRef.current) fileInputRef.current.value = "";
+          const toInsert = [];
+          const toUpdate = [];
+          let unchangedCount = 0;
+
+          // 4. Categorize (Insert vs Update vs Unchanged)
+          cleanRows.forEach(row => {
+            const existing = existingMap.get(row.student_id);
+
+            if (existing) {
+                // Check if any field differs
+                const hasChanged = 
+                    existing.name !== row.name || 
+                    existing.course !== row.course || 
+                    existing.year_level !== row.year_level;
+
+                if (hasChanged) {
+                    toUpdate.push({ ...row, last_updated: new Date() });
+                } else {
+                    unchangedCount++;
+                }
+            } else {
+                toInsert.push({ ...row, last_updated: new Date() });
+            }
+          });
+
+          // 5. Perform DB Operations
+          let processedMsg = "";
+
+          if (toInsert.length > 0) {
+              const { error } = await supabase.from('students').insert(toInsert);
+              if (error) throw error;
+              processedMsg += `Added ${toInsert.length} new students.\n`;
+          }
+
+          if (toUpdate.length > 0) {
+              const { error } = await supabase.from('students').upsert(toUpdate, { onConflict: 'student_id' });
+              if (error) throw error;
+              processedMsg += `Updated details for ${toUpdate.length} students.\n`;
+          }
+
+          if (unchangedCount > 0) {
+              processedMsg += `${unchangedCount} records were already up to date.`;
+          }
+
+          if (toInsert.length === 0 && toUpdate.length === 0) {
+              processedMsg = "No changes needed. All records match the database.";
+          }
+
+          alert("Import Successful!\n\n" + processedMsg);
+          setIsImportModalOpen(false);
           
+          // Trigger app-wide refresh
+          await supabase.channel('app_updates').send({
+            type: 'broadcast', event: 'inventory_update', payload: {} 
+          });
+
         } catch (err) {
           alert("Import Failed: " + err.message);
           console.error(err);
         } finally {
-          setImporting(false);
+          setImportLoading(false);
         }
       },
       error: (error) => {
         alert("CSV Parsing Error: " + error.message);
-        setImporting(false);
+        setImportLoading(false);
       }
     });
   };
@@ -283,16 +339,7 @@ export default function StudentPage() {
                 <div className="flex items-center gap-2">
                     <h2 className="card-title text-xl text-gray-700">Enrollment Summary</h2>
                     
-                    {/* Hidden File Input */}
-                    <input 
-                        type="file" 
-                        accept=".csv"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        className="hidden" 
-                    />
-                    
-                    {/* Action Buttons - Separated */}
+                    {/* Action Buttons */}
                     <div className="flex items-center gap-2">
                         <button 
                             onClick={handleDownloadTemplate}
@@ -306,15 +353,12 @@ export default function StudentPage() {
                         </button>
 
                         <button 
-                            onClick={() => fileInputRef.current.click()}
-                            disabled={importing}
+                            onClick={() => setIsImportModalOpen(true)}
                             className="btn btn-sm btn-outline btn-success gap-2"
                         >
-                            {importing ? <span className="loading loading-spinner loading-xs"></span> : (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                </svg>
-                            )}
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
                             Import CSV
                         </button>
                         
@@ -569,6 +613,45 @@ export default function StudentPage() {
                     </table>
                 </div>
             </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box relative">
+            
+            {/* Loading Overlay */}
+            {importLoading ? (
+               <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                  <span className="loading loading-spinner loading-lg text-primary"></span>
+                  <div className="text-center">
+                    <h3 className="font-bold text-lg text-gray-700">Importing Data...</h3>
+                    <p className="text-sm text-gray-500">Please do not close this window.</p>
+                  </div>
+               </div>
+            ) : (
+               /* Standard Form */
+               <>
+                <h3 className="font-bold text-lg text-gray-700 mb-4">Import Student CSV</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                    CSV Format must contain headers: <strong>STUDENT ID, NAME, SEMESTER, COURSE</strong><br/>
+                    Existing IDs will be updated. New IDs will be added.
+                </p>
+                
+                <input 
+                    type="file" 
+                    accept=".csv"
+                    onChange={handleStudentImport}
+                    className="file-input file-input-bordered file-input-primary w-full" 
+                />
+
+                <div className="modal-action">
+                    <button className="btn btn-ghost" onClick={() => setIsImportModalOpen(false)}>Cancel</button>
+                </div>
+               </>
+            )}
+          </div>
         </div>
       )}
     </div>
