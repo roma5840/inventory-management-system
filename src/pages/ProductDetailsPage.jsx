@@ -174,12 +174,12 @@ export default function ProductDetailsPage() {
                             </div>
                         </div>
                         <div className="stat place-items-center">
-                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Price</div>
-                            <div className="stat-value text-xl text-primary">₱{product.price.toLocaleString()}</div>
-                        </div>
-                        <div className="stat place-items-center">
                             <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
                             <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
+                        </div>
+                        <div className="stat place-items-center">
+                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Price</div>
+                            <div className="stat-value text-xl text-primary">₱{product.price.toLocaleString()}</div>
                         </div>
                     </div>
                 </div>
@@ -302,13 +302,14 @@ export default function ProductDetailsPage() {
                     <span className="text-xs text-gray-500">Total Records: {history.length}</span>
                 </div>
                 <div className="overflow-x-auto min-h-[400px]">
-                     <table className="table w-full text-sm">
-                         <thead className="bg-gray-100 text-gray-600">
+                    <table className="table w-full text-sm">
+                        <thead className="bg-gray-100 text-gray-600">
                             <tr>
                                 <th>Date / Reference</th>
                                 <th>Activity Type</th>
                                 <th>Entity / Details</th>
-                                {SHOW_PROFIT_MARGIN && <th className="text-right">Cost Snapshot</th>}
+                                {/* ALWAYS VISIBLE NOW */}
+                                <th className="text-right">Cost Snapshot</th>
                                 <th className="text-right">Price Snapshot</th>
                                 <th className="text-center">Qty Change</th>
                                 <th className="text-center">Stock Balance</th>
@@ -316,7 +317,7 @@ export default function ProductDetailsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                             {history.length === 0 ? (
+                            {history.length === 0 ? (
                                 <tr><td colSpan="8" className="text-center py-8 text-gray-400">No transactions found for this item.</td></tr>
                             ) : (
                                 history.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((tx) => {
@@ -379,12 +380,10 @@ export default function ProductDetailsPage() {
                                                 )}
                                             </td>
 
-                                            {/* 4. Cost Snapshot (HIDDEN BY FLAG) */}
-                                            {SHOW_PROFIT_MARGIN && (
-                                                <td className="text-right font-mono align-top py-3 text-orange-700">
-                                                    {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
-                                                </td>
-                                            )}
+                                            {/* 4. Cost Snapshot (ALWAYS VISIBLE NOW) */}
+                                            <td className="text-right font-mono align-top py-3 text-orange-700">
+                                                {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
+                                            </td>
 
                                             {/* 5. Price Snapshot */}
                                             <td className="text-right font-mono align-top py-3 text-gray-600">
