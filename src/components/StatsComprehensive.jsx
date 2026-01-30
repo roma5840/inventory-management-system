@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export default function StatsComprehensive({ lastUpdated }) {
+  // --- CONFIG: TEMPORARILY SET TO FALSE TO HIDE STATS ---
+  const SHOW_SENSITIVE_METRICS = false; 
+
   // Default: Start of current month to Today
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -98,7 +101,7 @@ export default function StatsComprehensive({ lastUpdated }) {
       </div>
 
       {/* 2. KPI CARDS (Sales, Cost, Asset Value) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 ${SHOW_SENSITIVE_METRICS ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
         {/* Total Sales */}
         <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Sum of (Qty Sold × Price at moment of sale)">
             <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Total Sales</div>
@@ -108,17 +111,19 @@ export default function StatsComprehensive({ lastUpdated }) {
 
         {/* Total Cost */}
         <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Sum of (Qty Sold × Unit Cost at moment of sale)">
-            <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Total Cost (COGS)</div>
+            <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Total Outflow Value</div>
             <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.outflow.val)}</div>
-            <div className="stat-desc text-xs mt-1 text-gray-400">Cost of Goods Sold</div>
+            <div className="stat-desc text-xs mt-1 text-gray-400">Cost of Goods + Pull Outs</div>
         </div>
 
-        {/* Total Inventory Value */}
-        <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Current Stock × Current Supplier Cost">
-            <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Current Asset Value</div>
-            <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.ending.val)}</div>
-            <div className="stat-desc text-xs mt-1 text-gray-400">Total Inventory Value as of Period End</div>
-        </div>
+        {/* Total Inventory Value (HIDDEN BY DEFAULT) */}
+        {SHOW_SENSITIVE_METRICS && (
+          <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Current Stock × Current Supplier Cost">
+              <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Period Ending Value</div>
+              <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.ending.val)}</div>
+              <div className="stat-desc text-xs mt-1 text-gray-400">Total Inventory Value as of Period End</div>
+          </div>
+        )}
       </div>
 
       {/* 3. BOSS'S FORMULA FLOW (The 4 Boxes) */}
@@ -130,28 +135,28 @@ export default function StatsComprehensive({ lastUpdated }) {
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Ending - Inflow + Outflow">
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Beginning Inv</div>
                 <div className="text-xl font-bold text-gray-700">{data.beginning.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Est: ₱{fmt(data.beginning.val)}</div>
+                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Est: ₱{fmt(data.beginning.val)}</div>}
             </div>
 
             {/* Box 2: Inflow */}
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Receiving + Returns">
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.inflow.val)}</div>
+                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.inflow.val)}</div>}
             </div>
 
             {/* Box 3: Outflow */}
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Issuances + Pull Outs">
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Outflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.outflow.val)}</div>
+                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.outflow.val)}</div>}
             </div>
 
             {/* Box 4: Ending */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm" title="Current Physical Count in System">
                 <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wider">Ending Inv</div>
                 <div className="text-xl font-bold text-gray-900">{data.ending.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                <div className="text-xs font-mono mt-1 text-gray-600 border-t border-gray-200 pt-1">Val: ₱{fmt(data.ending.val)}</div>
+                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-600 border-t border-gray-200 pt-1">Val: ₱{fmt(data.ending.val)}</div>}
             </div>
         </div>
       </div>

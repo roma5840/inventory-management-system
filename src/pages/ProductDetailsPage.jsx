@@ -4,6 +4,9 @@ import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
 
 export default function ProductDetailsPage() {
+  // --- CONFIG: TEMPORARILY SET TO FALSE TO HIDE PROFIT/MARGIN ---
+  const SHOW_PROFIT_MARGIN = false; 
+
   const { id } = useParams(); // This maps to internal_id
   const navigate = useNavigate();
   
@@ -174,10 +177,12 @@ export default function ProductDetailsPage() {
                             <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Price</div>
                             <div className="stat-value text-xl text-primary">₱{product.price.toLocaleString()}</div>
                         </div>
-                        <div className="stat place-items-center">
-                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
-                            <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
-                        </div>
+                        {SHOW_PROFIT_MARGIN && (
+                            <div className="stat place-items-center">
+                                <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
+                                <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -217,7 +222,7 @@ export default function ProductDetailsPage() {
 
                 <div className="space-y-6">
                     {/* 1. Financial KPI Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className={`grid grid-cols-1 ${SHOW_PROFIT_MARGIN ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                         {/* Revenue */}
                         <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Total Revenue from Sales">
                             <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Total Sales</div>
@@ -232,14 +237,16 @@ export default function ProductDetailsPage() {
                             <div className="stat-desc text-[10px] text-gray-400 mt-1">Based on historical unit cost</div>
                         </div>
 
-                        {/* Profit */}
-                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Revenue - COGS">
-                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Est. Gross Profit</div>
-                            <div className={`stat-value text-2xl ${(statsData.outflow.revenue - statsData.outflow.val) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ₱{(statsData.outflow.revenue - statsData.outflow.val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        {/* Profit (HIDDEN BY DEFAULT) */}
+                        {SHOW_PROFIT_MARGIN && (
+                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Revenue - COGS">
+                                <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Est. Gross Profit</div>
+                                <div className={`stat-value text-2xl ${(statsData.outflow.revenue - statsData.outflow.val) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    ₱{(statsData.outflow.revenue - statsData.outflow.val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </div>
+                                <div className="stat-desc text-[10px] text-gray-400 mt-1">Net Margin for Period</div>
                             </div>
-                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Net Margin for Period</div>
-                        </div>
+                        )}
                     </div>
 
                     {/* 2. Inventory Flow (4 Boxes) */}
@@ -251,36 +258,36 @@ export default function ProductDetailsPage() {
                             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Starting Stock">
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Beginning Inv</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.beginning.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
+                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Est: ₱{statsData.beginning.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>
+                                </div>}
                             </div>
 
                             {/* Inflow */}
                             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Purchases / Receiving">
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
+                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.inflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>
+                                </div>}
                             </div>
 
                             {/* Outflow */}
                             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Sales / Issuances / Voids">
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Outflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
+                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>
+                                </div>}
                             </div>
 
                             {/* Ending */}
                             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm" title="Final Stock for Period">
                                 <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wider">Ending Inv</div>
                                 <div className="text-xl font-bold text-gray-900">{statsData.ending.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                <div className="text-[10px] font-mono mt-1 text-gray-600 border-t border-gray-200 pt-1">
+                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-600 border-t border-gray-200 pt-1">
                                     Val: ₱{statsData.ending.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>
+                                </div>}
                             </div>
 
                         </div>
@@ -291,20 +298,19 @@ export default function ProductDetailsPage() {
 
         {/* AUDIT TRAIL TABLE */}
         <div className="card bg-white shadow-lg">
-            <div className="card-body p-0">
+             <div className="card-body p-0">
                 <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-700">Audit Trail (Transaction History)</h2>
                     <span className="text-xs text-gray-500">Total Records: {history.length}</span>
                 </div>
-
                 <div className="overflow-x-auto min-h-[400px]">
-                    <table className="table w-full text-sm">
-                        <thead className="bg-gray-100 text-gray-600">
+                     <table className="table w-full text-sm">
+                         <thead className="bg-gray-100 text-gray-600">
                             <tr>
                                 <th>Date / Reference</th>
                                 <th>Activity Type</th>
                                 <th>Entity / Details</th>
-                                <th className="text-right">Cost Snapshot</th>
+                                {SHOW_PROFIT_MARGIN && <th className="text-right">Cost Snapshot</th>}
                                 <th className="text-right">Price Snapshot</th>
                                 <th className="text-center">Qty Change</th>
                                 <th className="text-center">Stock Balance</th>
@@ -312,10 +318,9 @@ export default function ProductDetailsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {history.length === 0 ? (
+                             {history.length === 0 ? (
                                 <tr><td colSpan="8" className="text-center py-8 text-gray-400">No transactions found for this item.</td></tr>
                             ) : (
-                                // PAGINATION SLICE LOGIC
                                 history.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((tx) => {
                                     const isIncoming = tx.type === 'RECEIVING' || tx.type === 'ISSUANCE_RETURN';
                                     
@@ -376,10 +381,12 @@ export default function ProductDetailsPage() {
                                                 )}
                                             </td>
 
-                                            {/* 4. Cost Snapshot */}
-                                            <td className="text-right font-mono align-top py-3 text-orange-700">
-                                                {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
-                                            </td>
+                                            {/* 4. Cost Snapshot (HIDDEN BY FLAG) */}
+                                            {SHOW_PROFIT_MARGIN && (
+                                                <td className="text-right font-mono align-top py-3 text-orange-700">
+                                                    {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
+                                                </td>
+                                            )}
 
                                             {/* 5. Price Snapshot */}
                                             <td className="text-right font-mono align-top py-3 text-gray-600">
@@ -430,7 +437,7 @@ export default function ProductDetailsPage() {
                     </table>
                 </div>
                  {/* PAGINATION FOOTER */}
-                <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-gray-50 gap-4 rounded-b-lg">
+                 <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-gray-50 gap-4 rounded-b-lg">
                     <div className="text-xs text-gray-500">
                         {history.length > 0 
                         ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, history.length)} of ${history.length} records`
@@ -482,7 +489,7 @@ export default function ProductDetailsPage() {
                         </button>
                     </div>
                 </div>
-            </div>
+             </div>
         </div>
       </main>
     </div>
