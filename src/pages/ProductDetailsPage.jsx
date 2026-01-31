@@ -266,7 +266,7 @@ export default function ProductDetailsPage() {
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                                 <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
-                                    Purchases & Returns
+                                    Purchases / Receiving
                                 </div>
                                 {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.inflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
@@ -278,7 +278,7 @@ export default function ProductDetailsPage() {
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Gross Outflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                                 <div className="text-[9px] text-gray-400 mt-1 italic">
-                                    Sales (Gross) & Pull Outs
+                                    Net Sales & Pull Outs
                                 </div>
                                 {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}

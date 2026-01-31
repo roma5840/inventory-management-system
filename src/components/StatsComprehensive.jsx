@@ -143,7 +143,7 @@ export default function StatsComprehensive({ lastUpdated }) {
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
-                   Inc. Purchases & Returns
+                   Purchases / Receiving Only
                 </div>
                 {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.inflow.val)}</div>}
             </div>
@@ -153,7 +153,7 @@ export default function StatsComprehensive({ lastUpdated }) {
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Gross Outflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-[9px] text-gray-400 mt-1 italic">
-                    Sales & Pull Outs (Gross)
+                    Net Sales & Pull Outs
                 </div>
                 {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.outflow.val)}</div>}
             </div>
