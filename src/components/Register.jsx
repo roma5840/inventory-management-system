@@ -44,13 +44,10 @@ export default function Register() {
       }
 
       // 2. Create Supabase Auth User
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      // Removed emailRedirectTo options as confirmation is disabled
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          // This dynamically grabs the URL (localhost in dev, vercel in prod)
-          emailRedirectTo: window.location.origin, 
-        }
       });
 
       if (signUpError) {
@@ -61,12 +58,12 @@ export default function Register() {
              return;
         }
         
-        // Otherwise, throw the real error (like "Password should be at least 6 characters")
         throw signUpError;
       }
 
-      alert("Registration Successful! Please check your email to confirm if required, then login.");
-      navigate("/login");
+      // Success:
+      // Since email confirmation is disabled in Supabase, the user is automatically logged in.
+      // The existing useEffect(() => { if (currentUser) navigate("/"); ... }) will handle the redirect.
 
     } catch (err) {
       console.error(err);
