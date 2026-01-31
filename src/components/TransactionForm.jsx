@@ -50,12 +50,13 @@ export default function TransactionForm({ onSuccess }) {
   
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Focus Logic: Always refocus scanner after adding to queue
+  // Focus Logic: Re-run when type changes or item added
   useEffect(() => {
-    if (headerData.type && barcodeRef.current) {
+    // Only auto-focus barcode if we are NOT in a mode that requires different inputs first
+    if (headerData.type && !['RECEIVING', 'PULL_OUT', 'ISSUANCE'].includes(headerData.type) && barcodeRef.current) {
       barcodeRef.current.focus();
     }
-  }, [headerData.type, queue]); // Re-run when type changes or item added
+  }, [headerData.type, queue]);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -166,23 +167,37 @@ export default function TransactionForm({ onSuccess }) {
     if (headerData.type && headerData.studentId) {
         const timer = setTimeout(() => {
             checkStudent(headerData.studentId);
-        }, 300); // 300ms Delay
+        }, 300); 
         return () => clearTimeout(timer);
     } else if (!headerData.studentId) {
-        setIsNewStudent(null); // Reset if empty
+        // Automatically clear details if ID is empty/cleared
+        setIsNewStudent(null); 
+        setHeaderData(prev => ({
+          ...prev,
+          studentName: "", 
+          course: "",
+          yearLevel: "" 
+        }));
     }
   }, [headerData.studentId, headerData.type]);
 
   // Add to Queue & Reset
   const handleAddToQueue = (e) => {
     e.preventDefault();
-    // GUARD: Only allow adding if barcode exists AND item is explicitly found (false)
+    
+    // GUARD 1: Only allow adding if barcode exists AND item is explicitly found (false)
     if (!currentScan.barcode || isNewItem !== false) return;
+
+    // GUARD 2 (Req 8): In Issuance, disallow if Student is "New Record" (true) or invalid
+    if (headerData.type === 'ISSUANCE' && isNewStudent !== false) {
+        alert("Cannot process Issuance: Student ID not found in records.");
+        return;
+    }
     
     const newItem = { 
       ...currentScan, 
       priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
-      unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost, // Pass Cost
+      unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost, 
       accpacCode: currentScan.accpacCode, 
       id: Date.now() 
     };
@@ -195,7 +210,7 @@ export default function TransactionForm({ onSuccess }) {
       barcode: "",
       qty: 1,
       priceOverride: "",
-      unitCost: "", // Reset Cost
+      unitCost: "", 
       itemName: "",
       location: ""
     }));
@@ -350,12 +365,11 @@ export default function TransactionForm({ onSuccess }) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Only search if barcode exists and we haven't already locked onto a status
-      // wait 400ms before searching
+      // Reduced delay to 150ms for faster lookup response
       if (currentScan.barcode.trim()) {
          checkProduct(currentScan.barcode);
       }
-    }, 400);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [currentScan.barcode]);
@@ -364,6 +378,8 @@ export default function TransactionForm({ onSuccess }) {
     e.preventDefault();
     if (!returnLookupRef) return;
     setLookupLoading(true);
+    
+    // Always clear "Available to Return" list on new search
     setPastTransactionItems([]);
     
     // Force Uppercase for consistency
@@ -371,7 +387,6 @@ export default function TransactionForm({ onSuccess }) {
 
     try {
         // 1. Fetch Original Sales
-        // Note: We also exclude voided sales, just in case the original issuance was voided.
         const { data: salesData, error: salesError } = await supabase
             .from('transactions')
             .select('*')
@@ -380,6 +395,17 @@ export default function TransactionForm({ onSuccess }) {
             .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
 
         if (salesError || !salesData || salesData.length === 0) {
+            // Req 4: Clear Header Data AND Queue if lookup fails
+            setHeaderData(prev => ({
+                ...prev,
+                studentName: "",
+                studentId: "",
+                course: "",
+                yearLevel: "",
+                remarks: ""
+            }));
+            setQueue([]); // Clear the queue
+            
             alert("Receipt not found, valid items not found, or transaction was voided.");
             setLookupLoading(false);
             return;
@@ -401,7 +427,7 @@ export default function TransactionForm({ onSuccess }) {
         const { data: returnsData } = await supabase
             .from('transactions')
             .select('original_transaction_id, qty')
-            .eq('is_voided', false) // Don't count voided returns!
+            .eq('is_voided', false) 
             .in('original_transaction_id', saleIds);
 
         // 3. Calculate Remaining Qty
@@ -416,7 +442,6 @@ export default function TransactionForm({ onSuccess }) {
 
             const remainingQty = saleItem.qty - alreadyReturnedQty - currentlyInQueueQty;
 
-            // Map Snapshots
             const displayName = saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
             const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; 
             const priceSnapshot = saleItem.price_snapshot !== null ? saleItem.price_snapshot : saleItem.price;
@@ -441,7 +466,7 @@ export default function TransactionForm({ onSuccess }) {
                     studentId: validItems[0].student_id || "",
                     course: validItems[0].course || "",
                     yearLevel: validItems[0].year_level || "",
-                    remarks: validItems[0].remarks || ""
+                    remarks: ""
                 }));
             }
         }
@@ -505,7 +530,16 @@ export default function TransactionForm({ onSuccess }) {
         barcode: "", qty: 1, priceOverride: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
     });
     
-    if(barcodeRef.current) barcodeRef.current.focus();
+    // Intelligent Initial Focus
+    setTimeout(() => {
+        if (['RECEIVING', 'PULL_OUT'].includes(newType)) {
+            document.getElementById('supplierInput')?.focus();
+        } else if (newType === 'ISSUANCE') {
+            document.getElementById('studentIdInput')?.focus();
+        } else if (barcodeRef.current) {
+            barcodeRef.current.focus();
+        }
+    }, 100);
   };
 
   // Handle manual qty change in queue table (Allows empty string while typing)
@@ -631,14 +665,16 @@ export default function TransactionForm({ onSuccess }) {
                             <div className="form-control">
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">
                                     <span>Student ID Number</span>
-                                    {isNewStudent === true && <span className="text-orange-600 animate-pulse">New Record</span>}
+                                    {/* Req 8: Show feedback just like barcode */}
+                                    {isNewStudent === true && <span className="text-red-600 animate-pulse">No Record</span>}
                                     {isNewStudent === false && <span className="text-green-600">Found</span>}
                                 </label>
                                 <div className="relative">
                                     <input 
+                                        id="studentIdInput" 
                                         type="text" 
                                         className={`input input-sm input-bordered w-full font-mono transition-colors
-                                            ${isNewStudent === true ? 'border-orange-400 bg-orange-50 focus:border-orange-500' : ''}
+                                            ${isNewStudent === true ? 'border-red-400 bg-red-50 focus:border-red-500' : ''}
                                             ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : ''}
                                             ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white'}
                                         `}
@@ -646,13 +682,12 @@ export default function TransactionForm({ onSuccess }) {
                                         value={headerData.studentId} 
                                         onChange={e => {
                                             if(isNewStudent !== null) setIsNewStudent(null);
+                                            // Req 9: Logic handled in useEffect, but clear state here too
                                             setHeaderData({...headerData, studentId: e.target.value});
                                         }}
-                                        // STRICT AUDIT: Cannot manually change ID in return mode
                                         readOnly={headerData.type === 'ISSUANCE_RETURN'}
-                                        autoFocus={headerData.type !== 'ISSUANCE_RETURN'}
+                                        // Req 3: Focus handled in handleSwitchType
                                     />
-                                    {/* Status Icons */}
                                     <div className="absolute right-2 top-1.5">
                                         {isNewStudent === false && (
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
@@ -667,7 +702,8 @@ export default function TransactionForm({ onSuccess }) {
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
                                 <input 
                                     type="text" 
-                                    disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
+                                    // Req 6: Read-only in RETURNS (regardless of ID presence)
+                                    disabled={headerData.type === 'ISSUANCE_RETURN'}
                                     className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400 uppercase"
                                     placeholder="Enter Name"
                                     value={headerData.studentName}
@@ -675,12 +711,12 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
 
-                            {/* Split Course and Year */}
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="form-control">
                                     <label className="label text-[10px] font-bold text-gray-500 uppercase">Course</label>
                                     <select 
-                                        disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
+                                        // Req 6: Read-only in RETURNS
+                                        disabled={headerData.type === 'ISSUANCE_RETURN'}
                                         className="select select-sm select-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
                                         value={headerData.course}
                                         onChange={e => setHeaderData({...headerData, course: e.target.value})}
@@ -695,7 +731,8 @@ export default function TransactionForm({ onSuccess }) {
                                     <label className="label text-[10px] font-bold text-gray-500 uppercase">Year / Sem</label>
                                     <input 
                                         type="text" 
-                                        disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
+                                        // Req 6: Read-only in RETURNS
+                                        disabled={headerData.type === 'ISSUANCE_RETURN'}
                                         className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400 uppercase"
                                         placeholder="e.g. Y1S2"
                                         value={headerData.yearLevel}
@@ -710,13 +747,16 @@ export default function TransactionForm({ onSuccess }) {
                     {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
                         <div className="form-control">
                             <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
-                            <input type="text" className="input input-sm input-bordered bg-white" 
+                            <input 
+                                id="supplierInput" 
+                                type="text" 
+                                className="input input-sm input-bordered bg-white" 
                                 placeholder="Supplier"
-                                value={headerData.supplier} onChange={e => setHeaderData({...headerData, supplier: e.target.value})} />
+                                value={headerData.supplier} onChange={e => setHeaderData({...headerData, supplier: e.target.value})} 
+                            />
                         </div>
                     )}
                     
-                    {/* TRANS MODE: ISSUANCE ONLY */}
                     {headerData.type === 'ISSUANCE' && (
                         <div className="form-control">
                             <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
@@ -733,8 +773,8 @@ export default function TransactionForm({ onSuccess }) {
                     <div className="form-control md:col-span-2">
                         <label className="label text-[10px] font-bold text-gray-500 uppercase">General Remarks</label>
                         <input type="text" 
-                             disabled={headerData.type === 'ISSUANCE_RETURN' && !headerData.studentId}
-                             className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                             // Remarks ALWAYS editable in all modes (Req 6)
+                             className="input input-sm input-bordered bg-white"
                              placeholder="Remarks"
                              value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} 
                         />
@@ -845,7 +885,7 @@ export default function TransactionForm({ onSuccess }) {
                                     onChange={handleBarcodeChange} 
                                     onKeyDown={handleKeyDown} 
                                     placeholder="Scan..."
-                                    autoFocus
+                                    // Removed autoFocus here to allow handleSwitchType to control initial focus
                                 />
                             </div>
                             
@@ -859,7 +899,7 @@ export default function TransactionForm({ onSuccess }) {
                                 />
                             </div>
 
-                            {/* COST FIELD */}
+                            {/* COST FIELD: Receiving & Pull Out Only */}
                             {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
                                 <div className="col-span-2">
                                     <label className="label text-[10px] font-bold text-orange-600 uppercase">Unit Cost</label>
@@ -881,31 +921,24 @@ export default function TransactionForm({ onSuccess }) {
                                 </div>
                             )}
 
-                            {/* PRICE FIELD */}
-                            <div className={['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? "col-span-2" : "col-span-4"}>
-                                <label className="label text-[10px] font-bold text-gray-400 uppercase">
-                                    {headerData.type === 'RECEIVING' ? "SRP" : "Price"}
-                                </label>
-                                <input 
-                                    id="priceInput"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    readOnly={headerData.type !== 'RECEIVING'}
-                                    className={`input input-sm input-bordered w-full font-mono ${
-                                        headerData.type === 'RECEIVING'
-                                            ? 'bg-white border-blue-300 text-blue-800' 
-                                            : 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                    value={currentScan.priceOverride}
-                                    onChange={e => setCurrentScan({...currentScan, priceOverride: e.target.value})}
-                                    onKeyDown={(e) => {
-                                        if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
-                                        handleKeyDown(e);
-                                    }}
-                                    placeholder="0.00"
-                                />
-                            </div>
+                            {/* PRICE FIELD: STRICTLY REMOVED FOR RECEIVING */}
+                            {headerData.type !== 'RECEIVING' && (
+                                <div className={['PULL_OUT'].includes(headerData.type) ? "col-span-2" : "col-span-4"}>
+                                    <label className="label text-[10px] font-bold text-gray-400 uppercase">Price</label>
+                                    <input 
+                                        id="priceInput"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        // Disabled for Issuance/Pull Out (view only)
+                                        className="input input-sm input-bordered w-full font-mono bg-gray-100 text-gray-500 cursor-not-allowed"
+                                        readOnly
+                                        value={currentScan.priceOverride}
+                                        onChange={e => setCurrentScan({...currentScan, priceOverride: e.target.value})}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            )}
 
                             <div className="col-span-2">
                                 <label className="label text-[10px] font-bold text-gray-400 uppercase">Qty</label>
@@ -945,7 +978,8 @@ export default function TransactionForm({ onSuccess }) {
                             <th>Barcode</th>
                             <th>Qty</th>
                             {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && <th className="text-orange-600">Cost</th>}
-                            {headerData.type === 'RECEIVING' ? <th>Price</th> : <th>Price/Loc</th>}
+                            {/* Req 1: Hide Price Column for Receiving */}
+                            {headerData.type !== 'RECEIVING' && <th>Price/Loc</th>}
                             <th className="text-right">Action</th>
                         </tr>
                     </thead>
@@ -981,10 +1015,14 @@ export default function TransactionForm({ onSuccess }) {
                                         </td>
                                     )}
 
-                                    <td className="font-mono">
-                                        ₱{Number(item.priceOverride).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        {item.location && headerData.type !== 'RECEIVING' && <span className="text-[10px] text-gray-400 ml-2">({item.location})</span>}
-                                    </td>
+                                    {/* PRICE COLUMN - Hidden in Receiving */}
+                                    {headerData.type !== 'RECEIVING' && (
+                                        <td className="font-mono">
+                                            ₱{Number(item.priceOverride).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            {item.location && <span className="text-[10px] text-gray-400 ml-2">({item.location})</span>}
+                                        </td>
+                                    )}
+                                    
                                     <td className="text-right">
                                         <button onClick={() => handleRemoveItem(item.id)} className="btn btn-ghost btn-xs text-red-500">x</button>
                                     </td>
@@ -1021,7 +1059,14 @@ export default function TransactionForm({ onSuccess }) {
             {/* THIS SECTION IS WHAT GETS PRINTED */}
             <div id="printable-receipt" className="font-mono text-sm text-gray-800 bg-white p-2">
                 <div className="text-center mb-4">
-                    <h2 className="font-bold text-lg uppercase">Bookstore System</h2>
+                    {/* Req 5: Dynamic Titles */}
+                    <h2 className="font-bold text-lg uppercase">
+                        {receiptData.type === 'ISSUANCE' ? 'Bookstore Issuance' :
+                         receiptData.type === 'ISSUANCE_RETURN' ? 'Bookstore Returns' :
+                         receiptData.type === 'PULL_OUT' ? 'Bookstore Pull Out' :
+                         receiptData.type === 'RECEIVING' ? 'Bookstore Receiving' : 
+                         'Bookstore System'}
+                    </h2>
                     <p className="text-xs">Official Transaction Record</p>
                     <p className="text-xs mt-1">{receiptData.date}</p>
                 </div>
