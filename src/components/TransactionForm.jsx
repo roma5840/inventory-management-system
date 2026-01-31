@@ -258,6 +258,7 @@ export default function TransactionForm({ onSuccess }) {
             // FIX 1: Restore price data so re-adding doesn't result in NaN
             price: itemToRemove.priceOverride, 
             price_snapshot: itemToRemove.priceOverride,
+            cost_snapshot: itemToRemove.unitCost, 
 
             // FIX 2: CRITICAL - Restore the Reference Number
             // This ensures if we re-add it to the queue, it still knows which receipt it belongs to.
@@ -445,12 +446,14 @@ export default function TransactionForm({ onSuccess }) {
             const displayName = saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
             const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; 
             const priceSnapshot = saleItem.price_snapshot !== null ? saleItem.price_snapshot : saleItem.price;
+            const costSnapshot = saleItem.unit_cost_snapshot !== null ? saleItem.unit_cost_snapshot : 0;
 
             return { 
                 ...saleItem, 
                 displayName,    
                 displayBarcode, 
                 price_snapshot: priceSnapshot,
+                cost_snapshot: costSnapshot, 
                 remainingQty 
             };
         }).filter(item => item.remainingQty > 0);
@@ -491,7 +494,7 @@ export default function TransactionForm({ onSuccess }) {
         originalReceiptQty: item.qty,
         
         priceOverride: item.price_snapshot !== undefined ? item.price_snapshot : item.price, 
-        
+        unitCost: item.cost_snapshot !== undefined ? item.cost_snapshot : 0,
         originalTransactionId: item.id,
         
         refNumber: item.reference_number
