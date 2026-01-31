@@ -222,13 +222,13 @@ export default function ProductDetailsPage() {
                     {/* 1. Financial KPI Cards */}
                     <div className={`grid grid-cols-1 ${SHOW_PROFIT_MARGIN ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                         {/* Revenue */}
-                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Total Revenue from Sales">
-                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Total Sales</div>
+                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Total Revenue - Returns Refunds">
+                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Net Sales Revenue</div>
                             <div className="stat-value text-primary text-2xl">₱{statsData.outflow.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Gross Revenue</div>
+                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Gross Sales minus Returns</div>
                         </div>
 
-                        {/* Outflow Cost (Renamed from COGS for accuracy) */}
+                        {/* Outflow Cost */}
                         <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Sum of (Qty × Unit Cost) for Sales + Pull Outs">
                             <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Total Outflow Cost</div>
                             <div className="stat-value text-gray-700 text-2xl">₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
@@ -262,18 +262,24 @@ export default function ProductDetailsPage() {
                             </div>
 
                             {/* Inflow */}
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Purchases / Receiving">
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Purchases + Returns">
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
+                                <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
+                                    Purchases & Returns
+                                </div>
                                 {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.inflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 </div>}
                             </div>
 
                             {/* Outflow */}
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Sales / Issuances / Voids">
-                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Outflow</div>
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Sales + Pull Outs">
+                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Gross Outflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
+                                <div className="text-[9px] text-gray-400 mt-1 italic">
+                                    Sales (Gross) & Pull Outs
+                                </div>
                                 {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
                                     Cost: ₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 </div>}
