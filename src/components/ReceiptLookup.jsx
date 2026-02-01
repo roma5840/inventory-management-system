@@ -142,8 +142,14 @@ export default function ReceiptLookup() {
                 )}
 
                 <div className="text-center mb-4">
-                    <h2 className="font-bold text-lg uppercase">Bookstore System</h2>
-                    <p className="text-xs">Transaction Copy</p>
+                    <h2 className="font-bold text-lg uppercase">
+                        {receiptData.type === 'ISSUANCE' ? 'Bookstore Issuance' :
+                        receiptData.type === 'ISSUANCE_RETURN' ? 'Bookstore Returns' :
+                        receiptData.type === 'PULL_OUT' ? 'Bookstore Pull Out' :
+                        receiptData.type === 'RECEIVING' ? 'Bookstore Receiving' : 
+                        'Bookstore System'}
+                    </h2>
+                    <p className="text-xs">Official Transaction Record</p>
                     <p className="text-xs mt-1">{receiptData.date}</p>
                 </div>
 
@@ -182,10 +188,7 @@ export default function ReceiptLookup() {
                             <th className="text-left pb-1">Item</th>
                             <th className="text-center pb-1">Qty</th>
                             {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                <>
-                                    <th className="text-right pb-1">Cost</th>
-                                    <th className="text-right pb-1">SRP</th>
-                                </>
+                                <th className="text-right pb-1">Cost</th>
                             )}
                             <th className="text-right pb-1">Amt</th>
                         </tr>
@@ -198,17 +201,20 @@ export default function ReceiptLookup() {
                                     {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
                                 </td>
                                 
+                                {/* Cost Column for Receiving/PullOut */}
                                 {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                    <>
-                                        <td className="text-right">{Number(item.cost).toFixed(2)}</td>
-                                        <td className="text-right">{Number(item.price).toFixed(2)}</td>
-                                    </>
+                                    <td className="text-right">{Number(item.cost).toFixed(2)}</td>
                                 )}
 
                                 <td className="text-right">
-                                     {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) 
+                                    {/* Logic: Receiving/PullOut = Cost * Qty, Others = Price * Qty */}
+                                    {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) 
                                         ? (item.cost * item.qty).toFixed(2)
-                                        : (item.price * item.qty).toFixed(2)
+                                        : (item.price > 0 
+                                            ? (receiptData.type === 'ISSUANCE_RETURN' 
+                                                ? `(${(item.price * item.qty).toFixed(2)})` 
+                                                : (item.price * item.qty).toFixed(2))
+                                            : '-')
                                     }
                                 </td>
                             </tr>
@@ -217,7 +223,8 @@ export default function ReceiptLookup() {
                 </table>
                 
                 <div className="mt-4 pt-2 border-t-2 border-gray-800 text-center text-xs">
-                     <p>*** END OF COPY ***</p>
+                    <p>*** END OF TRANSACTION ***</p>
+                    <p>System Generated</p>
                 </div>
             </div>
 
