@@ -32,6 +32,7 @@ export default function TransactionsManager() {
   }, [page, dateFilter, typeFilter, modeFilter, searchRef]); // Re-fetch on page change
 
   // Helper to build the base query based on filters
+  // Helper to build the base query based on filters
   const buildQuery = (isForExport = false) => {
     let query = supabase
         .from('transactions')
@@ -59,8 +60,8 @@ export default function TransactionsManager() {
 
     // 4. Search Filter (Server-side for pagination efficiency)
     if (searchRef) {
-        // Includes Reference, Student Name, and Student ID in search
-        query = query.or(`reference_number.ilike.%${searchRef}%,student_name.ilike.%${searchRef}%,student_id.ilike.%${searchRef}%`);
+        // Includes Reference, Student Name, Student ID, and Supplier in search
+        query = query.or(`reference_number.ilike.%${searchRef}%,student_name.ilike.%${searchRef}%,student_id.ilike.%${searchRef}%,supplier.ilike.%${searchRef}%`);
     }
 
     return query;
@@ -141,7 +142,8 @@ export default function TransactionsManager() {
     if (searchRef && 
         !curr.reference_number?.toLowerCase().includes(searchRef.toLowerCase()) && 
         !curr.student_name?.toLowerCase().includes(searchRef.toLowerCase()) &&
-        !curr.student_id?.toString().toLowerCase().includes(searchRef.toLowerCase())
+        !curr.student_id?.toString().toLowerCase().includes(searchRef.toLowerCase()) &&
+        !curr.supplier?.toLowerCase().includes(searchRef.toLowerCase())
        ) {
         return acc;
     }
@@ -279,7 +281,7 @@ export default function TransactionsManager() {
                 {/* Search - Pushed to the right on larger screens */}
                 <input 
                     type="text" 
-                    placeholder="Search Ref, ID or Name..." 
+                    placeholder="Search Ref, ID, Name or Supplier..." 
                     className="input input-sm input-bordered w-full sm:w-64 sm:ml-auto"
                     value={searchRef}
                     onChange={e => setSearchRef(e.target.value)}
