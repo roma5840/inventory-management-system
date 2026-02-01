@@ -111,9 +111,9 @@ export default function StatsComprehensive({ lastUpdated }) {
 
         {/* Total Cost */}
         <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Sum of (Qty Sold × Unit Cost at moment of sale)">
-            <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Total Outflow Value</div>
+            <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Net Cost of Outflows</div>
             <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.outflow.val)}</div>
-            <div className="stat-desc text-xs mt-1 text-gray-400">Cost of Goods + Pull Outs</div>
+            <div className="stat-desc text-xs mt-1 text-gray-400">Cost of Goods Sold minus Cost of Returns</div>
         </div>
 
         {/* Total Inventory Value (HIDDEN BY DEFAULT) */}
@@ -143,17 +143,17 @@ export default function StatsComprehensive({ lastUpdated }) {
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
-                   Purchases / Receiving Only
+                   Purchases / Receiving Only (Returns excluded)
                 </div>
                 {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.inflow.val)}</div>}
             </div>
 
             {/* Box 3: Outflow */}
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Gross Sales + Pull Outs (Returns NOT deducted here)">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Gross Outflow</div>
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Net Outflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-[9px] text-gray-400 mt-1 italic">
-                    Net Sales & Pull Outs
+                    Sales + Pull Outs - Returns
                 </div>
                 {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.outflow.val)}</div>}
             </div>
