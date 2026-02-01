@@ -15,6 +15,12 @@ export default function StaffPage() {
   const [tempName, setTempName] = useState("");
 
   // Logic: Super Admin can edit everyone. Admin can only edit Employees.
+  const canToggleStatus = (targetUser) => {
+    if (userRole === 'SUPER_ADMIN') return true;
+    if (userRole === 'ADMIN') return targetUser.role === 'EMPLOYEE';
+    return false;
+  };
+
   const canManage = (targetUser) => {
     if (userRole === 'SUPER_ADMIN') return true; 
     if (userRole === 'ADMIN') return targetUser.role === 'EMPLOYEE'; 
@@ -112,7 +118,7 @@ export default function StaffPage() {
   };
 
   const toggleStatus = async (user) => {
-    if (userRole !== 'SUPER_ADMIN') return alert("Only Super Admins can toggle status.");
+    if (!canToggleStatus(user)) return alert("You do not have permission to change this user's status.");
     if (user.id === currentUser.id) return alert("You cannot deactivate your own account.");
 
     const newStatus = user.status === 'INACTIVE' ? 'REGISTERED' : 'INACTIVE';
@@ -269,38 +275,36 @@ export default function StaffPage() {
                                     <td className="text-right">
                                         {canManage(user) && (
                                             <div className="flex justify-end gap-2 items-center">
-                                                {/* Only SUPER_ADMIN sees the dropdown and Toggle */}
+                                                {/* Only SUPER_ADMIN sees the role dropdown */}
                                                 {userRole === 'SUPER_ADMIN' && (
-                                                    <>
-                                                        <select 
-                                                            className="select select-bordered select-xs w-32 font-normal"
-                                                            value={user.role}
-                                                            onChange={(e) => changeRole(user, e.target.value)}
-                                                        >
-                                                            <option value="EMPLOYEE">Employee</option>
-                                                            <option value="ADMIN">Admin</option>
-                                                            <option value="SUPER_ADMIN">Super Admin</option>
-                                                        </select>
+                                                    <select 
+                                                        className="select select-bordered select-xs w-32 font-normal"
+                                                        value={user.role}
+                                                        onChange={(e) => changeRole(user, e.target.value)}
+                                                    >
+                                                        <option value="EMPLOYEE">Employee</option>
+                                                        <option value="ADMIN">Admin</option>
+                                                        <option value="SUPER_ADMIN">Super Admin</option>
+                                                    </select>
+                                                )}
 
-                                                        {/* Status Toggle Button */}
-                                                        {user.status !== 'PENDING' && (
-                                                            <button 
-                                                                onClick={() => toggleStatus(user)}
-                                                                className={`btn btn-square btn-xs btn-outline ${user.status === 'INACTIVE' ? 'btn-success' : 'btn-warning'}`}
-                                                                title={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
-                                                            >
-                                                                {user.status === 'INACTIVE' ? (
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                                                                    </svg>
-                                                                ) : (
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                    </svg>
-                                                                )}
-                                                            </button>
+                                                {/* Status Toggle Button - Now available to both SUPER_ADMIN and ADMIN (for employees) */}
+                                                {user.status !== 'PENDING' && canToggleStatus(user) && (
+                                                    <button 
+                                                        onClick={() => toggleStatus(user)}
+                                                        className={`btn btn-square btn-xs btn-outline ${user.status === 'INACTIVE' ? 'btn-success' : 'btn-warning'}`}
+                                                        title={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
+                                                    >
+                                                        {user.status === 'INACTIVE' ? (
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                                                            </svg>
+                                                        ) : (
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
                                                         )}
-                                                    </>
+                                                    </button>
                                                 )}
                                                 
                                                 <button 
