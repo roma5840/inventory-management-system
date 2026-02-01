@@ -111,6 +111,37 @@ export default function StaffPage() {
     }
   };
 
+  const toggleStatus = async (user) => {
+    if (userRole !== 'SUPER_ADMIN') return alert("Only Super Admins can toggle status.");
+    if (user.id === currentUser.id) return alert("You cannot deactivate your own account.");
+
+    const newStatus = user.status === 'INACTIVE' ? 'REGISTERED' : 'INACTIVE';
+    const action = newStatus === 'INACTIVE' ? 'DEACTIVATE' : 'REACTIVATE';
+
+    if (confirm(`Are you sure you want to ${action} access for ${user.fullName}?`)) {
+        try {
+            const { error } = await supabase
+                .from('authorized_users')
+                .update({ status: newStatus })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            setRefreshTrigger(prev => prev + 1);
+            
+            // Broadcast immediate kick/update
+            await supabase.channel('app_updates').send({
+                type: 'broadcast',
+                event: 'staff_update',
+                payload: { targetId: user.id, status: newStatus } 
+            });
+
+        } catch (err) {
+            alert(`Failed to ${action.toLowerCase()} user: ` + err.message);
+        }
+    }
+  };
+
   const revokeAccess = async (user) => {
     if (!canManage(user)) return alert("You do not have permission to delete this user.");
     
@@ -222,6 +253,8 @@ export default function StaffPage() {
                                     <td>
                                         {user.status === 'REGISTERED' 
                                             ? <span className="badge badge-success badge-sm text-white">Active</span>
+                                            : user.status === 'INACTIVE'
+                                            ? <span className="badge badge-error badge-sm text-white">Inactive</span>
                                             : <span className="badge badge-warning badge-sm">Pending</span>
                                         }
                                     </td>
@@ -236,23 +269,44 @@ export default function StaffPage() {
                                     <td className="text-right">
                                         {canManage(user) && (
                                             <div className="flex justify-end gap-2 items-center">
-                                                {/* Only SUPER_ADMIN sees the dropdown */}
+                                                {/* Only SUPER_ADMIN sees the dropdown and Toggle */}
                                                 {userRole === 'SUPER_ADMIN' && (
-                                                    <select 
-                                                        className="select select-bordered select-xs w-32 font-normal"
-                                                        value={user.role}
-                                                        onChange={(e) => changeRole(user, e.target.value)}
-                                                    >
-                                                        <option value="EMPLOYEE">Employee</option>
-                                                        <option value="ADMIN">Admin</option>
-                                                        <option value="SUPER_ADMIN">Super Admin</option>
-                                                    </select>
+                                                    <>
+                                                        <select 
+                                                            className="select select-bordered select-xs w-32 font-normal"
+                                                            value={user.role}
+                                                            onChange={(e) => changeRole(user, e.target.value)}
+                                                        >
+                                                            <option value="EMPLOYEE">Employee</option>
+                                                            <option value="ADMIN">Admin</option>
+                                                            <option value="SUPER_ADMIN">Super Admin</option>
+                                                        </select>
+
+                                                        {/* Status Toggle Button */}
+                                                        {user.status !== 'PENDING' && (
+                                                            <button 
+                                                                onClick={() => toggleStatus(user)}
+                                                                className={`btn btn-square btn-xs btn-outline ${user.status === 'INACTIVE' ? 'btn-success' : 'btn-warning'}`}
+                                                                title={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
+                                                            >
+                                                                {user.status === 'INACTIVE' ? (
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                                                                    </svg>
+                                                                ) : (
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </>
                                                 )}
                                                 
                                                 <button 
                                                     onClick={() => revokeAccess(user)}
                                                     className="btn btn-square btn-xs btn-outline btn-error"
-                                                    title="Revoke Access"
+                                                    title="Revoke Access (Delete)"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

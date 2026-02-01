@@ -33,6 +33,12 @@ export function AuthProvider({ children }) {
       throw new Error("Access Denied: You are not authorized.");
     }
 
+    // 3. Check for Inactive Status
+    if (userDoc.status === 'INACTIVE') {
+      await supabase.auth.signOut();
+      throw new Error("Your account has been deactivated. Contact Super Admin.");
+    }
+
     return authData;
   }
 
@@ -60,6 +66,37 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // REAL-TIME SECURITY: Listen for status changes while logged in
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Listen to changes on 'authorized_users' table for this specific user ID
+    const channel = supabase
+      .channel(`security_watch_${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'authorized_users', 
+          filter: `id=eq.${currentUser.id}` // Monitoring own row
+        },
+        async (payload) => {
+          if (payload.new.status === 'INACTIVE') {
+            alert("Session Terminated: Your account has been deactivated.");
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            window.location.href = '/login'; // Hard redirect to clear state
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
   // Helper to sync Auth User with Whitelist Data
   const handleSession = async (session) => {
     if (session?.user) {
@@ -70,6 +107,13 @@ export function AuthProvider({ children }) {
         .single();
       
       if (data) {
+        // Immediate Kick if Inactive
+        if (data.status === 'INACTIVE') {
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            return;
+        }
+
         // Update status if first time logging in
         if (data.status === 'PENDING') {
            await supabase.from('authorized_users').update({ 
