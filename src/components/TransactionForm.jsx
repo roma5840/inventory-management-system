@@ -705,9 +705,9 @@ export default function TransactionForm({ onSuccess }) {
                                 <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
                                 <input 
                                     type="text" 
-                                    // Req 6: Read-only in RETURNS (regardless of ID presence)
-                                    disabled={headerData.type === 'ISSUANCE_RETURN'}
-                                    className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400 uppercase"
+                                    // Update: Read-only in ISSUANCE and RETURNS (Auto-filled via ID)
+                                    disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                    className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-600 uppercase font-semibold"
                                     placeholder="Enter Name"
                                     value={headerData.studentName}
                                     onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
@@ -718,9 +718,9 @@ export default function TransactionForm({ onSuccess }) {
                                 <div className="form-control">
                                     <label className="label text-[10px] font-bold text-gray-500 uppercase">Course</label>
                                     <select 
-                                        // Req 6: Read-only in RETURNS
-                                        disabled={headerData.type === 'ISSUANCE_RETURN'}
-                                        className="select select-sm select-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                                        // Update: Read-only in ISSUANCE and RETURNS
+                                        disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                        className="select select-sm select-bordered bg-white disabled:bg-gray-100 disabled:text-gray-600 font-semibold"
                                         value={headerData.course}
                                         onChange={e => setHeaderData({...headerData, course: e.target.value})}
                                     >
@@ -734,9 +734,9 @@ export default function TransactionForm({ onSuccess }) {
                                     <label className="label text-[10px] font-bold text-gray-500 uppercase">Year / Sem</label>
                                     <input 
                                         type="text" 
-                                        // Req 6: Read-only in RETURNS
-                                        disabled={headerData.type === 'ISSUANCE_RETURN'}
-                                        className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-400 uppercase"
+                                        // Update: Read-only in ISSUANCE and RETURNS
+                                        disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                        className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-600 uppercase font-semibold"
                                         placeholder="e.g. Y1S2"
                                         value={headerData.yearLevel}
                                         onChange={e => setHeaderData({...headerData, yearLevel: e.target.value})} 
