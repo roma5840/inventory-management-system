@@ -172,6 +172,16 @@ export default function TransactionsManager() {
         const excelRows = fullData.map(item => {
             const dateObj = new Date(item.timestamp);
             
+            // Determine if we show Cost or Price based on transaction type
+            const isCostType = ['RECEIVING', 'PULL_OUT'].includes(item.type);
+            
+            // Get the appropriate value
+            const unitValue = isCostType 
+                ? (item.unit_cost_snapshot ?? 0) 
+                : (item.price_snapshot ?? item.price);
+
+            const totalValue = unitValue * item.qty;
+
             // Base Object (Common Fields)
             const row = {
                 "Type": item.type,
@@ -195,8 +205,12 @@ export default function TransactionsManager() {
                 "Accpac Item Code": item.accpac_code_snapshot,
                 "Item Name": item.product_name_snapshot || item.product_name,
                 "Qty": item.qty,
-                "Unit Price": item.price_snapshot ?? item.price,
-                "Total Amount": (item.price_snapshot ?? item.price) * item.qty,
+                
+                // Dynamic Value Columns
+                "Valuation Type": isCostType ? "UNIT COST" : "UNIT PRICE",
+                "Unit Value": unitValue,
+                "Total Amount": totalValue,
+                
                 "Remarks": item.remarks || "",
                 "Void Status": item.is_voided ? "VOIDED" : "Active"
             };
@@ -322,10 +336,15 @@ export default function TransactionsManager() {
                       const isVoided = items.some(i => i.is_voided) || !!voidRow;
                       const isOrphanVoid = items.every(i => i.type === 'VOID');
 
-                      // 3. Calculate Total Value (Use displayItems to ensure orphans still show value)
+                      // --- LOGIC CHANGE: Detect Cost vs Price ---
+                      const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
+
+                      // 3. Calculate Total Value (Dynamic based on Type)
                       const totalValue = displayItems.reduce((sum, item) => {
-                          const price = item.price_snapshot !== null ? item.price_snapshot : item.price;
-                          return sum + (price * item.qty);
+                          const val = isCostType 
+                            ? (item.unit_cost_snapshot ?? 0)
+                            : (item.price_snapshot ?? item.price);
+                          return sum + (val * item.qty);
                       }, 0);
 
                       // 4. Void Metadata source
@@ -402,28 +421,46 @@ export default function TransactionsManager() {
                               {/* 6. Items Breakdown */}
                               <td className="py-2">
                                   <div className="space-y-1">
-                                      {displayItems.map(item => (
-                                          <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
-                                              <div className="flex flex-col pr-2">
-                                                  <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
-                                                      {item.product_name_snapshot || "Item"}
-                                                  </span>
-                                                  <span className="text-[9px] text-gray-400 font-mono tracking-tighter mt-0.5">
-                                                    {item.barcode_snapshot || item.product_id}
-                                                  </span>
+                                      {displayItems.map(item => {
+                                          // Determine individual item value based on transaction type
+                                          const itemVal = isCostType 
+                                            ? (item.unit_cost_snapshot ?? 0)
+                                            : (item.price_snapshot ?? item.price);
+
+                                          return (
+                                              <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
+                                                  <div className="flex flex-col pr-2">
+                                                      <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
+                                                          {item.product_name_snapshot || "Item"}
+                                                      </span>
+                                                      <span className="text-[9px] text-gray-400 font-mono tracking-tighter mt-0.5">
+                                                        {item.barcode_snapshot || item.product_id}
+                                                      </span>
+                                                  </div>
+                                                  <div className="text-right shrink-0">
+                                                      <span className="font-mono text-gray-600 block">
+                                                          {item.qty} x {Number(itemVal).toFixed(2)}
+                                                      </span>
+                                                      {/* Subtle indicator of Cost vs Price */}
+                                                      <span className="text-[9px] text-gray-400 uppercase">
+                                                          {isCostType ? 'Cost' : 'Price'}
+                                                      </span>
+                                                  </div>
                                               </div>
-                                              <span className="font-mono text-gray-500 whitespace-nowrap mt-0.5 shrink-0">
-                                                  {item.qty} x {Number(item.price_snapshot ?? item.price).toFixed(2)}
-                                              </span>
-                                          </div>
-                                      ))}
+                                          );
+                                      })}
                                   </div>
                               </td>
 
                               {/* 7. Total Value */}
-                              <td className="py-2 text-right font-mono font-bold text-sm">
-                                  {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
-                                  {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              <td className="py-2 text-right">
+                                  <div className="font-mono font-bold text-sm">
+                                    {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
+                                    {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </div>
+                                  <div className="text-[9px] text-gray-400 uppercase tracking-wide">
+                                    {isCostType ? 'Total Cost' : 'Total Price'}
+                                  </div>
                               </td>
 
                               {/* 8. Staff */}

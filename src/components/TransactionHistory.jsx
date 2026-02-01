@@ -190,15 +190,17 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                    const nonVoidItems = items.filter(i => i.type !== 'VOID');
                    
                    // 2. Determine Display Data
-                   // If we have original items, show them. If we only have the VOID row (orphan), use that so items aren't empty.
                    const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
                    const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
                    
                    // 3. Status Flags
                    const isVoided = items.some(i => i.is_voided) || !!voidEntry;
-                   const isOrphanVoid = items.every(i => i.type === 'VOID'); // The original transaction is on another page
+                   const isOrphanVoid = items.every(i => i.type === 'VOID'); 
 
-                   // 4. Styles: Always grey out if voided
+                   // --- LOGIC CHANGE: Detect Cost vs Price ---
+                   const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
+
+                   // 4. Styles
                    const rowClass = isVoided ? "opacity-50 grayscale bg-gray-50" : "";
 
                    return (
@@ -215,12 +217,10 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                        {/* Column 2: Type */}
                        <td className="align-top py-3">
                           {isOrphanVoid ? (
-                            // Fallback badge for Orphan Void rows (prevents Red VOID badge)
                             <span className="font-bold text-[10px] uppercase px-2 py-1 rounded-full bg-gray-200 text-gray-600">
                                 TRANSACTION
                             </span>
                           ) : (
-                            // Standard Badge
                             <span className={`font-bold text-[10px] uppercase px-2 py-1 rounded-full 
                                 ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-700' : 
                                 first.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-700' :
@@ -285,21 +285,33 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           )}
                        </td>
 
-                      {/* Column 4: Item Summary */}
+                      {/* Column 4: Item Summary (UPDATED WITH COST LOGIC) */}
                        <td className="align-top py-3">
                           <ul className="space-y-2">
-                             {displayItems.map(i => (
-                               <li key={i.id} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
-                                  <div className="flex justify-between font-medium">
-                                      <span className="truncate max-w-[150px]" title={i.product_name_snapshot}>
-                                        {i.product_name_snapshot || "Item"}
-                                      </span>
-                                      <span>
-                                          {i.qty} x ₱{Number(i.price_snapshot ?? i.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                      </span>
-                                  </div>
-                               </li>
-                             ))}
+                             {displayItems.map(i => {
+                               // Determine value to display
+                               const unitVal = isCostType 
+                                 ? (i.unit_cost_snapshot ?? 0)
+                                 : (i.price_snapshot ?? i.price);
+
+                               return (
+                                 <li key={i.id} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
+                                    <div className="flex justify-between font-medium">
+                                        <span className="truncate max-w-[150px]" title={i.product_name_snapshot}>
+                                          {i.product_name_snapshot || "Item"}
+                                        </span>
+                                        <div className="text-right">
+                                            <span>
+                                              {i.qty} x ₱{Number(unitVal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </span>
+                                            {isCostType && (
+                                                <span className="text-[9px] text-gray-400 block -mt-0.5">(Cost)</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                 </li>
+                               );
+                             })}
                           </ul>
                        </td>
 
