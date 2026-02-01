@@ -1112,10 +1112,7 @@ export default function TransactionForm({ onSuccess }) {
                             <th className="text-left pb-1">Item</th>
                             <th className="text-center pb-1">Qty</th>
                             {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                <>
-                                    <th className="text-right pb-1">Cost</th>
-                                    <th className="text-right pb-1">SRP</th>
-                                </>
+                                <th className="text-right pb-1">Cost</th>
                             )}
                             <th className="text-right pb-1">Amt</th>
                         </tr>
@@ -1128,12 +1125,9 @@ export default function TransactionForm({ onSuccess }) {
                                     {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
                                 </td>
                                 
-                                {/* Cost/Price Columns for Receiving/PullOut */}
+                                {/* Cost Column for Receiving/PullOut */}
                                 {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                    <>
-                                        <td className="text-right">{Number(item.unitCost).toFixed(2)}</td>
-                                        <td className="text-right">{Number(item.priceOverride).toFixed(2)}</td>
-                                    </>
+                                    <td className="text-right">{Number(item.unitCost).toFixed(2)}</td>
                                 )}
 
                                 <td className="text-right">
