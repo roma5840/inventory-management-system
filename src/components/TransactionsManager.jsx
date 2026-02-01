@@ -59,8 +59,8 @@ export default function TransactionsManager() {
 
     // 4. Search Filter (Server-side for pagination efficiency)
     if (searchRef) {
-        // Note: OR syntax in Supabase for text search
-        query = query.or(`reference_number.ilike.%${searchRef}%,student_name.ilike.%${searchRef}%`);
+        // Includes Reference, Student Name, and Student ID in search
+        query = query.or(`reference_number.ilike.%${searchRef}%,student_name.ilike.%${searchRef}%,student_id.ilike.%${searchRef}%`);
     }
 
     return query;
@@ -138,8 +138,11 @@ export default function TransactionsManager() {
   // Grouping Logic
   const groupedTransactions = transactions.reduce((acc, curr) => {
     // Search Filter applied post-fetch for client-side responsiveness
-    if (searchRef && !curr.reference_number.toLowerCase().includes(searchRef.toLowerCase()) && 
-        !curr.student_name?.toLowerCase().includes(searchRef.toLowerCase())) {
+    if (searchRef && 
+        !curr.reference_number?.toLowerCase().includes(searchRef.toLowerCase()) && 
+        !curr.student_name?.toLowerCase().includes(searchRef.toLowerCase()) &&
+        !curr.student_id?.toString().toLowerCase().includes(searchRef.toLowerCase())
+       ) {
         return acc;
     }
 
@@ -276,7 +279,7 @@ export default function TransactionsManager() {
                 {/* Search - Pushed to the right on larger screens */}
                 <input 
                     type="text" 
-                    placeholder="Search Ref or Student..." 
+                    placeholder="Search Ref, ID or Name..." 
                     className="input input-sm input-bordered w-full sm:w-64 sm:ml-auto"
                     value={searchRef}
                     onChange={e => setSearchRef(e.target.value)}
@@ -289,19 +292,21 @@ export default function TransactionsManager() {
           <table className="table w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="w-32">Date / Ref</th>
                 <th className="w-24">Type</th>
-                <th className="w-48">Entity (Student/Supp)</th>
+                <th className="w-24">Date</th>
+                <th className="w-32">Ref #</th>
+                <th className="w-24">Student No.</th>
+                <th className="w-48">Name / Supplier</th>
                 <th>Items Breakdown</th>
-                <th className="text-right w-24">Total Value</th>
+                <th className="text-right w-24">Value</th>
                 <th className="w-32 text-right">Staff</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                  <tr><td colSpan="6" className="text-center py-10">Loading records...</td></tr>
+                  <tr><td colSpan="8" className="text-center py-10">Loading records...</td></tr>
               ) : Object.keys(groupedTransactions).length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
+                  <tr><td colSpan="8" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
               ) : (
                   Object.entries(groupedTransactions).map(([refNo, items]) => {
                       // 1. Determine "Original" vs "Void" rows
@@ -322,20 +327,12 @@ export default function TransactionsManager() {
                       }, 0);
 
                       // 4. Void Metadata source
-                      // If we have a dedicated voidRow, use it. If we are an orphan void, 'first' IS the void row.
                       const voidSource = voidRow || (isOrphanVoid ? first : null);
 
                       return (
                           <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
-                              {/* 1. Ref & Date */}
-                              <td className="py-2">
-                                  <div className="font-mono font-bold text-xs">{refNo}</div>
-                                  <div className="text-[10px] text-gray-500">{new Date(first.timestamp).toLocaleDateString()}</div>
-                                  <div className="text-[10px] text-gray-400">{new Date(first.timestamp).toLocaleTimeString()}</div>
-                                  {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
-                              </td>
-
-                              {/* 2. Type & Mode */}
+                              
+                              {/* 1. Type */}
                               <td className="py-2">
                                   {isOrphanVoid ? (
                                     <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800">
@@ -359,13 +356,29 @@ export default function TransactionsManager() {
                                   )}
                               </td>
 
-                              {/* 3. Entity */}
+                              {/* 2. Date */}
+                              <td className="py-2">
+                                  <div className="text-xs text-gray-700">{new Date(first.timestamp).toLocaleDateString()}</div>
+                                  <div className="text-[10px] text-gray-400">{new Date(first.timestamp).toLocaleTimeString()}</div>
+                              </td>
+
+                              {/* 3. Ref */}
+                              <td className="py-2">
+                                  <div className="font-mono font-bold text-xs">{refNo}</div>
+                                  {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
+                              </td>
+
+                              {/* 4. Student No. */}
+                              <td className="py-2 font-mono text-xs text-gray-600">
+                                  {first.student_id || "-"}
+                              </td>
+
+                              {/* 5. Name / Supplier */}
                               <td className="py-2">
                                   {first.student_name ? (
                                       <div>
                                           <div className="font-bold text-xs">{first.student_name}</div>
                                           <div className="text-[10px] text-gray-500">
-                                              {first.student_id && <span className="font-mono text-gray-400 mr-1">{first.student_id} •</span>}
                                               {first.course} {first.year_level}
                                           </div>
                                       </div>
@@ -384,7 +397,7 @@ export default function TransactionsManager() {
                                   )}
                               </td>
 
-                              {/* 4. Items List (Uses displayItems to show content even for orphan voids) */}
+                              {/* 6. Items Breakdown */}
                               <td className="py-2">
                                   <div className="space-y-1">
                                       {displayItems.map(item => (
@@ -405,13 +418,13 @@ export default function TransactionsManager() {
                                   </div>
                               </td>
 
-                              {/* 5. Total Value */}
+                              {/* 7. Total Value */}
                               <td className="py-2 text-right font-mono font-bold text-sm">
                                   {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
                                   {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
 
-                              {/* 6. Staff & Void Details */}
+                              {/* 8. Staff */}
                               <td className="py-2 text-right">
                                   <div className="text-xs font-semibold">{first.staff_name}</div>
                                   
