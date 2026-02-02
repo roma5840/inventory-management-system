@@ -14,6 +14,8 @@ export default function StaffPage() {
   const [editingNameId, setEditingNameId] = useState(null);
   const [tempName, setTempName] = useState("");
 
+  const [processingUsers, setProcessingUsers] = useState([]);
+
   // Logic: Super Admin can edit everyone. Admin can only edit Employees.
   const canToggleStatus = (targetUser) => {
     if (userRole === 'SUPER_ADMIN') return true;
@@ -125,6 +127,9 @@ export default function StaffPage() {
     const action = newStatus === 'INACTIVE' ? 'DEACTIVATE' : 'REACTIVATE';
 
     if (confirm(`Are you sure you want to ${action} access for ${user.fullName}?`)) {
+        // Add user to processing list
+        setProcessingUsers(prev => [...prev, user.id]);
+
         try {
             const { error } = await supabase
                 .from('authorized_users')
@@ -157,6 +162,9 @@ export default function StaffPage() {
 
         } catch (err) {
             alert(`Failed to ${action.toLowerCase()} user: ` + err.message);
+        } finally {
+            // Remove user from processing list regardless of success/failure
+            setProcessingUsers(prev => prev.filter(id => id !== user.id));
         }
     }
   };
@@ -165,6 +173,8 @@ export default function StaffPage() {
     if (!canManage(user)) return alert("You do not have permission to delete this user.");
     
     if (confirm(`Are you sure you want to REVOKE access for ${user.fullName}?`)) {
+        setProcessingUsers(prev => [...prev, user.id]);
+
         try {
             // CALL THE SECURE SQL FUNCTION
             const { error } = await supabase.rpc('delete_staff_account', { 
@@ -197,6 +207,8 @@ export default function StaffPage() {
         } catch (err) {
             console.error("Revoke failed:", err);
             alert("Failed to revoke access: " + err.message);
+        } finally {
+            setProcessingUsers(prev => prev.filter(id => id !== user.id));
         }
     }
   };
@@ -297,50 +309,57 @@ export default function StaffPage() {
                                         </span>
                                     </td>
                                     <td className="text-right">
-                                        {canManage(user) && (
-                                            <div className="flex justify-end gap-2 items-center">
-                                                {/* Only SUPER_ADMIN sees the role dropdown */}
-                                                {userRole === 'SUPER_ADMIN' && (
-                                                    <select 
-                                                        className="select select-bordered select-xs w-32 font-normal"
-                                                        value={user.role}
-                                                        onChange={(e) => changeRole(user, e.target.value)}
-                                                    >
-                                                        <option value="EMPLOYEE">Employee</option>
-                                                        <option value="ADMIN">Admin</option>
-                                                        <option value="SUPER_ADMIN">Super Admin</option>
-                                                    </select>
-                                                )}
-
-                                                {/* Status Toggle Button - Now available to both SUPER_ADMIN and ADMIN (for employees) */}
-                                                {user.status !== 'PENDING' && canToggleStatus(user) && (
-                                                    <button 
-                                                        onClick={() => toggleStatus(user)}
-                                                        className={`btn btn-square btn-xs btn-outline ${user.status === 'INACTIVE' ? 'btn-success' : 'btn-warning'}`}
-                                                        title={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
-                                                    >
-                                                        {user.status === 'INACTIVE' ? (
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                                                            </svg>
-                                                        ) : (
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                        )}
-                                                    </button>
-                                                )}
-                                                
-                                                <button 
-                                                    onClick={() => revokeAccess(user)}
-                                                    className="btn btn-square btn-xs btn-outline btn-error"
-                                                    title="Revoke Access (Delete)"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
+                                        {/* SHOW LOADING SPINNER OR ACTIONS */}
+                                        {processingUsers.includes(user.id) ? (
+                                            <div className="flex justify-end pr-2">
+                                                <span className="loading loading-spinner loading-sm text-gray-400"></span>
                                             </div>
+                                        ) : (
+                                            canManage(user) && (
+                                                <div className="flex justify-end gap-2 items-center">
+                                                    {/* Only SUPER_ADMIN sees the role dropdown */}
+                                                    {userRole === 'SUPER_ADMIN' && (
+                                                        <select 
+                                                            className="select select-bordered select-xs w-32 font-normal"
+                                                            value={user.role}
+                                                            onChange={(e) => changeRole(user, e.target.value)}
+                                                        >
+                                                            <option value="EMPLOYEE">Employee</option>
+                                                            <option value="ADMIN">Admin</option>
+                                                            <option value="SUPER_ADMIN">Super Admin</option>
+                                                        </select>
+                                                    )}
+
+                                                    {/* Status Toggle Button */}
+                                                    {user.status !== 'PENDING' && canToggleStatus(user) && (
+                                                        <button 
+                                                            onClick={() => toggleStatus(user)}
+                                                            className={`btn btn-square btn-xs btn-outline ${user.status === 'INACTIVE' ? 'btn-success' : 'btn-warning'}`}
+                                                            title={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
+                                                        >
+                                                            {user.status === 'INACTIVE' ? (
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                                                                </svg>
+                                                            ) : (
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                    
+                                                    <button 
+                                                        onClick={() => revokeAccess(user)}
+                                                        className="btn btn-square btn-xs btn-outline btn-error"
+                                                        title="Revoke Access (Delete)"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )
                                         )}
                                     </td>
                                 </tr>

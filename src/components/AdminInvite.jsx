@@ -120,8 +120,9 @@ export default function AdminInvite({ onSuccess }) {
         <button 
           disabled={loading} 
           type="submit" 
-          className={`btn btn-primary w-full mt-2 shadow-sm ${loading ? 'loading' : ''}`}
+          className="btn btn-primary w-full mt-2 shadow-sm"
         >
+          {loading && <span className="loading loading-spinner loading-sm"></span>}
           {loading ? "Sending..." : "Send Authorization Email"}
         </button>
         
