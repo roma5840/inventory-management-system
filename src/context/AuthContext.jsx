@@ -11,6 +11,8 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  // NEW: Track if the user arrived via a recovery link
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   // Login Function
   async function login(email, password) {
@@ -45,6 +47,7 @@ export function AuthProvider({ children }) {
 
   // Logout Function
   function logout() {
+    setIsRecoveryMode(false); // Reset mode on logout
     return supabase.auth.signOut();
   }
 
@@ -52,14 +55,18 @@ export function AuthProvider({ children }) {
     // Check active session on load
     const initSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      await handleSession(session); // Wait for whitelist check to finish
-      setLoading(false); // NOW we are ready
+      await handleSession(session);
+      setLoading(false);
     };
 
     initSession();
 
     // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // NEW: Catch the Password Recovery Event
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryMode(true);
+      }
       handleSession(session);
     });
 
@@ -151,6 +158,7 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     userRole,
+    isRecoveryMode,
     login,
     logout
   };

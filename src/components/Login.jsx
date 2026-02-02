@@ -67,6 +67,11 @@ export default function Login() {
                 type="password" required className="input input-bordered" 
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />
+              <label className="label">
+                <Link to="/forgot-password" class="label-text-alt link link-hover text-blue-600">
+                  Forgot password?
+                </Link>
+              </label>
             </div>
             <div className="form-control mt-6">
               <button disabled={loading} className="btn btn-primary">
