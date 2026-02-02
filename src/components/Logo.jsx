@@ -42,19 +42,19 @@ export function Logo({ className = "w-12 h-12" }) {
       
       {/* Text around circle (top) */}
       <path id="topArc" d="M 40 100 A 60 60 0 0 1 160 100" fill="none"/>
-      <text fontFamily="Arial, sans-serif" fontSize="11" fontWeight="bold" fill="#3b82f6" letterSpacing="2">
+      <text fontFamily="Arial, sans-serif" fontSize="14" fontWeight="bold" fill="#3b82f6" letterSpacing="2">
         <textPath href="#topArc" startOffset="50%" textAnchor="middle">
           INVENTORY SYSTEM
         </textPath>
       </text>
       
       {/* Decorative elements (bottom arc) */}
-      <circle cx="65" cy="125" r="1.5" fill="#fbbf24"/>
-      <circle cx="75" cy="130" r="1.5" fill="#fbbf24"/>
-      <circle cx="85" cy="133" r="1.5" fill="#fbbf24"/>
-      <circle cx="115" cy="133" r="1.5" fill="#fbbf24"/>
-      <circle cx="125" cy="130" r="1.5" fill="#fbbf24"/>
-      <circle cx="135" cy="125" r="1.5" fill="#fbbf24"/>
+      <circle cx="65" cy="125" r="3.5" fill="#fbbf24"/>
+      <circle cx="75" cy="130" r="3.5" fill="#fbbf24"/>
+      <circle cx="85" cy="133" r="3.5" fill="#fbbf24"/>
+      <circle cx="115" cy="133" r="3.5" fill="#fbbf24"/>
+      <circle cx="125" cy="130" r="3.5" fill="#fbbf24"/>
+      <circle cx="135" cy="125" r="3.5" fill="#fbbf24"/>
     </svg>
   );
 }
