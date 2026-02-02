@@ -222,18 +222,22 @@ export default function ProductDetailsPage() {
                     {/* 1. Financial KPI Cards */}
                     <div className={`grid grid-cols-1 ${SHOW_PROFIT_MARGIN ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                         {/* Revenue */}
-                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Total Revenue - Returns Refunds">
-                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Net Sales Revenue</div>
-                            <div className="stat-value text-primary text-2xl">₱{statsData.outflow.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Gross Sales minus Returns</div>
-                        </div>
+                        {SHOW_PROFIT_MARGIN && (
+                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Total Revenue - Returns Refunds">
+                                <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Net Sales Revenue</div>
+                                <div className="stat-value text-primary text-2xl">₱{statsData.outflow.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                <div className="stat-desc text-[10px] text-gray-400 mt-1">Gross Sales minus Returns</div>
+                            </div>
+                        )}
 
                         {/* Outflow Cost */}
-                        <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Sum of (Qty × Unit Cost) for Sales + Pull Outs">
-                            <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Net COGS</div>
-                            <div className="stat-value text-gray-700 text-2xl">₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                            <div className="stat-desc text-[10px] text-gray-400 mt-1">Cost of Goods Sold minus Cost of Returns</div>
-                        </div>
+                        {SHOW_PROFIT_MARGIN && (
+                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Sum of (Qty × Unit Cost) for Sales + Pull Outs">
+                                <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Net COGS</div>
+                                <div className="stat-value text-gray-700 text-2xl">₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                <div className="stat-desc text-[10px] text-gray-400 mt-1">Cost of Goods Sold minus Cost of Returns</div>
+                            </div>
+                        )}
 
                         {/* Profit (HIDDEN BY DEFAULT) */}
                         {SHOW_PROFIT_MARGIN && (

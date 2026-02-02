@@ -68,7 +68,7 @@ export default function Login() {
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />
               <label className="label">
-                <Link to="/forgot-password" class="label-text-alt link link-hover text-blue-600">
+                <Link to="/forgot-password" className="label-text-alt link link-hover text-blue-600">
                   Forgot password?
                 </Link>
               </label>
@@ -82,7 +82,7 @@ export default function Login() {
 
           <div className="divider">OR</div>
           <Link to="/register" className="btn btn-link btn-sm text-gray-600">
-            Have an invite code? Register
+            Have an invitation? Register
           </Link>
         </div>
       </div>

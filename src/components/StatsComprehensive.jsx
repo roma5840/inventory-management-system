@@ -103,19 +103,23 @@ export default function StatsComprehensive({ lastUpdated }) {
       {/* 2. KPI CARDS (Sales, Cost, Asset Value) */}
       <div className={`grid grid-cols-1 ${SHOW_SENSITIVE_METRICS ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
         {/* Total Sales */}
-        <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Gross Sales - Customer Returns">
+        {SHOW_SENSITIVE_METRICS && (
+          <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Gross Sales - Customer Returns">
             <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Net Sales Revenue</div>
             <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.outflow.revenue)}</div>
             <div className="stat-desc text-xs mt-1 text-gray-400">Actual money kept (after refunds)</div>
-        </div>
-
+          </div>
+        )}
+        
         {/* Total Cost */}
-        <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Sum of (Qty Sold × Unit Cost at moment of sale)">
+        {SHOW_SENSITIVE_METRICS && (
+          <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Sum of (Qty Sold × Unit Cost at moment of sale)">
             <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Net Cost of Outflows</div>
             <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.outflow.val)}</div>
             <div className="stat-desc text-xs mt-1 text-gray-400">Cost of Goods Sold minus Cost of Returns</div>
-        </div>
-
+          </div>
+        )}
+        
         {/* Total Inventory Value (HIDDEN BY DEFAULT) */}
         {SHOW_SENSITIVE_METRICS && (
           <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Current Stock × Current Supplier Cost">
