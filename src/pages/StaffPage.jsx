@@ -250,12 +250,24 @@ export default function StaffPage() {
             <div className="w-full md:w-1/3 sticky top-6">
                 <AdminInvite onSuccess={() => setRefreshTrigger(prev => prev + 1)} />
                 <div className="mt-4 p-4 text-xs text-gray-500 bg-white rounded-lg shadow border">
-                    <p className="font-bold">Privilege Levels:</p>
+                    <p className="font-bold text-gray-700">Privilege Levels:</p>
                     <ul className="list-disc pl-4 mt-2 space-y-1">
-                        <li><strong>Super Admin:</strong> Full control.</li>
+                        <li><strong>Super Admin:</strong> Full control over all users.</li>
                         <li><strong>Admin:</strong> Can manage Employees only.</li>
                         <li><strong>Employee:</strong> No access to this page.</li>
                     </ul>
+
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                        <p className="font-bold text-gray-700">Access Management:</p>
+                        <ul className="list-disc pl-4 mt-2 space-y-2">
+                            <li>
+                                <strong>Deactivating (Pause icon):</strong> Removes their ability to log in, but their name remains visible in existing transaction logs.
+                            </li>
+                            <li>
+                                <strong>Revoking (X icon):</strong> Completely deletes the user and removes their name/identity from all transaction history logs.
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
