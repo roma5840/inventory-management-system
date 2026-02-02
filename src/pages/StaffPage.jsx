@@ -133,9 +133,22 @@ export default function StaffPage() {
 
             if (error) throw error;
 
+            // --- CLOUDFLARE SYNC (SECURED) ---
+            const cfAction = newStatus === 'INACTIVE' ? 'remove' : 'add';
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            await fetch('/api/cf-sync', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}` 
+                },
+                body: JSON.stringify({ email: user.email, action: cfAction })
+            });
+            // -----------------------
+
             setRefreshTrigger(prev => prev + 1);
             
-            // Broadcast immediate kick/update
             await supabase.channel('app_updates').send({
                 type: 'broadcast',
                 event: 'staff_update',
@@ -160,10 +173,21 @@ export default function StaffPage() {
 
             if (error) throw error;
 
-            // 1. Refresh Local State
+            // --- CLOUDFLARE SYNC (SECURED) ---
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            await fetch('/api/cf-sync', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({ email: user.email, action: 'remove' })
+            });
+            // -----------------------
+
             setRefreshTrigger(prev => prev + 1); 
 
-            // 2. Broadcast to other tabs
             await supabase.channel('app_updates').send({ 
                 type: 'broadcast',
                 event: 'staff_update',
