@@ -11,6 +11,32 @@ export default function AdminInvite({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
+  // Helper: Handles API calls with Token Refresh
+  const callCloudflareSync = async (email, action) => {
+    let { data: { session } } = await supabase.auth.getSession();
+    
+    const makeRequest = (token) => fetch('/api/cf-sync', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ email, action })
+    });
+
+    let response = await makeRequest(session?.access_token);
+
+    // If 401, refresh and retry once
+    if (response.status === 401) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (refreshData.session) {
+            response = await makeRequest(refreshData.session.access_token);
+        }
+    }
+
+    if (!response.ok) throw new Error("Cloudflare Sync Failed");
+  };
+
   const handleInvite = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -38,19 +64,9 @@ export default function AdminInvite({ onSuccess }) {
 
       if(error) throw error;
 
-      // --- START CLOUDFLARE SYNC (SECURED) ---
-      // Get current session token to prove identity to the API
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      await fetch('/api/cf-sync', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}` // Send Token
-        },
-        body: JSON.stringify({ email, action: 'add' })
-      });
-      // --- END CLOUDFLARE SYNC ---
+      // --- UPDATED SECURE SYNC ---
+      await callCloudflareSync(email, 'add');
+      // ---------------------------
 
       await supabase.channel('app_updates').send({
         type: 'broadcast',
@@ -80,7 +96,12 @@ export default function AdminInvite({ onSuccess }) {
       setRole("EMPLOYEE");
     } catch (error) {
       console.error(error);
-      setMsg("Error sending invite (User saved, but sync/email may have failed).");
+      // Determine if it was the DB or the Sync that failed
+      if (error.message === "Cloudflare Sync Failed") {
+          setMsg("User saved to DB, but Cloudflare Sync failed. Check logs.");
+      } else {
+          setMsg("Error sending invite.");
+      }
     } finally {
       setLoading(false);
     }

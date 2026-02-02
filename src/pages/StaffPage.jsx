@@ -119,6 +119,47 @@ export default function StaffPage() {
     }
   };
 
+  // --- NEW: Helper for Secure API Calls with Auto-Refresh ---
+  const callCloudflareSync = async (email, action) => {
+    // 1. Get current session
+    let { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("No active session");
+
+    // 2. Define the fetch logic
+    const makeRequest = async (token) => {
+      return fetch('/api/cf-sync', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ email, action })
+      });
+    };
+
+    // 3. Try the request
+    let response = await makeRequest(session.access_token);
+
+    // 4. If 401 (Unauthorized), try to refresh token and retry ONCE
+    if (response.status === 401) {
+      console.log("Token expired, attempting refresh...");
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError || !refreshData.session) {
+        throw new Error("Session expired. Please refresh the page.");
+      }
+
+      // Retry with new token
+      response = await makeRequest(refreshData.session.access_token);
+    }
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Cloudflare Sync Failed");
+    }
+  };
+  // ----------------------------------------------------------
+
   const toggleStatus = async (user) => {
     if (!canToggleStatus(user)) return alert("You do not have permission to change this user's status.");
     if (user.id === currentUser.id) return alert("You cannot deactivate your own account.");
@@ -140,16 +181,7 @@ export default function StaffPage() {
 
             // --- CLOUDFLARE SYNC (SECURED) ---
             const cfAction = newStatus === 'INACTIVE' ? 'remove' : 'add';
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            await fetch('/api/cf-sync', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token}` 
-                },
-                body: JSON.stringify({ email: user.email, action: cfAction })
-            });
+            await callCloudflareSync(user.email, cfAction);
             // -----------------------
 
             setRefreshTrigger(prev => prev + 1);
@@ -184,16 +216,7 @@ export default function StaffPage() {
             if (error) throw error;
 
             // --- CLOUDFLARE SYNC (SECURED) ---
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            await fetch('/api/cf-sync', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token}`
-                },
-                body: JSON.stringify({ email: user.email, action: 'remove' })
-            });
+            await callCloudflareSync(user.email, 'remove');
             // -----------------------
 
             setRefreshTrigger(prev => prev + 1); 
