@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
+import { Logo } from "./Logo";
 
 export default function Register() {
   const { currentUser } = useAuth(); // Get currentUser to check auth state
@@ -88,7 +89,10 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-slate-200">
       <div className="card w-96 bg-base-100 shadow-xl">
         <div className="card-body">
-          <h2 className="card-title justify-center text-blue-800">Staff Registration</h2>
+          <div className="flex flex-col items-center mb-2">
+            <Logo className="w-16 h-16" />
+            <h2 className="card-title text-blue-800 mt-2">Staff Registration</h2>
+          </div>
           
           {error && <div className="alert alert-error text-xs">{error}</div>}
 

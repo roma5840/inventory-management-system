@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
+import { Logo } from "./Logo";
 
 export default function Login() {
   const { login, currentUser } = useAuth();
@@ -44,8 +45,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-200">
       <div className="card w-96 bg-base-100 shadow-xl">
         <div className="card-body">
-          <h2 className="card-title text-2xl justify-center text-blue-800">BookstoreIMS</h2>
-          <p className="text-center text-gray-500 text-sm mb-4">Finance Dept. Access Only</p>
+          <div className="flex flex-col items-center mb-4">
+            <Logo className="w-24 h-24 mb-2" />
+            <h2 className="text-2xl font-bold text-blue-900">Login</h2>
+            <p className="text-center text-gray-500 text-xs tracking-wider uppercase">Finance Dept. Access Portal</p>
+          </div>
           
           {error && <div className="alert alert-error text-sm py-2">{error}</div>}
 
