@@ -9,6 +9,12 @@ export default function SupplierPage() {
   const [newContact, setNewContact] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Edit State
+  const [editingSupplier, setEditingSupplier] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editContact, setEditContact] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -60,6 +66,44 @@ export default function SupplierPage() {
       alert("Error adding supplier: " + err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEditClick = (supplier) => {
+    setEditingSupplier(supplier);
+    setEditName(supplier.name);
+    setEditContact(supplier.contact_info || "");
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editingSupplier || !editName.trim()) return;
+    setIsSaving(true);
+
+    try {
+        const { error } = await supabase
+            .from('suppliers')
+            .update({
+                name: editName.trim().toUpperCase(),
+                contact_info: editContact.trim()
+            })
+            .eq('id', editingSupplier.id);
+
+        if (error) {
+            if (error.code === '23505') alert("Supplier name already exists.");
+            else throw error;
+        } else {
+            setSuppliers(prev => prev.map(s => 
+                s.id === editingSupplier.id 
+                ? { ...s, name: editName.trim().toUpperCase(), contact_info: editContact.trim() } 
+                : s
+            ));
+            setEditingSupplier(null);
+        }
+    } catch (err) {
+        alert("Error updating supplier: " + err.message);
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -131,6 +175,7 @@ export default function SupplierPage() {
                                     <td className="font-bold text-gray-700">{s.name}</td>
                                     <td className="text-gray-500 text-sm">{s.contact_info || "-"}</td>
                                     <td className="text-right">
+                                        <button onClick={() => handleEditClick(s)} className="btn btn-xs btn-ghost text-blue-500 mr-2">Edit</button>
                                         <button onClick={() => handleDelete(s.id, s.name)} className="btn btn-xs btn-ghost text-red-500">Delete</button>
                                     </td>
                                 </tr>
@@ -197,6 +242,39 @@ export default function SupplierPage() {
             </div>
         </div>
       </main>
+      {/* Edit Modal */}
+      {editingSupplier && (
+        <div className="modal modal-open">
+            <div className="modal-box">
+                <h3 className="font-bold text-lg text-gray-700 border-b pb-2 mb-4">Edit Supplier</h3>
+                
+                <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+                    <div className="form-control w-full">
+                        <label className="label"><span className="label-text text-xs font-bold uppercase">Supplier Name</span></label>
+                        <input 
+                            type="text" required 
+                            className="input input-bordered uppercase" 
+                            value={editName} onChange={e => setEditName(e.target.value)}
+                        />
+                    </div>
+                    <div className="form-control w-full">
+                        <label className="label"><span className="label-text text-xs font-bold uppercase">Contact Info</span></label>
+                        <input 
+                            type="text" 
+                            className="input input-bordered" 
+                            value={editContact} onChange={e => setEditContact(e.target.value)}
+                        />
+                    </div>
+                    <div className="modal-action mt-6">
+                        <button type="button" onClick={() => setEditingSupplier(null)} className="btn btn-ghost">Cancel</button>
+                        <button type="submit" disabled={isSaving} className="btn btn-primary">
+                            {isSaving ? "Saving..." : "Save Changes"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
     </div>
   );
 }
