@@ -211,7 +211,8 @@ export default function TransactionsManager() {
                 "Unit Value": unitValue,
                 "Total Amount": totalValue,
                 
-                "Remarks": item.remarks || "",
+                // Use void_reason if type is VOID, otherwise default remarks
+                "Remarks": (item.type === 'VOID' && item.void_reason) ? item.void_reason : (item.remarks || ""),
                 "Void Status": item.is_voided ? "VOIDED" : "Active"
             };
 
