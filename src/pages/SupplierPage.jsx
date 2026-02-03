@@ -9,16 +9,33 @@ export default function SupplierPage() {
   const [newContact, setNewContact] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [jumpPage, setJumpPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
   const fetchSuppliers = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('suppliers').select('*').order('name');
-    if (!error) setSuppliers(data || []);
+    const from = (page - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+
+    const { data, count, error } = await supabase
+        .from('suppliers')
+        .select('*', { count: 'exact' })
+        .order('name')
+        .range(from, to);
+
+    if (!error) {
+        setSuppliers(data || []);
+        setTotalCount(count || 0);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [page]);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -51,7 +68,8 @@ export default function SupplierPage() {
     try {
         const { error } = await supabase.from('suppliers').delete().eq('id', id);
         if (error) throw error;
-        setSuppliers(prev => prev.filter(s => s.id !== id));
+        // Refetch to maintain correct pagination count and fill the list
+        fetchSuppliers();
     } catch (err) {
         alert("Error deleting supplier: " + err.message);
     }
@@ -74,7 +92,7 @@ export default function SupplierPage() {
                     <input 
                         type="text" required 
                         className="input input-bordered uppercase" 
-                        placeholder="e.g. REX BOOKSTORE"
+                        placeholder="Type Supplier..."
                         value={newName} onChange={e => setNewName(e.target.value)}
                     />
                 </div>
@@ -93,7 +111,7 @@ export default function SupplierPage() {
             </form>
 
             {/* List */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto min-h-[400px]">
                 <table className="table w-full">
                     <thead className="bg-gray-100">
                         <tr>
@@ -120,6 +138,62 @@ export default function SupplierPage() {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Pagination Footer */}
+            <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-gray-50 rounded-b-xl gap-4">
+                <div className="text-xs text-gray-500">
+                    {totalCount > 0 
+                    ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                    : "No records found"}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button 
+                        className="btn btn-sm btn-outline bg-white"
+                        disabled={page === 1 || loading}
+                        onClick={() => {
+                            const newPage = page - 1;
+                            setPage(newPage);
+                            setJumpPage(newPage);
+                        }}
+                    >
+                        « Prev
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                        <input 
+                            type="number" 
+                            min="1" 
+                            max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
+                            value={jumpPage}
+                            onChange={(e) => setJumpPage(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    let p = parseInt(jumpPage);
+                                    const max = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+                                    if (p > 0 && p <= max) {
+                                        setPage(p);
+                                    }
+                                }
+                            }}
+                            className="input input-sm input-bordered w-16 text-center"
+                        />
+                        <span className="text-xs text-gray-500">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
+                    </div>
+
+                    <button 
+                        className="btn btn-sm btn-outline bg-white"
+                        disabled={page >= Math.ceil(totalCount / ITEMS_PER_PAGE) || loading}
+                        onClick={() => {
+                            const newPage = page + 1;
+                            setPage(newPage);
+                            setJumpPage(newPage);
+                        }}
+                    >
+                        Next »
+                    </button>
+                </div>
             </div>
         </div>
       </main>
