@@ -18,6 +18,12 @@ export default function TransactionForm({ onSuccess }) {
 
   const [receiptData, setReceiptData] = useState(null);
   const [availableCourses, setAvailableCourses] = useState([]);
+  const [availableSuppliers, setAvailableSuppliers] = useState([]);
+
+  // Custom Dropdown State
+  const [supplierSuggestions, setSupplierSuggestions] = useState([]);
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [activeSupplierIndex, setActiveSupplierIndex] = useState(-1);
 
   // GLOBAL HEADER STATE (Applied to all items)
   const initialHeaderState = {
@@ -58,13 +64,18 @@ export default function TransactionForm({ onSuccess }) {
     }
   }, [headerData.type, queue]);
 
-  useEffect(() => {
-    const fetchCourses = async () => {
-        const { data } = await supabase.from('courses').select('code').order('code');
-        if (data) setAvailableCourses(data.map(c => c.code));
-    };
-    fetchCourses();
-  }, []);
+    useEffect(() => {
+        const fetchData = async () => {
+            const [courseResponse, supplierResponse] = await Promise.all([
+                supabase.from('courses').select('code').order('code'),
+                supabase.from('suppliers').select('name').order('name')
+            ]);
+            
+            if (courseResponse.data) setAvailableCourses(courseResponse.data.map(c => c.code));
+            if (supplierResponse.data) setAvailableSuppliers(supplierResponse.data.map(s => s.name));
+        };
+        fetchData();
+    }, []);
 
   const checkProduct = async (barcodeInput) => {
     const barcodeToSearch = barcodeInput?.trim();
@@ -280,8 +291,25 @@ export default function TransactionForm({ onSuccess }) {
         studentName: headerData.studentName?.toUpperCase() || "",
         yearLevel: headerData.yearLevel?.toUpperCase() || "",
         course: headerData.course || "", 
-        remarks: headerData.remarks || ""
+        remarks: headerData.remarks || "",
+        supplier: headerData.supplier?.toUpperCase().trim() || ""
     };
+
+    // Auto-add Supplier Logic if new
+    if (['RECEIVING', 'PULL_OUT'].includes(finalHeaderData.type) && finalHeaderData.supplier) {
+        const supName = finalHeaderData.supplier;
+        if (!availableSuppliers.includes(supName)) {
+            try {
+                const { error: supError } = await supabase.from('suppliers').insert([{ name: supName }]);
+                if (!supError) {
+                    // Update local list silently so it appears in future searches
+                    setAvailableSuppliers(prev => [...prev, supName].sort());
+                }
+            } catch (err) {
+                console.error("Error auto-adding supplier:", err);
+            }
+        }
+    }
 
     const resultRef = await processTransaction(finalHeaderData, queue);
     
@@ -582,6 +610,63 @@ export default function TransactionForm({ onSuccess }) {
       }));
   };
 
+  // Fix for cursor jumping in Supplier Input & Custom Dropdown Logic
+  const handleSupplierChange = (e) => {
+    const input = e.target;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    
+    // Force Uppercase
+    const val = input.value.toUpperCase();
+    
+    setHeaderData(prev => ({...prev, supplier: val}));
+
+    // Filter suggestions (Starts With logic)
+    if (val.trim()) {
+        const filtered = availableSuppliers.filter(s => s.startsWith(val));
+        setSupplierSuggestions(filtered);
+        setShowSupplierDropdown(true);
+        setActiveSupplierIndex(0); 
+    } else {
+        setShowSupplierDropdown(false);
+    }
+
+    // Restore cursor position
+    window.requestAnimationFrame(() => {
+        if (input) {
+            input.setSelectionRange(start, end);
+        }
+    });
+  };
+
+  const handleSupplierKeyDown = (e) => {
+      if (!showSupplierDropdown || supplierSuggestions.length === 0) return;
+      
+      if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setActiveSupplierIndex(prev => (prev < supplierSuggestions.length - 1 ? prev + 1 : prev));
+      } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setActiveSupplierIndex(prev => (prev > 0 ? prev - 1 : 0));
+      } else if (e.key === 'Enter') {
+          // Only Enter selects the highlighted item
+          if (activeSupplierIndex >= 0 && supplierSuggestions[activeSupplierIndex]) {
+              e.preventDefault();
+              selectSupplier(supplierSuggestions[activeSupplierIndex]);
+          } else {
+              setShowSupplierDropdown(false);
+          }
+      } else if (e.key === 'Escape') {
+          setShowSupplierDropdown(false);
+      }
+      // Tab key is deliberately omitted to allow default browser focus navigation
+  };
+
+  const selectSupplier = (name) => {
+      setHeaderData(prev => ({...prev, supplier: name}));
+      setShowSupplierDropdown(false);
+  };
+
   return (
     <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
       
@@ -681,7 +766,7 @@ export default function TransactionForm({ onSuccess }) {
                                             ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : ''}
                                             ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white'}
                                         `}
-                                        placeholder={headerData.type === 'ISSUANCE_RETURN' ? "Auto-filled from Receipt" : "Scan or Type ID..."}
+                                        placeholder={headerData.type === 'ISSUANCE_RETURN' ? "Auto-filled from Receipt" : "Type ID..."}
                                         value={headerData.studentId} 
                                         onChange={e => {
                                             if(isNewStudent !== null) setIsNewStudent(null);
@@ -748,15 +833,38 @@ export default function TransactionForm({ onSuccess }) {
 
                     {/* SUPPLIER: VISIBLE FOR RECEIVING & PULL_OUT ONLY */}
                     {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
-                        <div className="form-control">
+                        <div className="form-control relative">
                             <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
                             <input 
                                 id="supplierInput" 
                                 type="text" 
-                                className="input input-sm input-bordered bg-white" 
-                                placeholder="Supplier"
-                                value={headerData.supplier} onChange={e => setHeaderData({...headerData, supplier: e.target.value})} 
+                                autoComplete="off"
+                                className="input input-sm input-bordered bg-white uppercase w-full" 
+                                placeholder="Type Supplier..."
+                                value={headerData.supplier} 
+                                onChange={handleSupplierChange}
+                                onKeyDown={handleSupplierKeyDown}
+                                onFocus={() => {
+                                    if(headerData.supplier) {
+                                        setSupplierSuggestions(availableSuppliers.filter(s => s.startsWith(headerData.supplier)));
+                                        setShowSupplierDropdown(true);
+                                    }
+                                }}
+                                onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
                             />
+                            {showSupplierDropdown && supplierSuggestions.length > 0 && (
+                                <ul className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded-b shadow-lg max-h-40 overflow-y-auto mt-0">
+                                    {supplierSuggestions.map((sup, index) => (
+                                        <li 
+                                            key={index} 
+                                            className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 ${index === activeSupplierIndex ? 'bg-blue-100 font-bold' : ''}`}
+                                            onMouseDown={() => selectSupplier(sup)}
+                                        >
+                                            {sup}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                     )}
                     

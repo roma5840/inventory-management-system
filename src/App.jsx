@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import ForgotPassword from "./components/ForgotPassword";
 import UpdatePassword from "./components/UpdatePassword";
+import SupplierPage from "./pages/SupplierPage";
 
 // Helper for Protected Routes with Real-time Status Check
 const ProtectedRoute = ({ children }) => {
@@ -171,6 +172,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <TransactionsPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Protected Suppliers Route */}
+      <Route 
+        path="/suppliers" 
+        element={
+          <ProtectedRoute>
+            <SupplierPage />
           </ProtectedRoute>
         } 
       />
