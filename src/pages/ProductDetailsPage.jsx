@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProductDetailsPage() {
   // --- CONFIG: TEMPORARILY SET TO FALSE TO HIDE PROFIT/MARGIN ---
@@ -9,10 +10,26 @@ export default function ProductDetailsPage() {
 
   const { id } = useParams(); // This maps to internal_id
   const navigate = useNavigate();
+  const { userRole } = useAuth();
   
+  // Ref to ensure alert only fires once per mount
+  const alertShown = useRef(false);
+
+  // Security: Redirect Employees immediately
+  useEffect(() => {
+    if (userRole === 'EMPLOYEE' && !alertShown.current) {
+      alertShown.current = true; // Mark as shown immediately
+      alert("Access Denied: You do not have permission to view Product Audit Trails.");
+      navigate("/", { replace: true });
+    }
+  }, [userRole, navigate]);
+
   const [product, setProduct] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Stop rendering immediately to prevent content flash or further errors
+  if (userRole === 'EMPLOYEE') return null;
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
