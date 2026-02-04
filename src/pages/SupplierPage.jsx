@@ -41,6 +41,20 @@ export default function SupplierPage() {
 
   useEffect(() => {
     fetchSuppliers();
+
+    // Listeners for realtime updates (DB changes + Broadcasts)
+    const dbChannel = supabase.channel('supplier-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
+        .subscribe();
+
+    const appChannel = supabase.channel('app_updates')
+        .on('broadcast', { event: 'inventory_update' }, fetchSuppliers)
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(dbChannel);
+        supabase.removeChannel(appChannel);
+    };
   }, [page]);
 
   const handleAdd = async (e) => {
@@ -60,6 +74,12 @@ export default function SupplierPage() {
       } else {
         setNewName("");
         setNewContact("");
+        
+        // Broadcast update to other users
+        await supabase.channel('app_updates').send({
+            type: 'broadcast', event: 'inventory_update', payload: {} 
+        });
+
         fetchSuppliers();
       }
     } catch (err) {
@@ -93,12 +113,13 @@ export default function SupplierPage() {
             if (error.code === '23505') alert("Supplier name already exists.");
             else throw error;
         } else {
-            setSuppliers(prev => prev.map(s => 
-                s.id === editingSupplier.id 
-                ? { ...s, name: editName.trim().toUpperCase(), contact_info: editContact.trim() } 
-                : s
-            ));
+            // Broadcast update to other users
+            await supabase.channel('app_updates').send({
+                type: 'broadcast', event: 'inventory_update', payload: {} 
+            });
+
             setEditingSupplier(null);
+            fetchSuppliers();
         }
     } catch (err) {
         alert("Error updating supplier: " + err.message);
@@ -112,7 +133,12 @@ export default function SupplierPage() {
     try {
         const { error } = await supabase.from('suppliers').delete().eq('id', id);
         if (error) throw error;
-        // Refetch to maintain correct pagination count and fill the list
+        
+        // Broadcast update to other users
+        await supabase.channel('app_updates').send({
+            type: 'broadcast', event: 'inventory_update', payload: {} 
+        });
+        
         fetchSuppliers();
     } catch (err) {
         alert("Error deleting supplier: " + err.message);

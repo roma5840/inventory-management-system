@@ -65,16 +65,32 @@ export default function TransactionForm({ onSuccess }) {
   }, [headerData.type, queue]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            const [courseResponse, supplierResponse] = await Promise.all([
-                supabase.from('courses').select('code').order('code'),
-                supabase.from('suppliers').select('name').order('name')
-            ]);
-            
-            if (courseResponse.data) setAvailableCourses(courseResponse.data.map(c => c.code));
-            if (supplierResponse.data) setAvailableSuppliers(supplierResponse.data.map(s => s.name));
+        const fetchStaticData = async () => {
+            const { data } = await supabase.from('courses').select('code').order('code');
+            if (data) setAvailableCourses(data.map(c => c.code));
         };
-        fetchData();
+
+        const fetchSuppliers = async () => {
+            const { data } = await supabase.from('suppliers').select('name').order('name');
+            if (data) setAvailableSuppliers(data.map(s => s.name));
+        };
+
+        fetchStaticData();
+        fetchSuppliers();
+
+        // Realtime Subscriptions for Suppliers (Updates dropdown automatically)
+        const dbChannel = supabase.channel('tf-supplier-db')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
+            .subscribe();
+            
+        const appChannel = supabase.channel('app_updates')
+            .on('broadcast', { event: 'inventory_update' }, fetchSuppliers)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(dbChannel);
+            supabase.removeChannel(appChannel);
+        };
     }, []);
 
   const checkProduct = async (barcodeInput) => {
