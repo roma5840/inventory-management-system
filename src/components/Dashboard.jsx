@@ -815,7 +815,7 @@ const handleNext = () => {
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Min Alert Level *</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert Level *</label>
                         <input 
                             type="number" 
                             min="0"
