@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
 import Papa from "papaparse"; // Import CSV Parser
 
 export default function StudentPage() {
+  const { userRole } = useAuth();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -341,36 +343,40 @@ export default function StudentPage() {
                     
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
-                        <button 
-                            onClick={handleDownloadTemplate}
-                            className="btn btn-sm btn-outline btn-info gap-2"
-                            title="Download CSV Template"
-                        >
-                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            Template
-                        </button>
+                        {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                            <>
+                                <button 
+                                    onClick={handleDownloadTemplate}
+                                    className="btn btn-sm btn-outline btn-info gap-2"
+                                    title="Download CSV Template"
+                                >
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                    </svg>
+                                    Template
+                                </button>
 
-                        <button 
-                            onClick={() => setIsImportModalOpen(true)}
-                            className="btn btn-sm btn-outline btn-success gap-2"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                            </svg>
-                            Import CSV
-                        </button>
-                        
-                        <button 
-                            onClick={() => setShowCourseModal(true)}
-                            className="btn btn-sm btn-outline gap-2"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                            </svg>
-                            Courses
-                        </button>
+                                <button 
+                                    onClick={() => setIsImportModalOpen(true)}
+                                    className="btn btn-sm btn-outline btn-success gap-2"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                    </svg>
+                                    Import CSV
+                                </button>
+                                
+                                <button 
+                                    onClick={() => setShowCourseModal(true)}
+                                    className="btn btn-sm btn-outline gap-2"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                        <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                                    </svg>
+                                    Courses
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -392,14 +398,14 @@ export default function StudentPage() {
                             <th>Full Name</th>
                             <th>Course</th>
                             <th>Year Level</th>
-                            <th className="text-right">Action</th>
+                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right">Action</th>}
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan="5" className="text-center py-10">Loading Data...</td></tr>
+                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-10">Loading Data...</td></tr>
                         ) : students.length === 0 ? (
-                            <tr><td colSpan="5" className="text-center py-10 text-gray-400">No students found.</td></tr>
+                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-10 text-gray-400">No students found.</td></tr>
                         ) : (
                             students.map(s => (
                                 <tr key={s.id || s.student_id} className="hover">
@@ -411,17 +417,19 @@ export default function StudentPage() {
                                     <td>
                                         {s.year_level ? <span className="badge badge-outline badge-sm">{s.year_level}</span> : "-"}
                                     </td>
-                                    <td className="text-right">
-                                        <button 
-                                            onClick={() => handleEditClick(s)}
-                                            className="btn btn-square btn-xs btn-ghost text-blue-500"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                                <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                                                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                                            </svg>
-                                        </button>
-                                    </td>
+                                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                                        <td className="text-right">
+                                            <button 
+                                                onClick={() => handleEditClick(s)}
+                                                className="btn btn-square btn-xs btn-ghost text-blue-500"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                                    <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                                                    <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}
