@@ -243,11 +243,11 @@ export default function StaffPage() {
     <div className="min-h-screen bg-slate-100 pb-10">
       <Navbar />
       
-      <main className="container mx-auto px-4 max-w-5xl">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
+      <main className="container mx-auto px-4 max-w-7xl">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
             
             {/* LEFT: Invite Form */}
-            <div className="w-full md:w-1/3 sticky top-6">
+            <div className="w-full lg:w-1/4 sticky top-6">
                 <AdminInvite onSuccess={() => setRefreshTrigger(prev => prev + 1)} />
                 <div className="mt-4 p-4 text-xs text-gray-500 bg-white rounded-lg shadow border">
                     <p className="font-bold text-gray-700">Privilege Levels:</p>
@@ -272,51 +272,55 @@ export default function StaffPage() {
             </div>
 
             {/* RIGHT: User List */}
-            <div className="w-full md:w-2/3 card bg-base-100 shadow-xl">
+            <div className="w-full lg:w-3/4 card bg-base-100 shadow-xl">
                 <div className="p-4 border-b">
                     <h2 className="card-title text-gray-700">Authorized Personnel ({staff.length})</h2>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="table w-full">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 text-gray-600">
                             <tr>
-                                <th>Name / Email</th>
-                                <th>Status</th>
-                                <th>Role</th>
-                                <th className="text-right">Actions</th>
+                                <th className="w-1/3">Name / Email</th>
+                                <th className="text-center w-24">Status</th>
+                                <th className="w-48">Assigned Role</th>
+                                <th className="text-center w-32">Controls</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
                                 <tr><td colSpan="4" className="text-center py-4">Loading...</td></tr>
-                            ) : staff.map((user) => (
+                            ) : staff.map((user) => {
+                                const isSelf = user.id === currentUser.id;
+                                return (
                                 <tr key={user.id} className="hover">
-                                    <td>
+                                    {/* COLUMN 1: Name & Email */}
+                                    <td className="whitespace-normal break-all min-w-[200px] align-middle">
                                         {/* INLINE NAME EDITING LOGIC */}
                                         {editingNameId === user.id ? (
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-col gap-2">
                                                 <input 
                                                     type="text" 
-                                                    className="input input-xs input-bordered w-full max-w-[150px] bg-white"
+                                                    className="input input-sm input-bordered w-full bg-white"
                                                     value={tempName}
                                                     onChange={(e) => setTempName(e.target.value)}
                                                     autoFocus
                                                     onKeyDown={(e) => e.key === 'Enter' && saveName(user)}
                                                 />
-                                                <button onClick={() => saveName(user)} className="btn btn-xs btn-success text-white">✓</button>
-                                                <button onClick={() => setEditingNameId(null)} className="btn btn-xs btn-ghost text-red-500">✕</button>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => saveName(user)} className="btn btn-xs btn-success text-white">Save</button>
+                                                    <button onClick={() => setEditingNameId(null)} className="btn btn-xs btn-ghost text-red-500">Cancel</button>
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 group">
-                                                <div>
-                                                    <div className="font-bold">{user.fullName || "Unregistered"}</div>
-                                                    <div className="text-xs text-gray-500">{user.email}</div>
+                                            <div className="flex items-start gap-2 group">
+                                                <div className="w-full">
+                                                    <div className="font-bold leading-tight text-base">{user.fullName || "Unregistered"}</div>
+                                                    <div className="text-xs text-gray-500 mt-1 break-all">{user.email}</div>
                                                 </div>
-                                                {/* Edit Pencil - Only if allowed */}
                                                 {canManage(user) && (
                                                     <button 
                                                         onClick={() => startEditName(user)}
-                                                        className="opacity-0 group-hover:opacity-100 btn btn-xs btn-ghost text-blue-400 transition-opacity"
+                                                        className="opacity-0 group-hover:opacity-100 btn btn-xs btn-ghost text-blue-400 transition-opacity mt-0.5"
                                                         title="Rename User"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
@@ -327,58 +331,61 @@ export default function StaffPage() {
                                             </div>
                                         )}
                                     </td>
-                                    <td>
+
+                                    {/* COLUMN 2: Status Badge */}
+                                    <td className="text-center align-middle">
                                         {user.status === 'REGISTERED' 
-                                            ? <span className="badge badge-success badge-sm text-white">Active</span>
+                                            ? <span className="badge badge-success text-white badge-sm whitespace-nowrap">Active</span>
                                             : user.status === 'INACTIVE'
-                                            ? <span className="badge badge-error badge-sm text-white">Inactive</span>
-                                            : <span className="badge badge-warning badge-sm">Pending</span>
+                                            ? <span className="badge badge-error text-white badge-sm whitespace-nowrap">Inactive</span>
+                                            : <span className="badge badge-warning badge-sm whitespace-nowrap">Pending</span>
                                         }
                                     </td>
-                                    <td>
-                                        <span className={`badge badge-sm ${
-                                            user.role === 'SUPER_ADMIN' ? 'badge-primary' : 
-                                            user.role === 'ADMIN' ? 'badge-secondary' : 'badge-ghost'
-                                        }`}>
-                                            {user.role}
-                                        </span>
-                                    </td>
-                                    <td className="text-right">
-                                        {/* SHOW LOADING SPINNER OR ACTIONS */}
-                                        {processingUsers.includes(user.id) ? (
-                                            <div className="flex justify-end pr-2">
-                                                <span className="loading loading-spinner loading-sm text-gray-400"></span>
-                                            </div>
-                                        ) : (
-                                            canManage(user) && (
-                                                <div className="flex justify-end gap-2 items-center">
-                                                    {/* Only SUPER_ADMIN sees the role dropdown */}
-                                                    {userRole === 'SUPER_ADMIN' && (
-                                                        <select 
-                                                            className="select select-bordered select-xs w-32 font-normal"
-                                                            value={user.role}
-                                                            onChange={(e) => changeRole(user, e.target.value)}
-                                                        >
-                                                            <option value="EMPLOYEE">Employee</option>
-                                                            <option value="ADMIN">Admin</option>
-                                                            <option value="SUPER_ADMIN">Super Admin</option>
-                                                        </select>
-                                                    )}
 
-                                                    {/* Status Toggle Button */}
+                                    {/* COLUMN 3: Role Dropdown (Or Text) */}
+                                    <td className="align-middle">
+                                        {/* Logic: Only Super Admin can change roles. Even Admins just see text. 
+                                            Self always sees text. */}
+                                        {userRole === 'SUPER_ADMIN' && !isSelf ? (
+                                            <select 
+                                                className="select select-bordered select-sm w-full max-w-[180px] font-medium text-slate-700 bg-white"
+                                                value={user.role}
+                                                onChange={(e) => changeRole(user, e.target.value)}
+                                            >
+                                                <option value="EMPLOYEE">Employee</option>
+                                                <option value="ADMIN">Admin</option>
+                                                <option value="SUPER_ADMIN">Super Admin</option>
+                                            </select>
+                                        ) : (
+                                            <div className="font-medium text-slate-600 px-1">
+                                                {user.role === 'SUPER_ADMIN' ? 'Super Admin' : 
+                                                 user.role === 'ADMIN' ? 'Admin' : 'Employee'}
+                                                {isSelf && <span className="text-xs text-gray-400 ml-1">(You)</span>}
+                                            </div>
+                                        )}
+                                    </td>
+
+                                    {/* COLUMN 4: Action Buttons */}
+                                    <td className="text-center align-middle">
+                                        {processingUsers.includes(user.id) ? (
+                                            <span className="loading loading-spinner loading-sm text-gray-400"></span>
+                                        ) : (
+                                            /* Hide buttons for Self */
+                                            !isSelf && canManage(user) && (
+                                                <div className="flex justify-center items-center gap-2">
                                                     {user.status !== 'PENDING' && canToggleStatus(user) && (
                                                         <button 
                                                             onClick={() => toggleStatus(user)}
-                                                            className={`btn btn-square btn-xs btn-outline ${user.status === 'INACTIVE' ? 'btn-success' : 'btn-warning'}`}
+                                                            className={`btn btn-square btn-sm btn-ghost ${user.status === 'INACTIVE' ? 'text-success bg-green-50' : 'text-warning'}`}
                                                             title={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
                                                         >
                                                             {user.status === 'INACTIVE' ? (
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                                                                 </svg>
                                                             ) : (
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
                                                                 </svg>
                                                             )}
                                                         </button>
@@ -386,10 +393,10 @@ export default function StaffPage() {
                                                     
                                                     <button 
                                                         onClick={() => revokeAccess(user)}
-                                                        className="btn btn-square btn-xs btn-outline btn-error"
+                                                        className="btn btn-square btn-sm btn-ghost text-red-500 hover:bg-red-50"
                                                         title="Revoke Access (Delete)"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                                         </svg>
                                                     </button>
@@ -398,7 +405,7 @@ export default function StaffPage() {
                                         )}
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                 </div>
