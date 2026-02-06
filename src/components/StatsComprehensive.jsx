@@ -143,7 +143,7 @@ export default function StatsComprehensive({ lastUpdated }) {
             </div>
 
             {/* Box 2: Inflow */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="New Purchases + Customer Returns">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Receiving">
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
@@ -153,7 +153,7 @@ export default function StatsComprehensive({ lastUpdated }) {
             </div>
 
             {/* Box 3: Outflow */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Gross Sales + Pull Outs (Returns NOT deducted here)">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Issuance + Pull Outs">
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Net Outflow</div>
                 <div className="text-xl font-bold text-gray-700">{data.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                 <div className="text-[9px] text-gray-400 mt-1 italic">

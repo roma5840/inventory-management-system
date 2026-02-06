@@ -283,7 +283,7 @@ export default function ProductDetailsPage() {
                             </div>
 
                             {/* Inflow */}
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Purchases + Returns">
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Receiving">
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                                 <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
@@ -295,7 +295,7 @@ export default function ProductDetailsPage() {
                             </div>
 
                             {/* Outflow */}
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Sales + Pull Outs">
+                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Issuance + Pull Outs">
                                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Net Outflow</div>
                                 <div className="text-xl font-bold text-gray-700">{statsData.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
                                 <div className="text-[9px] text-gray-400 mt-1 italic">
