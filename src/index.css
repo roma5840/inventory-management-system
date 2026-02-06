@@ -5,3 +5,18 @@
 body {
   @apply bg-slate-100 text-slate-800;
 }
+
+input,
+textarea,
+select {
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  padding: 8px;
+  outline: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #4a90e2;
+}
