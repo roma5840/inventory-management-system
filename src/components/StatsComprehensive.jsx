@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 
 export default function StatsComprehensive({ lastUpdated }) {
+  const { userRole } = useAuth();
+
+  // Hide component entirely for non-admins
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return null;
+
   // --- CONFIG: TEMPORARILY SET TO FALSE TO HIDE STATS ---
   const SHOW_SENSITIVE_METRICS = false; 
 
