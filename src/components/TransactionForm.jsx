@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useInventory } from "../hooks/useInventory";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import PrintLayout from "./PrintLayout";
 
 export default function TransactionForm({ onSuccess }) {
   const { currentUser } = useAuth();
@@ -548,15 +549,27 @@ export default function TransactionForm({ onSuccess }) {
   };
 
   const handlePrint = () => {
+    // We target the ID used inside the PrintLayout component
     const printContent = document.getElementById('printable-receipt');
-    const win = window.open('', '', 'height=600,width=400');
+    
+    if (!printContent) return;
+
+    const win = window.open('', '', 'height=800,width=800');
     win.document.write('<html><head><title>Receipt</title>');
-    win.document.write('<style>body { font-family: monospace; padding: 20px; } .text-center { text-align: center; } .text-right { text-align: right; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { border-bottom: 1px dashed #000; padding: 5px 0; text-align: left; } .total { border-top: 2px solid #000; font-weight: bold; margin-top: 10px; padding-top: 5px; }</style>');
+    // Simple Tailwind-like reset for printing
+    win.document.write('<style>body { font-family: sans-serif; -webkit-print-color-adjust: exact; } table { width: 100%; border-collapse: collapse; } th, td { padding: 4px; } .text-right { text-align: right; } .text-center { text-align: center; } .font-bold { font-weight: bold; } .border { border: 1px solid #000; } .uppercase { text-transform: uppercase; } .grid { display: grid; } .flex { display: flex; } </style>');
+    // Load Tailwind CDN for print preview accuracy (optional but helps)
+    win.document.write('<script src="https://cdn.tailwindcss.com"></script>');
     win.document.write('</head><body>');
-    win.document.write(printContent.innerHTML);
+    win.document.write(printContent.outerHTML);
     win.document.write('</body></html>');
     win.document.close();
-    win.print();
+    
+    // Allow styles to load before printing
+    setTimeout(() => {
+        win.focus();
+        win.print();
+    }, 500);
   };
 
   const handleSwitchType = (newType, newMode = "") => {
@@ -1181,103 +1194,15 @@ export default function TransactionForm({ onSuccess }) {
       {/* === RECEIPT MODAL === */}
       {receiptData && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full">
+          <div className="bg-white p-4 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             
-            {/* THIS SECTION IS WHAT GETS PRINTED */}
-            <div id="printable-receipt" className="font-mono text-sm text-gray-800 bg-white p-2">
-                <div className="text-center mb-4">
-                    {/* Req 5: Dynamic Titles */}
-                    <h2 className="font-bold text-lg uppercase">
-                        {receiptData.type === 'ISSUANCE' ? 'Bookstore Issuance' :
-                         receiptData.type === 'ISSUANCE_RETURN' ? 'Bookstore Returns' :
-                         receiptData.type === 'PULL_OUT' ? 'Bookstore Pull Out' :
-                         receiptData.type === 'RECEIVING' ? 'Bookstore Receiving' : 
-                         'Bookstore System'}
-                    </h2>
-                    <p className="text-xs">Official Transaction Record</p>
-                    <p className="text-xs mt-1">{receiptData.date}</p>
-                </div>
-
-                <div className="border-b-2 border-dashed border-gray-300 pb-2 mb-2 text-xs">
-                    <p><strong>Ref #:</strong> {receiptData.refNumber}</p>
-                    <p><strong>Type:</strong> {receiptData.type}</p>
-                    
-                    {/* Transaction Mode (Issuance/Return) */}
-                    {['ISSUANCE', 'ISSUANCE_RETURN'].includes(receiptData.type) && receiptData.transactionMode && (
-                        <p><strong>Mode:</strong> {receiptData.transactionMode}</p>
-                    )}
-                    
-                    {/* Student Info (Issuance/Return) */}
-                    {receiptData.studentName && (
-                        <>
-                            <p><strong>Student:</strong> {receiptData.studentName}</p>
-                            <p><strong>ID:</strong> {receiptData.studentId}</p>
-                            <p><strong>Course/Yr:</strong> {receiptData.course} {receiptData.yearLevel}</p>
-                        </>
-                    )}
-
-                    {/* Supplier Info (Receiving/Pull Out) */}
-                    {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && receiptData.supplier && (
-                        <p><strong>Supplier:</strong> {receiptData.supplier}</p>
-                    )}
-
-                    {/* Staff Info - Show for ALL types */}
-                    <p><strong>Staff:</strong> {receiptData.staffName}</p>
-
-                    {/* Remarks */}
-                    {receiptData.remarks && (
-                        <p className="mt-1"><strong>Note:</strong> {receiptData.remarks}</p>
-                    )}
-                </div>
-
-                <table className="w-full text-xs">
-                    <thead>
-                        <tr>
-                            <th className="text-left pb-1">Item</th>
-                            <th className="text-center pb-1">Qty</th>
-                            {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                <th className="text-right pb-1">Cost</th>
-                            )}
-                            <th className="text-right pb-1">Amt</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {receiptData.items.map((item, idx) => (
-                            <tr key={idx}>
-                                <td className="py-1">{item.itemName.substring(0, 15)}</td>
-                                <td className="text-center">
-                                    {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
-                                </td>
-                                
-                                {/* Cost Column for Receiving/PullOut */}
-                                {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                    <td className="text-right">{Number(item.unitCost).toFixed(2)}</td>
-                                )}
-
-                                <td className="text-right">
-                                    {/* Logic: Receiving/PullOut = Cost * Qty, Others = Price * Qty */}
-                                    {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) 
-                                        ? (item.unitCost * item.qty).toFixed(2)
-                                        : (item.priceOverride > 0 
-                                            ? (receiptData.type === 'ISSUANCE_RETURN' 
-                                                ? `(${(item.priceOverride * item.qty).toFixed(2)})` 
-                                                : (item.priceOverride * item.qty).toFixed(2))
-                                            : '-')
-                                    }
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                
-                <div className="mt-4 pt-2 border-t-2 border-gray-800 text-center text-xs">
-                     <p>*** END OF TRANSACTION ***</p>
-                     <p>System Generated</p>
-                </div>
+            {/* RENDER THE SHARED LAYOUT */}
+            <div className="border border-gray-200 shadow-inner p-2 bg-gray-50 overflow-auto">
+                <PrintLayout data={receiptData} elementId="printable-receipt" />
             </div>
 
-            {/* ACTION BUTTONS (Not Printed) */}
-            <div className="flex gap-2 mt-6 pt-4 border-t">
+            {/* ACTION BUTTONS */}
+            <div className="flex gap-2 mt-4 pt-2 border-t">
                 <button 
                     onClick={() => setReceiptData(null)} 
                     className="btn btn-sm btn-ghost flex-1"
@@ -1288,10 +1213,7 @@ export default function TransactionForm({ onSuccess }) {
                     onClick={handlePrint} 
                     className="btn btn-sm btn-primary flex-1"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-                    </svg>
-                    Print Receipt
+                    Print Slip
                 </button>
             </div>
 

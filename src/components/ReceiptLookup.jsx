@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
+import PrintLayout from "./PrintLayout";
 
 export default function ReceiptLookup() {
   const [searchRef, setSearchRef] = useState("");
@@ -89,14 +90,16 @@ export default function ReceiptLookup() {
     const printContent = document.getElementById('lookup-receipt-print');
     if (!printContent) return;
     
-    const win = window.open('', '', 'height=600,width=400');
+    const win = window.open('', '', 'height=800,width=800');
     win.document.write('<html><head><title>Receipt Copy</title>');
-    win.document.write('<style>body { font-family: monospace; padding: 20px; } .text-center { text-align: center; } .text-right { text-align: right; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { border-bottom: 1px dashed #000; padding: 5px 0; text-align: left; } .void-stamp { border: 2px solid red; color: red; padding: 5px; text-align: center; font-weight: bold; margin-bottom: 10px; }</style>');
+    win.document.write('<script src="https://cdn.tailwindcss.com"></script>');
     win.document.write('</head><body>');
-    win.document.write(printContent.innerHTML);
+    win.document.write(printContent.outerHTML);
     win.document.write('</body></html>');
     win.document.close();
-    win.print();
+    setTimeout(() => {
+        win.print();
+    }, 500);
   };
 
   return (
@@ -127,108 +130,24 @@ export default function ReceiptLookup() {
       {/* 2. THE MODAL */}
       {receiptData && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full relative">
+          <div className="bg-white p-4 rounded-lg shadow-2xl max-w-2xl w-full relative max-h-[90vh] overflow-y-auto">
             <button 
                 onClick={() => setReceiptData(null)}
-                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 z-10"
             >✕</button>
 
+            {receiptData.isVoided && (
+                <div className="bg-red-100 text-red-600 font-bold text-center p-2 mb-2 border border-red-300">
+                    THIS TRANSACTION HAS BEEN VOIDED
+                </div>
+            )}
+
             {/* PRINTABLE AREA */}
-            <div id="lookup-receipt-print" className="font-mono text-sm text-gray-800 bg-white p-2 border border-gray-100 shadow-inner my-4">
-                {receiptData.isVoided && (
-                    <div className="void-stamp mb-4 border-2 border-red-500 text-red-500 font-bold text-center p-1 uppercase">
-                        *** VOIDED TRANSACTION ***
-                    </div>
-                )}
-
-                <div className="text-center mb-4">
-                    <h2 className="font-bold text-lg uppercase">
-                        {receiptData.type === 'ISSUANCE' ? 'Bookstore Issuance' :
-                        receiptData.type === 'ISSUANCE_RETURN' ? 'Bookstore Returns' :
-                        receiptData.type === 'PULL_OUT' ? 'Bookstore Pull Out' :
-                        receiptData.type === 'RECEIVING' ? 'Bookstore Receiving' : 
-                        'Bookstore System'}
-                    </h2>
-                    <p className="text-xs">Official Transaction Record</p>
-                    <p className="text-xs mt-1">{receiptData.date}</p>
-                </div>
-
-                <div className="border-b-2 border-dashed border-gray-300 pb-2 mb-2 text-xs">
-                    <p><strong>Ref #:</strong> {receiptData.refNumber}</p>
-                    <p><strong>Type:</strong> {receiptData.type}</p>
-                    
-                    {['ISSUANCE', 'ISSUANCE_RETURN'].includes(receiptData.type) && receiptData.transactionMode && (
-                        <p><strong>Mode:</strong> {receiptData.transactionMode}</p>
-                    )}
-
-                    {receiptData.studentName && (
-                        <>
-                            <p><strong>Student:</strong> {receiptData.studentName}</p>
-                            <p><strong>ID:</strong> {receiptData.studentId}</p>
-                            <p><strong>Course/Yr:</strong> {receiptData.course} {receiptData.yearLevel}</p>
-                        </>
-                    )}
-                    
-                    {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && receiptData.supplier && (
-                        <p><strong>Supplier:</strong> {receiptData.supplier}</p>
-                    )}
-
-                    {receiptData.staffName && (
-                        <p><strong>Staff:</strong> {receiptData.staffName}</p>
-                    )}
-
-                    {receiptData.remarks && (
-                        <p className="mt-1"><strong>Note:</strong> {receiptData.remarks}</p>
-                    )}
-                </div>
-
-                <table className="w-full text-xs">
-                    <thead>
-                        <tr>
-                            <th className="text-left pb-1">Item</th>
-                            <th className="text-center pb-1">Qty</th>
-                            {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                <th className="text-right pb-1">Cost</th>
-                            )}
-                            <th className="text-right pb-1">Amt</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {receiptData.items.map((item, idx) => (
-                            <tr key={idx}>
-                                <td className="py-1">{item.itemName.substring(0, 15)}</td>
-                                <td className="text-center">
-                                    {receiptData.type === 'ISSUANCE_RETURN' ? `-${item.qty}` : item.qty}
-                                </td>
-                                
-                                {/* Cost Column for Receiving/PullOut */}
-                                {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) && (
-                                    <td className="text-right">{Number(item.cost).toFixed(2)}</td>
-                                )}
-
-                                <td className="text-right">
-                                    {/* Logic: Receiving/PullOut = Cost * Qty, Others = Price * Qty */}
-                                    {['RECEIVING', 'PULL_OUT'].includes(receiptData.type) 
-                                        ? (item.cost * item.qty).toFixed(2)
-                                        : (item.price > 0 
-                                            ? (receiptData.type === 'ISSUANCE_RETURN' 
-                                                ? `(${(item.price * item.qty).toFixed(2)})` 
-                                                : (item.price * item.qty).toFixed(2))
-                                            : '-')
-                                    }
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                
-                <div className="mt-4 pt-2 border-t-2 border-gray-800 text-center text-xs">
-                    <p>*** END OF TRANSACTION ***</p>
-                    <p>System Generated</p>
-                </div>
+            <div className="border border-gray-200 shadow-inner p-2 bg-gray-50 overflow-auto">
+                 <PrintLayout data={receiptData} elementId="lookup-receipt-print" />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-4">
                 <button onClick={handlePrint} className="btn btn-primary btn-sm w-full">
                     Print Copy
                 </button>
