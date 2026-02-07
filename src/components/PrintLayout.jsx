@@ -112,7 +112,9 @@ export default function PrintLayout({ data, elementId }) {
                 <tr className="border-t border-b border-black">
                     <th className="py-2 text-left uppercase font-bold pl-2">DESCRIPTION</th>
                     <th className="py-2 text-center w-16 uppercase font-bold border-l border-black">QTY</th>
-                    <th className="py-2 text-right w-24 uppercase font-bold pr-2 border-l border-black">PRICE</th>
+                    <th className="py-2 text-right w-24 uppercase font-bold pr-2 border-l border-black">
+                        {isCostType ? "COST" : "PRICE"}
+                    </th>
                 </tr>
             </thead>
             <tbody>
