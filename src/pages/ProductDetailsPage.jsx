@@ -27,6 +27,9 @@ export default function ProductDetailsPage() {
   const [product, setProduct] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false); // For History/Table
+  const [totalCount, setTotalCount] = useState(0);
+
 
   // Stop rendering immediately to prevent content flash or further errors
   if (userRole === 'EMPLOYEE') return null;
@@ -88,13 +91,19 @@ export default function ProductDetailsPage() {
   };
 
   useEffect(() => {
-    fetchProductAudit();
+    if (id) {
+      fetchMasterData();
+      fetchHistory(); // Initial fetch
+    }
   }, [id]);
 
-  const fetchProductAudit = async () => {
+  useEffect(() => {
+    if (id) fetchHistory();
+  }, [currentPage]);
+
+  const fetchMasterData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Master Data
       const { data: prod, error: prodError } = await supabase
         .from('products')
         .select('*')
@@ -103,18 +112,57 @@ export default function ProductDetailsPage() {
 
       if (prodError) throw prodError;
       setProduct(prod);
+    } catch (err) {
+      console.error(err);
+      alert("Error loading product details.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // 2. Fetch Transaction History
-      const { data: txs, error: txError } = await supabase
+  const fetchHistory = async () => {
+    setTableLoading(true);
+    try {
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      // 1. Fetch Page Data with Count
+      let query = supabase
         .from('transactions')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('product_internal_id', id)
-        .order('timestamp', { ascending: false });
+        .order('timestamp', { ascending: false })
+        .range(from, to);
 
+      const { data: txs, count, error: txError } = await query;
       if (txError) throw txError;
 
+      // 2. ORPHAN VOID FIX (From TransactionsManager)
+      // If we have a VOID row but pagination hid the original, fetch it now.
+      let combinedData = [...(txs || [])];
+      const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
+      const orphanRefs = [];
+
+      distinctRefs.forEach(ref => {
+          const items = combinedData.filter(t => t.reference_number === ref);
+          const hasOriginal = items.some(t => t.type !== 'VOID');
+          if (!hasOriginal) orphanRefs.push(ref);
+      });
+
+      if (orphanRefs.length > 0) {
+          const { data: originals } = await supabase
+              .from('transactions')
+              .select('*')
+              .in('reference_number', orphanRefs)
+              .neq('type', 'VOID');
+          
+          if (originals?.length > 0) {
+              combinedData = [...combinedData, ...originals];
+          }
+      }
+
       // 3. Enrich with Staff Names
-      const userIds = [...new Set(txs.map(t => t.user_id).filter(Boolean))];
+      const userIds = [...new Set(combinedData.map(t => t.user_id).filter(Boolean))];
       let userMap = {};
       
       if (userIds.length > 0) {
@@ -125,11 +173,13 @@ export default function ProductDetailsPage() {
         users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
       }
 
-      // 4. Process Voids: Extract reasons from 'VOID' type rows to attach to the original
-      const voidRows = txs.filter(t => t.type === 'VOID');
-      const displayRows = txs.filter(t => t.type !== 'VOID');
+      // 4. Process Voids for UI Display
+      const voidRows = combinedData.filter(t => t.type === 'VOID');
+      const displayRows = combinedData.filter(t => t.type !== 'VOID');
+      
+      // Sort desc again to ensure injected orphans are in place (though display logic handles order mostly)
+      displayRows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-      // Map void details by Reference Number
       const voidMap = {};
       voidRows.forEach(v => {
           voidMap[v.reference_number] = {
@@ -142,17 +192,16 @@ export default function ProductDetailsPage() {
       const enriched = displayRows.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown',
-        // Attach void metadata if this row is marked as voided
         void_details: t.is_voided ? voidMap[t.reference_number] : null
       }));
 
       setHistory(enriched);
+      setTotalCount(count || 0);
 
     } catch (err) {
       console.error(err);
-      alert("Error loading product details.");
     } finally {
-      setLoading(false);
+      setTableLoading(false);
     }
   };
 
@@ -326,7 +375,7 @@ export default function ProductDetailsPage() {
              <div className="card-body p-0">
                 <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-700">Audit Trail (Transaction History)</h2>
-                    <span className="text-xs text-gray-500">Total Records: {history.length}</span>
+                    <span className="text-xs text-gray-500">Total Records: {totalCount}</span>
                 </div>
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="table w-full text-sm">
@@ -335,7 +384,6 @@ export default function ProductDetailsPage() {
                                 <th>Date / Reference</th>
                                 <th>Activity Type</th>
                                 <th>Entity / Details</th>
-                                {/* ALWAYS VISIBLE NOW */}
                                 <th className="text-right">Cost Snapshot</th>
                                 <th className="text-right">Price Snapshot</th>
                                 <th className="text-center">Qty Change</th>
@@ -344,10 +392,12 @@ export default function ProductDetailsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {history.length === 0 ? (
+                            {tableLoading ? (
+                                <tr><td colSpan="8" className="text-center py-10"><span className="loading loading-spinner loading-md"></span> Loading records...</td></tr>
+                            ) : history.length === 0 ? (
                                 <tr><td colSpan="8" className="text-center py-8 text-gray-400">No transactions found for this item.</td></tr>
                             ) : (
-                                history.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((tx) => {
+                                history.map((tx) => {
                                     const isIncoming = tx.type === 'RECEIVING' || tx.type === 'ISSUANCE_RETURN';
                                     
                                     return (
@@ -365,6 +415,7 @@ export default function ProductDetailsPage() {
                                                 {tx.is_voided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
                                             </td>
 
+                                            {/* ... (Rest of table row remains exactly the same as your file) ... */}
                                             {/* 2. Type */}
                                             <td className="align-top py-3">
                                                 <div className={`badge badge-sm border-0 font-bold 
@@ -407,7 +458,7 @@ export default function ProductDetailsPage() {
                                                 )}
                                             </td>
 
-                                            {/* 4. Cost Snapshot (ALWAYS VISIBLE NOW) */}
+                                            {/* 4. Cost Snapshot */}
                                             <td className="text-right font-mono align-top py-3 text-orange-700">
                                                 {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
                                             </td>
@@ -463,15 +514,15 @@ export default function ProductDetailsPage() {
                  {/* PAGINATION FOOTER */}
                  <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-gray-50 gap-4 rounded-b-lg">
                     <div className="text-xs text-gray-500">
-                        {history.length > 0 
-                        ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, history.length)} of ${history.length} records`
+                        {totalCount > 0 
+                        ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
                         : "No records found"}
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button 
                             className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
-                            disabled={currentPage === 1}
+                            disabled={currentPage === 1 || tableLoading}
                             onClick={() => {
                                 setCurrentPage(p => p - 1);
                                 setJumpPage(p => p - 1);
@@ -484,13 +535,13 @@ export default function ProductDetailsPage() {
                             <input 
                                 type="number" 
                                 min="1" 
-                                max={Math.ceil(history.length / ITEMS_PER_PAGE) || 1}
+                                max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
                                 value={jumpPage}
                                 onChange={(e) => setJumpPage(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         let p = parseInt(jumpPage);
-                                        const max = Math.ceil(history.length / ITEMS_PER_PAGE) || 1;
+                                        const max = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
                                         if (p > 0 && p <= max) {
                                             setCurrentPage(p);
                                         }
@@ -498,12 +549,12 @@ export default function ProductDetailsPage() {
                                 }}
                                 className="input input-sm input-bordered w-16 text-center"
                             />
-                            <span className="text-sm">of {Math.ceil(history.length / ITEMS_PER_PAGE) || 1}</span>
+                            <span className="text-sm">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
                         </div>
 
                         <button 
                             className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
-                            disabled={currentPage >= Math.ceil(history.length / ITEMS_PER_PAGE)}
+                            disabled={currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE) || tableLoading}
                             onClick={() => {
                                 setCurrentPage(p => p + 1);
                                 setJumpPage(p => p + 1);
