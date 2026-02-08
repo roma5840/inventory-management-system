@@ -35,10 +35,10 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-10">
+    <div className="min-h-screen bg-slate-100 flex flex-col">
       <Navbar />
       
-      <main className="container mx-auto px-4">
+      <main className="container mx-auto px-4 flex-grow pb-10">
         {/* Pass refreshTrigger so Stats re-calculates immediately */}
         <StatsComprehensive key={refreshTrigger} lastUpdated={refreshTrigger} />
 
@@ -75,6 +75,41 @@ export default function DashboardPage() {
 
         </div>
       </main>
+
+      {/* FOOTER SECTION */}
+      <footer className="mt-auto py-10 bg-white border-t border-gray-200">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center">
+            {/* Main Branding */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-px w-8 bg-gray-300"></div>
+              <span className="text-xs font-bold tracking-[0.2em] text-gray-500 uppercase">
+                Finance Department &bull; University of Pangasinan
+              </span>
+              <div className="h-px w-8 bg-gray-300"></div>
+            </div>
+
+            {/* Development Credits */}
+            <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[11px] text-gray-400">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-gray-500">Systems Lead:</span>
+                <span>Ryan Oliver Aquino</span>
+              </div>
+              <div className="hidden sm:block w-1 h-1 rounded-full bg-gray-300"></div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-gray-500">Operations & PR:</span>
+                <span>Jancesar Pocoholo Taguiang</span>
+              </div>
+            </div>
+
+            {/* Project Context */}
+            {/* <p className="mt-4 text-[10px] text-gray-400 italic">
+              Internal Inventory Management System &mdash; Student Internship Project 2026
+            </p> */}
+          </div>
+        </div>
+      </footer>
+
     </div>
   );
 }

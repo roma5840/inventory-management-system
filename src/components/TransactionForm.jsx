@@ -214,10 +214,13 @@ export default function TransactionForm({ onSuccess }) {
   const handleAddToQueue = (e) => {
     e.preventDefault();
     
-    // GUARD 1: Only allow adding if barcode exists AND item is explicitly found (false)
+    // GUARD: Only allow adding if barcode exists, item is found, and QTY is > 0
     if (!currentScan.barcode || isNewItem !== false) return;
+    if (!currentScan.qty || parseInt(currentScan.qty) <= 0) {
+        alert("Quantity must be at least 1.");
+        return;
+    }
 
-    // GUARD 2 (Req 8): In Issuance, disallow if Student is "New Record" (true) or invalid
     if (headerData.type === 'ISSUANCE' && isNewStudent !== false) {
         alert("Cannot process Issuance: Student ID not found in records.");
         return;
@@ -233,7 +236,6 @@ export default function TransactionForm({ onSuccess }) {
 
     setQueue(prev => [newItem, ...prev]);
 
-    // Reset for next item
     setCurrentScan(prev => ({
       ...prev,
       barcode: "",
@@ -245,8 +247,6 @@ export default function TransactionForm({ onSuccess }) {
     }));
     
     setIsNewItem(null); 
-    
-    // Refocus scanner
     if(barcodeRef.current) barcodeRef.current.focus();
   };
 
@@ -415,8 +415,21 @@ export default function TransactionForm({ onSuccess }) {
 
 
   useEffect(() => {
+    // If field is cleared (Backspace/Ctrl+A), reset details immediately
+    if (!currentScan.barcode.trim()) {
+      setIsNewItem(null);
+      setCurrentScan(prev => ({
+        ...prev,
+        itemName: "",
+        priceOverride: "",
+        unitCost: "",
+        location: "",
+        qty: 1
+      }));
+      return;
+    }
+
     const timer = setTimeout(() => {
-      // Reduced delay to 150ms for faster lookup response
       if (currentScan.barcode.trim()) {
          checkProduct(currentScan.barcode);
       }
@@ -424,6 +437,7 @@ export default function TransactionForm({ onSuccess }) {
 
     return () => clearTimeout(timer);
   }, [currentScan.barcode]);
+
 
   const handleLookupReceipt = async (e) => {
     e.preventDefault();
@@ -557,26 +571,29 @@ export default function TransactionForm({ onSuccess }) {
   };
 
   const handleSelectReturnItem = (item) => {
-    // Add specific past item to return queue
+    // GUARD: Disallow if remaining quantity is 0
+    if (item.remainingQty <= 0) {
+        alert("This item has no remaining quantity to return.");
+        return;
+    }
+
     const returnItem = {
         id: Date.now(),
         barcode: item.displayBarcode, 
         itemName: item.displayName,
         internalId: item.product_internal_id, 
-
         qty: item.remainingQty,
         maxQty: item.remainingQty,
         originalReceiptQty: item.qty,
-        
         priceOverride: item.price_snapshot !== undefined ? item.price_snapshot : item.price, 
         unitCost: item.cost_snapshot !== undefined ? item.cost_snapshot : 0,
         originalTransactionId: item.id,
-        
         refNumber: item.reference_number
     };
     setQueue(prev => [...prev, returnItem]);
     setPastTransactionItems(prev => prev.filter(i => i.id !== item.id));
   };
+
 
   const handlePrint = () => {
     // We target the ID used inside the PrintLayout component
@@ -729,59 +746,30 @@ export default function TransactionForm({ onSuccess }) {
   return (
     <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
       
-      {/* ACTION BUTTON GRID */}
-      <div className="grid grid-cols-2 md:grid-cols-4 w-full">
-        <button 
-          type="button"
-          onClick={() => handleSwitchType("RECEIVING", "")}
-          className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-green-50
-            ${headerData.type === "RECEIVING" ? "bg-green-100 border-b-4 border-b-green-600 shadow-inner" : "bg-white"}
-          `}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-green-700">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
-          <span className="font-bold text-xs uppercase text-green-800 tracking-wider">Receiving</span>
-        </button>
-
-        <button 
-          type="button"
-          onClick={() => handleSwitchType("ISSUANCE", "CHARGED")}
-          className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-red-50
-            ${headerData.type === "ISSUANCE" ? "bg-red-100 border-b-4 border-b-red-600 shadow-inner" : "bg-white"}
-          `}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-red-700">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-          <span className="font-bold text-xs uppercase text-red-800 tracking-wider">Issuance</span>
-        </button>
-
-        <button 
-          type="button"
-          onClick={() => handleSwitchType("ISSUANCE_RETURN", "")}
-          className={`p-4 flex flex-col items-center gap-2 transition-all border-r border-b hover:bg-blue-50
-            ${headerData.type === "ISSUANCE_RETURN" ? "bg-blue-100 border-b-4 border-b-blue-600 shadow-inner" : "bg-white"}
-          `}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-blue-700">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-          </svg>
-          <span className="font-bold text-xs uppercase text-blue-800 tracking-wider">Return</span>
-        </button>
-
-        <button 
-          type="button"
-          onClick={() => handleSwitchType("PULL_OUT", "")}
-          className={`p-4 flex flex-col items-center gap-2 transition-all border-b hover:bg-orange-50
-            ${headerData.type === "PULL_OUT" ? "bg-orange-100 border-b-4 border-b-orange-600 shadow-inner" : "bg-white"}
-          `}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-orange-700">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
-          <span className="font-bold text-xs uppercase text-orange-800 tracking-wider">Pull Out</span>
-        </button>
+      {/* TRANSACTION TYPE SELECTOR */}
+      <div className="flex w-full bg-slate-100 p-1.5 gap-1 border-b border-gray-200">
+        {[
+          { id: 'RECEIVING', label: 'Receiving', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3' },
+          { id: 'ISSUANCE', label: 'Issuance', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', icon: 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5', mode: 'CHARGED' },
+          { id: 'ISSUANCE_RETURN', label: 'Return', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200', icon: 'M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3' },
+          { id: 'PULL_OUT', label: 'Pull Out', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', icon: 'M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z' },
+        ].map((btn) => (
+          <button
+            key={btn.id}
+            type="button"
+            onClick={() => handleSwitchType(btn.id, btn.mode || "")}
+            className={`flex-1 py-2.5 px-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 group
+              ${headerData.type === btn.id 
+                ? `${btn.bg} ${btn.color} shadow-sm border ${btn.border} font-bold ring-1 ring-black/5` 
+                : "hover:bg-white text-slate-500 font-medium"}
+            `}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-4 h-4 transition-transform group-hover:scale-110`}>
+              <path strokeLinecap="round" strokeLinejoin="round" d={btn.icon} />
+            </svg>
+            <span className="text-[11px] uppercase tracking-wider">{btn.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* CONDITIONAL FORM AREA */}
@@ -795,128 +783,106 @@ export default function TransactionForm({ onSuccess }) {
           <div className="animate-fade-in-down flex flex-col gap-4 h-full">
             
             {/* === SECTION 1: HEADER (Context) === */}
-            <div className="border-b border-gray-200 pb-4">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-gray-700 uppercase tracking-wide text-sm">
-                        {headerData.type.replace('_', ' ')} HEADER
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative">
+                <div className="absolute top-0 left-0 w-1 h-full bg-slate-400 opacity-20"></div>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        Transaction Context
                     </h3>
-                    <button onClick={() => setHeaderData(initialHeaderState)} className="btn btn-xs btn-ghost text-gray-400">Cancel</button>
+                    <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${headerData.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : headerData.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'}`}>
+                            {headerData.type}
+                        </span>
+                    </div>
                 </div>
                 
-                {/* Dynamic Header Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    
-                    {/* STUDENT FIELDS: Hidden for RECEIVING & PULL OUT */}
-                    {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-3">
+                    {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? (
                         <>
-                            <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase flex justify-between">
-                                    <span>Student ID Number</span>
-                                    {/* Req 8: Show feedback just like barcode */}
-                                    {isNewStudent === true && <span className="text-red-600 animate-pulse">No Record</span>}
-                                    {isNewStudent === false && <span className="text-green-600">Found</span>}
+                            <div className="md:col-span-2">
+                                <label className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Student ID</span>
+                                    {isNewStudent === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
+                                    {isNewStudent === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
                                 </label>
-                                <div className="relative">
-                                    <input 
-                                        id="studentIdInput" 
-                                        type="text" 
-                                        className={`input input-sm input-bordered w-full font-mono transition-colors
-                                            ${isNewStudent === true ? 'border-red-400 bg-red-50 focus:border-red-500' : ''}
-                                            ${isNewStudent === false ? 'border-green-500 bg-green-50 text-green-800 font-bold' : ''}
-                                            ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white'}
-                                        `}
-                                        placeholder={headerData.type === 'ISSUANCE_RETURN' ? "Auto-filled from Receipt" : "Type ID..."}
-                                        value={headerData.studentId} 
-                                        onChange={e => {
-                                            if(isNewStudent !== null) setIsNewStudent(null);
-                                            // Req 9: Logic handled in useEffect, but clear state here too
-                                            setHeaderData({...headerData, studentId: e.target.value});
-                                        }}
-                                        readOnly={headerData.type === 'ISSUANCE_RETURN'}
-                                        // Req 3: Focus handled in handleSwitchType
-                                    />
-                                    <div className="absolute right-2 top-1.5">
-                                        {isNewStudent === false && (
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-green-600">
-                                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                                            </svg>
-                                        )}
-                                    </div>
-                                </div>
+                                <input 
+                                    id="studentIdInput" type="text" 
+                                    className={`w-full h-9 px-3 rounded-lg border text-sm font-mono transition-all outline-none
+                                        ${isNewStudent === true ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 focus:border-blue-500'}
+                                        ${isNewStudent === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
+                                        ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-slate-100 text-slate-400' : 'bg-white'}
+                                    `}
+                                    placeholder="Search ID..."
+                                    value={headerData.studentId} 
+                                    onChange={e => { if(isNewStudent !== null) setIsNewStudent(null); setHeaderData({...headerData, studentId: e.target.value}); }}
+                                    readOnly={headerData.type === 'ISSUANCE_RETURN'}
+                                />
                             </div>
 
-                            <div className="form-control">
-                                <label className="label text-[10px] font-bold text-gray-500 uppercase">Student Name</label>
+                            <div className="md:col-span-4">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Full Name</label>
                                 <input 
-                                    type="text" 
-                                    // Update: Read-only in ISSUANCE and RETURNS (Auto-filled via ID)
-                                    disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                    className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-600 uppercase font-semibold"
-                                    placeholder="Enter Name"
+                                    type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold uppercase disabled:text-slate-500"
+                                    placeholder="Name will auto-fill"
                                     value={headerData.studentName}
                                     onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="form-control">
-                                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Course</label>
-                                    <select 
-                                        // Update: Read-only in ISSUANCE and RETURNS
-                                        disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                        className="select select-sm select-bordered bg-white disabled:bg-gray-100 disabled:text-gray-600 font-semibold"
-                                        value={headerData.course}
-                                        onChange={e => setHeaderData({...headerData, course: e.target.value})}
-                                    >
-                                        <option value="">--Select--</option>
-                                        {availableCourses.map(c => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))}
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Course</label>
+                                <select 
+                                    disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                    className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold"
+                                    value={headerData.course}
+                                    onChange={e => setHeaderData({...headerData, course: e.target.value})}
+                                >
+                                    <option value="">Select...</option>
+                                    {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Year/Sem</label>
+                                <input 
+                                    type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase"
+                                    placeholder="Y1S1"
+                                    value={headerData.yearLevel}
+                                    onChange={e => setHeaderData({...headerData, yearLevel: e.target.value})} 
+                                />
+                            </div>
+
+                            {headerData.type === 'ISSUANCE' && (
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Trans. Mode</label>
+                                    <select className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-blue-700" 
+                                        value={headerData.transactionMode} onChange={e => setHeaderData({...headerData, transactionMode: e.target.value})}>
+                                        <option value="CHARGED">Charged</option>
+                                        <option value="CASH">Cash</option>
+                                        <option value="SIP">SIP</option>
+                                        <option value="TRANSMITTAL">Transmittal</option>
                                     </select>
                                 </div>
-                                <div className="form-control">
-                                    <label className="label text-[10px] font-bold text-gray-500 uppercase">Year / Sem</label>
-                                    <input 
-                                        type="text" 
-                                        // Update: Read-only in ISSUANCE and RETURNS
-                                        disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                        className="input input-sm input-bordered bg-white disabled:bg-gray-100 disabled:text-gray-600 uppercase font-semibold"
-                                        placeholder="e.g. Y1S2"
-                                        value={headerData.yearLevel}
-                                        onChange={e => setHeaderData({...headerData, yearLevel: e.target.value})} 
-                                    />
-                                </div>
-                            </div>
+                            )}
                         </>
-                    )}
-
-                    {/* SUPPLIER: VISIBLE FOR RECEIVING & PULL_OUT ONLY */}
-                    {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
-                        <div className="form-control relative">
-                            <label className="label text-[10px] font-bold text-gray-500 uppercase">Supplier</label>
+                    ) : (
+                        <div className="md:col-span-4 relative">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block tracking-tight">Supplier / Source</label>
                             <input 
-                                id="supplierInput" 
-                                type="text" 
-                                autoComplete="off"
-                                className="input input-sm input-bordered bg-white uppercase w-full" 
-                                placeholder="Type Supplier..."
-                                value={headerData.supplier} 
-                                onChange={handleSupplierChange}
-                                onKeyDown={handleSupplierKeyDown}
-                                onFocus={() => {
-                                    if(headerData.supplier) {
-                                        setSupplierSuggestions(availableSuppliers.filter(s => s.startsWith(headerData.supplier)));
-                                        setShowSupplierDropdown(true);
-                                    }
-                                }}
+                                id="supplierInput" type="text" autoComplete="off"
+                                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase font-semibold focus:border-blue-500 outline-none" 
+                                placeholder="Start typing supplier..."
+                                value={headerData.supplier} onChange={handleSupplierChange} onKeyDown={handleSupplierKeyDown}
+                                onFocus={() => { if(headerData.supplier) { setSupplierSuggestions(availableSuppliers.filter(s => s.startsWith(headerData.supplier))); setShowSupplierDropdown(true); }}}
                                 onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
                             />
                             {showSupplierDropdown && supplierSuggestions.length > 0 && (
-                                <ul className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-300 rounded-b shadow-lg max-h-40 overflow-y-auto mt-0">
+                                <ul className="absolute z-[100] top-full left-0 right-0 bg-white border border-slate-200 rounded-b-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 mt-0.5">
                                     {supplierSuggestions.map((sup, index) => (
-                                        <li 
-                                            key={index} 
-                                            className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 ${index === activeSupplierIndex ? 'bg-blue-100 font-bold' : ''}`}
+                                        <li key={index} 
+                                            className={`px-4 py-2 text-[11px] cursor-pointer border-b border-slate-50 last:border-0 hover:bg-blue-50 transition-colors ${index === activeSupplierIndex ? 'bg-blue-100 font-bold text-blue-800' : 'text-slate-600'}`}
                                             onMouseDown={() => selectSupplier(sup)}
                                         >
                                             {sup}
@@ -927,213 +893,154 @@ export default function TransactionForm({ onSuccess }) {
                         </div>
                     )}
                     
-                    {headerData.type === 'ISSUANCE' && (
-                        <div className="form-control">
-                            <label className="label text-[10px] font-bold text-gray-500 uppercase">Trans. Mode</label>
-                            <select className="select select-sm select-bordered bg-white" 
-                                value={headerData.transactionMode} onChange={e => setHeaderData({...headerData, transactionMode: e.target.value})}>
-                                <option value="CHARGED">Charged</option>
-                                <option value="CASH">Cash</option>
-                                <option value="SIP">SIP</option>
-                                <option value="TRANSMITTAL">Transmittal</option>
-                            </select>
-                        </div>
-                    )}
-                    
-                    <div className="form-control md:col-span-2">
-                        <label className="label text-[10px] font-bold text-gray-500 uppercase">General Remarks</label>
+                    <div className="md:col-span-6 mt-1">
                         <input type="text" 
-                             // Remarks ALWAYS editable in all modes (Req 6)
-                             className="input input-sm input-bordered bg-white"
-                             placeholder="Remarks"
-                             value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} 
+                            className="w-full h-8 px-3 rounded-lg border border-slate-200 bg-slate-50/50 text-xs italic text-slate-500 focus:bg-white transition-all outline-none"
+                            placeholder="Internal remarks or notes..."
+                            value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} 
                         />
                     </div>
                 </div>
             </div>
 
             {/* === SECTION 2: SCANNER OR RECEIPT LOOKUP === */}
-            <div className={`p-4 rounded-lg shadow-sm border transition-colors duration-300 bg-white border-blue-100`}>
+            <div className={`p-4 rounded-xl border-2 transition-all duration-300 shadow-md ${isNewItem === true ? 'bg-rose-50/50 border-rose-200' : 'bg-white border-blue-100'}`}>
                 
-                {/* --- STRICT RETURN MODE UI --- */}
                 {headerData.type === 'ISSUANCE_RETURN' ? (
                     <div className="flex flex-col gap-4">
-                        <div className="alert alert-info shadow-sm text-xs">
-                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                             <span><strong>Strict Return Policy:</strong> Enter the Receipt/Reference Number to find items.</span>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-sky-50 border border-sky-100 rounded-lg text-sky-800">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                             <span className="text-[10px] font-bold uppercase tracking-wider">Lookup Receipt to enable returns</span>
                         </div>
                         <div className="flex gap-2">
                             <input 
-                                type="text" 
-                                autoFocus
-                                className="input input-sm input-bordered flex-1 font-mono uppercase" 
-                                placeholder="Enter Reference # (e.g. REF-2025...)"
+                                type="text" autoFocus
+                                className="flex-1 h-10 px-4 rounded-lg border border-slate-300 font-mono uppercase text-sm shadow-inner focus:ring-2 focus:ring-blue-500 outline-none" 
+                                placeholder="ENTER REFERENCE #..."
                                 value={returnLookupRef}
                                 onChange={(e) => setReturnLookupRef(e.target.value.toUpperCase())}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleLookupReceipt(e);
-                                    }
-                                }}
+                                onKeyDown={(e) => e.key === 'Enter' && handleLookupReceipt(e)}
                             />
-                            <button onClick={handleLookupReceipt} className="btn btn-sm btn-primary" disabled={lookupLoading}>
-                                {lookupLoading ? "Searching..." : "Find Receipt"}
+                            <button onClick={handleLookupReceipt} className="h-10 px-6 rounded-lg bg-slate-800 text-white text-xs font-bold shadow-lg" disabled={lookupLoading}>
+                                {lookupLoading ? "SEARCHING..." : "FIND ITEMS"}
                             </button>
                         </div>
 
-                        {/* Results of Lookup */}
+                        {/* RESULTS OF LOOKUP: Non-scrolling vertical list */}
                         {pastTransactionItems.length > 0 && (
-                            <div className="overflow-x-auto border rounded bg-gray-50 max-h-40">
-                                <table className="table table-xs w-full">
-                                    <thead>
-                                        <tr className="bg-gray-200 sticky top-0">
-                                            <th>Item</th>
-                                            <th className="text-center">Avail / Orig</th>
-                                            <th className="text-right">Price</th>
-                                            <th className="text-center">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pastTransactionItems.map(item => (
-                                            <tr key={item.id}>
-                                                <td className="max-w-[150px] truncate" title={item.displayName}>
-                                                    <div className="font-bold">{item.displayName}</div>
-                                                    <div className="text-[10px] text-gray-500">{item.displayBarcode}</div>
-                                                </td>
-                                                <td className="text-center">
-                                                    <span className="font-bold text-green-700">{item.remainingQty}</span> 
-                                                    <span className="text-gray-400 mx-1">/</span> 
-                                                    {item.qty}
-                                                </td>
-                                                <td className="text-right font-mono">
-                                                    {/* Display correct snapshot price */}
-                                                    {(item.price_snapshot !== undefined ? Number(item.price_snapshot) : Number(item.price)).toFixed(2)}
-                                                </td>
-                                                <td className="text-center">
-                                                    <button onClick={() => handleSelectReturnItem(item)} className="btn btn-xs btn-outline btn-error">
-                                                        Select
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                                <div className="flex justify-between px-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    <span>Item Details</span>
+                                    <span className="mr-24">Qty / Price</span>
+                                </div>
+                                {pastTransactionItems.map(item => (
+                                    <div 
+                                        key={item.id} 
+                                        className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all group"
+                                    >
+                                        {/* Left: Product Info */}
+                                        <div className="flex-1 min-w-0 pr-4">
+                                            <div className="font-bold text-slate-800 text-xs truncate group-hover:text-blue-700" title={item.displayName}>
+                                                {item.displayName}
+                                            </div>
+                                            <div className="font-mono text-[10px] text-slate-400 flex items-center gap-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.38 2H4.5zm10 5.879V16.5a.5.5 0 01-.5.5h-10a.5.5 0 01-.5-.5v-13a.5.5 0 01.5-.5H11v3.379a1.5 1.5 0 001.5 1.5H14.5z" clipRule="evenodd" /></svg>
+                                                {item.displayBarcode}
+                                            </div>
+                                        </div>
+
+                                        {/* Right: Quantities, Price & Action */}
+                                        <div className="flex items-center gap-4 shrink-0">
+                                            <div className="text-right">
+                                                <div className="text-[10px] leading-none mb-1">
+                                                    <span className="font-black text-emerald-600 text-xs">{item.remainingQty}</span>
+                                                    <span className="text-slate-300 mx-1">/</span>
+                                                    <span className="text-slate-500 font-bold">{item.qty}</span>
+                                                </div>
+                                                <div className="font-mono font-bold text-[11px] text-slate-700">
+                                                    ₱{(item.price_snapshot !== undefined ? Number(item.price_snapshot) : Number(item.price)).toFixed(2)}
+                                                </div>
+                                            </div>
+                                            
+                                            <button 
+                                                onClick={() => handleSelectReturnItem(item)} 
+                                                className="h-8 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-black uppercase tracking-tighter shadow-sm active:scale-95 transition-all"
+                                            >
+                                                Select
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
                 ) : (
                     /* --- STANDARD SCANNER UI (Receiving/Issuance) --- */
                     <>
-                        <div className="h-6 mb-2 flex items-center justify-between">
-                             {/* FEEDBACK INDICATORS */}
-                            {isNewItem === false && (
-                                <span className="text-xs font-bold uppercase tracking-wider text-green-700 flex items-center gap-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
-                                    Item Found
-                                </span>
-                            )}
-                            {isNewItem === true && (
-                                <span className="text-xs font-bold uppercase tracking-wider text-red-600 flex items-center gap-1 animate-pulse">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                                    No Records Found
-                                </span>
-                            )}
-                        </div>
-
-                         <div className="grid grid-cols-12 gap-2 items-end">
-                            <div className="col-span-3">
-                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Barcode</label>
+                        <div className="grid grid-cols-12 gap-3 mb-3">
+                            {/* 1. Stretched Barcode Field */}
+                            <div className="col-span-7">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Barcode</label>
                                 <input 
-                                    name="barcodeField"
-                                    ref={barcodeRef}
-                                    type="text" 
-                                    className={`input input-sm input-bordered w-full font-mono font-bold uppercase transition-colors
-                                        ${isNewItem === true ? 'border-red-400 text-red-600 focus:border-red-500' : ''}
-                                        ${isNewItem === false ? 'border-green-500 text-green-800' : 'text-blue-800'}
-                                    `}
-                                    value={currentScan.barcode}
-                                    onChange={handleBarcodeChange} 
-                                    onKeyDown={handleKeyDown} 
-                                    placeholder="Scan..."
-                                    // Removed autoFocus here to allow handleSwitchType to control initial focus
-                                />
-                            </div>
-                            
-                            <div className="col-span-3">
-                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Item Name</label>
-                                <input 
-                                    readOnly
-                                    className="input input-sm input-bordered w-full bg-gray-100 text-gray-600 focus:outline-none"
-                                    value={currentScan.itemName || ""} 
-                                    placeholder="..."
+                                    name="barcodeField" ref={barcodeRef} type="text" 
+                                    className={`w-full h-10 px-3 rounded-lg border-2 font-mono font-bold uppercase outline-none
+                                        ${isNewItem === true ? 'border-rose-400 bg-rose-50 text-rose-600' : 
+                                        isNewItem === false ? 'border-emerald-400 text-emerald-800' : 'border-slate-200 text-blue-700 focus:border-blue-500'}`}
+                                    value={currentScan.barcode} onChange={handleBarcodeChange} onKeyDown={handleKeyDown} placeholder="SCAN..."
                                 />
                             </div>
 
-                            {/* COST FIELD: Receiving & Pull Out Only */}
-                            {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
-                                <div className="col-span-2">
-                                    <label className="label text-[10px] font-bold text-orange-600 uppercase">Unit Cost</label>
-                                    <input 
-                                        id="unitCostInput"
-                                        type="number" min="0" step="0.01"
-                                        readOnly={headerData.type !== 'RECEIVING'} 
-                                        className={`input input-sm input-bordered w-full font-mono text-orange-800 border-orange-200 
-                                            ${headerData.type === 'RECEIVING' ? 'focus:border-orange-500 bg-white' : 'bg-orange-50 cursor-not-allowed'}
-                                        `}
-                                        value={currentScan.unitCost}
-                                        onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
-                                        onKeyDown={(e) => {
-                                            if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault();
-                                            handleKeyDown(e);
-                                        }}
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            )}
+                            {/* 2. Cost / Price */}
+                            <div className="col-span-3">
+                                {['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? (
+                                    <>
+                                        <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1 block">Unit Cost</label>
+                                        <input 
+                                            id="unitCostInput" type="number" min="0" step="0.01"
+                                            readOnly={headerData.type !== 'RECEIVING'} 
+                                            className="w-full h-10 px-3 rounded-lg border-2 border-orange-100 bg-orange-50 font-mono font-bold text-orange-800 focus:border-orange-400 outline-none"
+                                            value={currentScan.unitCost}
+                                            onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
+                                            onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) ? e.preventDefault() : handleKeyDown(e)}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Price</label>
+                                        <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm">
+                                            ₱{Number(currentScan.priceOverride || 0).toFixed(2)}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
 
-                            {/* PRICE FIELD: STRICTLY REMOVED FOR RECEIVING */}
-                            {headerData.type !== 'RECEIVING' && (
-                                <div className={['PULL_OUT'].includes(headerData.type) ? "col-span-2" : "col-span-4"}>
-                                    <label className="label text-[10px] font-bold text-gray-400 uppercase">Price</label>
-                                    <input 
-                                        id="priceInput"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        // Disabled for Issuance/Pull Out (view only)
-                                        className="input input-sm input-bordered w-full font-mono bg-gray-100 text-gray-500 cursor-not-allowed"
-                                        readOnly
-                                        value={currentScan.priceOverride}
-                                        onChange={e => setCurrentScan({...currentScan, priceOverride: e.target.value})}
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            )}
-
+                            {/* 3. Qty Field (Fixed Font/Width) */}
                             <div className="col-span-2">
-                                <label className="label text-[10px] font-bold text-gray-400 uppercase">Qty</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block text-center">Qty</label>
                                 <input 
-                                    id="qtyInput"
-                                    type="number" min="1"
-                                    className="input input-sm input-bordered w-full" 
+                                    id="qtyInput" type="number" min="1"
+                                    className={`w-full h-10 px-1 rounded-lg border-2 text-center font-bold text-base outline-none
+                                        ${!currentScan.qty || parseInt(currentScan.qty) <= 0 ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-slate-200 bg-white focus:border-blue-500'}`} 
                                     value={currentScan.qty}
                                     onChange={e => setCurrentScan({...currentScan, qty: e.target.value})}
-                                    onKeyDown={(e) => {
-                                        if (['-', '+', 'e', 'E', '.'].includes(e.key)) e.preventDefault();
-                                        handleKeyDown(e);
-                                    }}
+                                    onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) ? e.preventDefault() : handleKeyDown(e)}
                                 />
                             </div>
                         </div>
-                        {/* Add Button Row - Disabled until valid item found */}
-                        <div className="mt-2">
+
+                        <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                            {/* Item Name next to Add Button */}
+                            <div className="flex-1 h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center overflow-hidden">
+                                <span className="text-[10px] font-black text-slate-400 uppercase mr-2 shrink-0">Item:</span>
+                                <span className="text-[11px] font-bold text-slate-600 truncate">{currentScan.itemName || "---"}</span>
+                            </div>
+                            
                             <button 
                                 onClick={handleAddToQueue} 
-                                // DISABLE if no barcode OR item not explicitly found
-                                disabled={!currentScan.barcode || isNewItem !== false}
-                                className="btn btn-sm btn-secondary w-full"
+                                disabled={!currentScan.barcode || isNewItem !== false || !currentScan.qty || parseInt(currentScan.qty) <= 0}
+                                className="px-8 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black tracking-[0.1em] shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none whitespace-nowrap"
                             >
-                                ADD TO QUEUE
+                                ADD TO BATCH
                             </button>
                         </div>
                     </>
@@ -1141,60 +1048,50 @@ export default function TransactionForm({ onSuccess }) {
             </div>
 
             {/* === SECTION 3: QUEUE TABLE === */}
-            <div className="flex-1 overflow-auto bg-white border rounded-lg min-h-[150px]">
+            <div className="flex-1 overflow-auto bg-white border border-slate-200 rounded-xl shadow-inner min-h-[150px]">
                 <table className="table table-xs w-full table-pin-rows">
                     <thead>
-                        <tr className="bg-gray-100">
-                            <th>Barcode</th>
-                            <th>Qty</th>
-                            {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && <th className="text-orange-600">Cost</th>}
-                            {/* Req 1: Hide Price Column for Receiving */}
-                            {headerData.type !== 'RECEIVING' && <th>Price/Loc</th>}
-                            <th className="text-right">Action</th>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="py-3 text-slate-500 tracking-tighter">BARCODE</th>
+                            <th className="py-3 text-slate-500 tracking-tighter">QTY</th>
+                            {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && <th className="py-3 text-orange-600 tracking-tighter uppercase">Cost</th>}
+                            {headerData.type !== 'RECEIVING' && <th className="py-3 text-slate-500 tracking-tighter uppercase">Price</th>}
+                            <th className="py-3 text-right text-slate-500"></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-50">
                         {queue.length === 0 ? (
-                            <tr><td colSpan="5" className="text-center py-8 text-gray-300 italic">Queue is empty. Scan items to add.</td></tr>
+                            <tr><td colSpan="5" className="text-center py-12 text-slate-300 italic text-[11px] uppercase tracking-widest">Awaiting Items...</td></tr>
                         ) : (
-                            queue.map((item, index) => (
-                                <tr key={item.id} className="hover">
-                                    <td className="font-mono">{item.barcode}</td>
+                            queue.map((item) => (
+                                <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
+                                    <td className="font-mono text-slate-600 text-[11px] font-bold">{item.barcode}</td>
                                     <td>
-                                        <input 
-                                            type="number" 
-                                            className="input input-xs input-bordered w-16 text-center font-bold"
-                                            value={item.qty}
-                                            min="1"
-                                            max={item.maxQty || 999}
-                                            onChange={(e) => handleQueueQtyChange(item.id, e.target.value)}
-                                            onBlur={() => handleQueueBlur(item.id)}
-                                            onKeyDown={(e) => ['-', '+', 'e', 'E', '.'].includes(e.key) && e.preventDefault()}
-                                        />
-                                        {item.maxQty && (
-                                            <span className="text-[10px] text-gray-400 ml-1">
-                                                / {item.maxQty}
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-1">
+                                            <input 
+                                                type="number" className="w-12 h-6 text-center text-xs font-black border border-slate-200 rounded bg-white group-hover:border-blue-300"
+                                                value={item.qty} min="1" max={item.maxQty || 9999}
+                                                onChange={(e) => handleQueueQtyChange(item.id, e.target.value)}
+                                                onBlur={() => handleQueueBlur(item.id)}
+                                                onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                                            />
+                                            {item.maxQty && <span className="text-[9px] font-bold text-slate-400">/{item.maxQty}</span>}
+                                        </div>
                                     </td>
-                                    
-                                    {/* COST COLUMN */}
                                     {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (
-                                        <td className="font-mono text-orange-700">
+                                        <td className="font-mono text-[11px] text-orange-700 font-bold">
                                             ₱{Number(item.unitCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                     )}
-
-                                    {/* PRICE COLUMN - Hidden in Receiving */}
                                     {headerData.type !== 'RECEIVING' && (
-                                        <td className="font-mono">
+                                        <td className="font-mono text-[11px] text-slate-700 font-bold">
                                             ₱{Number(item.priceOverride).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            {item.location && <span className="text-[10px] text-gray-400 ml-2">({item.location})</span>}
                                         </td>
                                     )}
-                                    
-                                    <td className="text-right">
-                                        <button onClick={() => handleRemoveItem(item.id)} className="btn btn-ghost btn-xs text-red-500">x</button>
+                                    <td className="text-right pr-4">
+                                        <button onClick={() => handleRemoveItem(item.id)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-100 rounded-full text-rose-500 transition-all">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                        </button>
                                     </td>
                                 </tr>
                             ))
