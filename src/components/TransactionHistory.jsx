@@ -215,20 +215,22 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                        </td>
 
                        {/* Column 2: Type */}
-                       <td className="align-top py-3">
+                        <td className="align-top py-3">
                           {isOrphanVoid ? (
                             <span className="font-bold text-[10px] uppercase px-2 py-1 rounded-full bg-gray-200 text-gray-600">
                                 TRANSACTION
                             </span>
                           ) : (
                             <span className={`font-bold text-[10px] uppercase px-2 py-1 rounded-full 
-                                ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-700' : 
-                                first.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-700'}`}>
+                                ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : 
+                                  first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' :
+                                  first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-700' :
+                                  first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-700' :
+                                  'bg-gray-100 text-gray-700'}`}>
                                 {first.type.replace('_', ' ')}
                             </span>
                           )}
-                       </td>
+                        </td>
 
                        {/* Column 3: Context */}
                        <td className="align-top py-3">

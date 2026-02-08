@@ -429,7 +429,7 @@ const handleNext = () => {
                             unit_cost: 0,
                             min_stock_level: 10,
                             current_stock: 0,
-                            location: 'UNSORTED',
+                            location: 'N/A',
                             last_updated: new Date()
                         });
                     }
@@ -488,20 +488,26 @@ const handleNext = () => {
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-0">
         {/* Header with REGISTER BUTTON */}
-        <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-t-xl gap-4">
-          <div className="flex items-center gap-4">
-              <h2 className="card-title text-xl">Inventory Management</h2>
+        <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Inventory Management</h2>
+                <p className="text-xs text-slate-500 font-medium">Manage and track your product stock levels</p>
+              </div>
               {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                   <div className="flex gap-2">
                     <button 
                       onClick={() => setIsAddModalOpen(true)}
-                      className="btn btn-sm btn-primary shadow-sm"
+                      className="btn btn-sm btn-primary px-4 normal-case"
                     >
-                      + New Item
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
+                        <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                      </svg>
+                      New Item
                     </button>
                     <button 
                       onClick={() => setIsImportModalOpen(true)}
-                      className="btn btn-sm btn-outline btn-success shadow-sm"
+                      className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
                     >
                       Import CSV
                     </button>
@@ -509,11 +515,16 @@ const handleNext = () => {
               )}
           </div>
           
-          <div className="flex gap-2 items-center w-full md:w-auto">
+          <div className="relative w-full md:w-72">
+             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+             </div>
              <input 
               type="text" 
-              placeholder="Search keyword..." 
-              className="input input-bordered input-sm w-full max-w-xs"
+              placeholder="Search by name, barcode, or code..." 
+              className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
               value={searchTerm}
               onChange={handleSearch}
             />
@@ -521,92 +532,119 @@ const handleNext = () => {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto h-96">
+        <div className="overflow-x-auto h-[500px]">
           <table className="table w-full table-pin-rows">
-            <thead className="bg-gray-100 text-gray-600 z-10">
-              <tr>
-                <th>Barcode</th>
-                <th>AccPac Code</th>
-                <th>Product Name</th>
-                <th>Location</th>
-                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right text-orange-600">Cost</th>}
-                <th className="text-right">Price</th>
-                <th className="text-center">Stock</th>
-                <th className="text-center">Status</th>
-                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th></th>}
+            <thead>
+              <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                <th className="bg-slate-50/80">Barcode</th>
+                <th className="bg-slate-50/80">AccPac Code</th>
+                <th className="bg-slate-50/80">Product Name</th>
+                <th className="bg-slate-50/80">Location</th>
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right bg-slate-50/80">Cost</th>}
+                <th className="text-right bg-slate-50/80">Price</th>
+                <th className="text-center bg-slate-50/80">Stock</th>
+                <th className="text-center bg-slate-50/80">Status</th>
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="bg-slate-50/80"></th>}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {products.length === 0 && !loading ? (
-                <tr><td colSpan="8" className="text-center py-8 text-gray-400">No products found.</td></tr>
+                <tr><td colSpan="9" className="text-center py-12 text-slate-400 font-medium">No products found matching your search.</td></tr>
               ) : (
                 products.map((p) => (
-                  <tr key={p.internal_id || p.id} className="hover group border-b border-gray-100">
-                    {/* UPDATED: Clickable Barcode only for ADMIN/SUPER_ADMIN */}
-                    <td className="font-mono text-xs font-bold">
+                  <tr key={p.internal_id || p.id} className="hover:bg-slate-50/50 transition-colors group">
+                    {/* Barcode Cell - Handling long custom IDs */}
+                    <td className="max-w-[120px]">
                         {['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? (
                             <button 
                                 onClick={() => navigate(`/product/${p.internal_id}`)}
-                                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
-                                title="View Audit Trail"
+                                className="font-mono text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 whitespace-normal break-all text-left"
                             >
                                 {p.id}
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                                  <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" />
-                                  <path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" />
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                                  <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                                 </svg>
                             </button>
                         ) : (
-                            <span className="text-gray-700 cursor-default" title="Restricted">{p.id}</span>
+                            <span className="font-mono text-[11px] text-slate-500 break-all">{p.id}</span>
                         )}
                     </td>
                     
-                    {/* NEW ACCPAC CELL */}
-                    <td className="font-mono text-xs text-blue-700">
+                    {/* AccPac Code Cell */}
+                    <td className="max-w-[100px]">
                         {p.accpac_code ? (
-                            <span className="bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                            <span className="font-mono text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded break-all inline-block">
                                 {p.accpac_code}
                             </span>
                         ) : (
-                            <span className="text-gray-300">-</span>
+                            <span className="text-slate-300">—</span>
                         )}
                     </td>
-                    <td className="font-semibold text-gray-700">{p.name}</td>
-                    <td className="text-xs text-gray-500">{p.location || "-"}</td>
+
+                    {/* Product Name - Full view with wrap */}
+                    <td className="min-w-[180px] max-w-[300px]">
+                      <div className="font-medium text-slate-700 whitespace-normal break-words leading-tight">
+                        {p.name}
+                      </div>
+                    </td>
+
+                    {/* Location Cell - Full view with wrap */}
+                    <td className="max-w-[120px]">
+                      <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-slate-500 whitespace-normal break-words leading-tight">
+                        {p.location || "N/A"}
+                      </span>
+                    </td>
                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                        <td className="text-right font-mono text-orange-700">₱{p.unit_cost?.toLocaleString()}</td>
+                        <td className="text-right font-mono text-xs text-slate-500">
+                          ₱{p.unit_cost?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
                     )}
-                    <td className="text-right font-mono">₱{p.price.toLocaleString()}</td>
+                    <td className="text-right font-mono text-sm font-semibold text-slate-700">
+                      ₱{p.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
                     <td className="text-center">
-                      <span className={`font-bold ${p.currentStock <= p.minStockLevel ? 'text-red-600' : 'text-gray-700'}`}>
+                      <span className={`text-sm font-bold ${p.currentStock <= p.minStockLevel ? 'text-rose-600' : 'text-slate-700'}`}>
                         {p.currentStock}
                       </span>
                     </td>
                     <td className="text-center">
-                      {p.currentStock <= 0 ? <div className="badge badge-error text-white text-xs font-bold">OUT</div> : 
-                       p.currentStock <= p.minStockLevel ? <div className="badge badge-warning text-xs font-bold">LOW</div> : 
-                       <div className="badge badge-success text-white text-xs font-bold">OK</div>}
+                      {p.currentStock <= 0 ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-100">
+                          <span className="w-1 h-1 rounded-full bg-rose-600 mr-1.5"></span>
+                          Out
+                        </span>
+                      ) : p.currentStock <= p.minStockLevel ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-100">
+                          <span className="w-1 h-1 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
+                          Low
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          <span className="w-1 h-1 rounded-full bg-emerald-500 mr-1.5"></span>
+                          OK
+                        </span>
+                      )}
                     </td>
                     
-                    {/* ACTION BUTTONS */}
                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                       <td className="text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                                 onClick={() => openEditModal(p)} 
-                                className="btn btn-square btn-xs btn-ghost text-blue-600 hover:bg-blue-50 tooltip tooltip-left"
-                                data-tip="Edit Details"
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors tooltip tooltip-left"
+                                data-tip="Edit Product"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                                 </svg>
                             </button>
                             <button 
                                 onClick={() => handleDelete(p)} 
-                                className="btn btn-square btn-xs btn-ghost text-red-500 hover:bg-red-50 tooltip tooltip-left"
-                                data-tip="Delete Item"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors tooltip tooltip-left"
+                                data-tip="Delete Product"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                                 </svg>
                             </button>
@@ -621,50 +659,54 @@ const handleNext = () => {
         </div>
 
         {/* Pagination Controls */}
-        <div className="p-4 border-t flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-b-xl gap-4">
-           <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+        <div className="p-4 border-t flex flex-col sm:flex-row justify-between items-center bg-white rounded-b-xl gap-4">
+           <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
              {totalCount > 0 
-                ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                ? `Records ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} OF ${totalCount}`
                 : "No records found"}
            </div>
 
-           <div className="flex items-center gap-2">
-             <button 
-               className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
-               onClick={handlePrev} 
-               disabled={currentPage === 1 || loading}
-             >
-               « Previous
-             </button>
+           <div className="flex items-center gap-4">
+             <div className="flex items-center gap-1">
+                <button 
+                  className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-300" 
+                  onClick={handlePrev} 
+                  disabled={currentPage === 1 || loading}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                  </svg>
+                </button>
 
-             <div className="flex items-center gap-1 mx-2">
-                <input 
-                    type="number" 
-                    min="1" 
-                    max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-                    value={jumpPage}
-                    onChange={(e) => setJumpPage(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            let p = parseInt(jumpPage);
-                            const maxPage = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-                            if (p > 0 && p <= maxPage) {
-                                setCurrentPage(p);
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg">
+                    <input 
+                        type="number" 
+                        min="1" 
+                        max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
+                        value={jumpPage}
+                        onChange={(e) => setJumpPage(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                let p = parseInt(jumpPage);
+                                const maxPage = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+                                if (p > 0 && p <= maxPage) setCurrentPage(p);
                             }
-                        }
-                    }}
-                    className="input input-sm input-bordered w-16 text-center"
-                />
-                <span className="text-sm">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
-            </div>
+                        }}
+                        className="w-12 bg-transparent text-center font-bold text-xs text-indigo-600 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-xs font-bold text-slate-400">/ {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
+                </div>
 
-             <button 
-               className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
-               onClick={handleNext} 
-               disabled={(currentPage * ITEMS_PER_PAGE) >= totalCount || loading}
-             >
-               Next »
-             </button>
+                <button 
+                  className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-300" 
+                  onClick={handleNext} 
+                  disabled={(currentPage * ITEMS_PER_PAGE) >= totalCount || loading}
+                >
+                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                  </svg>
+                </button>
+             </div>
            </div>
         </div>
         {/* EDIT MODAL (Pop-up) */}

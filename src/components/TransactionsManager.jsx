@@ -353,28 +353,28 @@ export default function TransactionsManager() {
                           <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
                               
                               {/* 1. Type */}
-                              <td className="py-2">
-                                  {isOrphanVoid ? (
+                                <td className="py-2">
+                                {isOrphanVoid ? (
                                     <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800">
                                         TRANSACTION
                                     </div>
-                                  ) : (
+                                ) : (
                                     <div className={`badge badge-sm font-bold border-0 
-                                        ${first.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
-                                            first.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
-                                            first.type === 'ISSUANCE_RETURN' ? 'bg-indigo-100 text-indigo-800' :
-                                            first.type === 'PULL_OUT' ? 'bg-orange-100 text-orange-800' : 
-                                            'bg-gray-200 text-gray-800'}`}>
+                                        ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
+                                        first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
+                                        first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
+                                        first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
+                                        'bg-gray-200 text-gray-800'}`}>
                                         {first.type.replace('_', ' ')}
                                     </div>
-                                  )}
-                                  
-                                  {first.transaction_mode && (
-                                      <div className="mt-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                          {first.transaction_mode}
-                                      </div>
-                                  )}
-                              </td>
+                                )}
+                                
+                                {first.transaction_mode && (
+                                    <div className="mt-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                        {first.transaction_mode}
+                                    </div>
+                                )}
+                                </td>
 
                               {/* 2. Date */}
                               <td className="py-2">
