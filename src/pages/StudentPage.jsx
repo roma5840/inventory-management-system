@@ -181,74 +181,77 @@ export default function StudentPage() {
           if (uniqueCourses.length > 0) {
              const courseInserts = uniqueCourses.map(c => ({ code: c }));
              await supabase.from('courses').upsert(courseInserts, { onConflict: 'code' });
-             // Refresh local list
              setAvailableCourses(prev => [...new Set([...prev, ...uniqueCourses])].sort());
           }
 
-          // 3. Batch Fetch Existing Students for Comparison
-          const studentIds = cleanRows.map(r => r.student_id);
-          const { data: existingStudents, error: fetchError } = await supabase
-            .from('students')
-            .select('student_id, name, course, year_level')
-            .in('student_id', studentIds);
-            
-          if (fetchError) throw fetchError;
-
-          const existingMap = new Map();
-          existingStudents.forEach(s => existingMap.set(s.student_id, s));
-
-          const toInsert = [];
-          const toUpdate = [];
+          // 3. BATCH PROCESSING to avoid URL/Payload limits
+          const BATCH_SIZE = 500;
+          let insertedCount = 0;
+          let updatedCount = 0;
           let unchangedCount = 0;
 
-          // 4. Categorize (Insert vs Update vs Unchanged)
-          cleanRows.forEach(row => {
-            const existing = existingMap.get(row.student_id);
+          // Loop through data in chunks
+          for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
+            const batch = cleanRows.slice(i, i + BATCH_SIZE);
+            const batchIds = batch.map(r => r.student_id);
 
-            if (existing) {
-                // Check if any field differs
-                const hasChanged = 
-                    existing.name !== row.name || 
-                    existing.course !== row.course || 
-                    existing.year_level !== row.year_level;
+            // Fetch existing only for this batch
+            const { data: existingStudents, error: fetchError } = await supabase
+                .from('students')
+                .select('student_id, name, course, year_level')
+                .in('student_id', batchIds);
+                
+            if (fetchError) throw fetchError;
 
-                if (hasChanged) {
-                    toUpdate.push({ ...row, last_updated: new Date() });
+            const existingMap = new Map();
+            existingStudents.forEach(s => existingMap.set(s.student_id, s));
+
+            const toInsert = [];
+            const toUpdate = [];
+
+            batch.forEach(row => {
+                const existing = existingMap.get(row.student_id);
+
+                if (existing) {
+                    const hasChanged = 
+                        existing.name !== row.name || 
+                        existing.course !== row.course || 
+                        existing.year_level !== row.year_level;
+
+                    if (hasChanged) {
+                        toUpdate.push({ ...row, last_updated: new Date() });
+                    } else {
+                        unchangedCount++;
+                    }
                 } else {
-                    unchangedCount++;
+                    toInsert.push({ ...row, last_updated: new Date() });
                 }
-            } else {
-                toInsert.push({ ...row, last_updated: new Date() });
+            });
+
+            // Execute DB operations for this batch
+            if (toInsert.length > 0) {
+                const { error } = await supabase.from('students').insert(toInsert);
+                if (error) throw error;
+                insertedCount += toInsert.length;
             }
-          });
 
-          // 5. Perform DB Operations
+            if (toUpdate.length > 0) {
+                const { error } = await supabase.from('students').upsert(toUpdate, { onConflict: 'student_id' });
+                if (error) throw error;
+                updatedCount += toUpdate.length;
+            }
+          }
+
+          // 4. Final Summary
           let processedMsg = "";
-
-          if (toInsert.length > 0) {
-              const { error } = await supabase.from('students').insert(toInsert);
-              if (error) throw error;
-              processedMsg += `Added ${toInsert.length} new students.\n`;
-          }
-
-          if (toUpdate.length > 0) {
-              const { error } = await supabase.from('students').upsert(toUpdate, { onConflict: 'student_id' });
-              if (error) throw error;
-              processedMsg += `Updated details for ${toUpdate.length} students.\n`;
-          }
-
-          if (unchangedCount > 0) {
-              processedMsg += `${unchangedCount} records were already up to date.`;
-          }
-
-          if (toInsert.length === 0 && toUpdate.length === 0) {
-              processedMsg = "No changes needed. All records match the database.";
-          }
+          if (insertedCount > 0) processedMsg += `Added ${insertedCount} new students.\n`;
+          if (updatedCount > 0) processedMsg += `Updated details for ${updatedCount} students.\n`;
+          if (unchangedCount > 0) processedMsg += `${unchangedCount} records were already up to date.`;
+          if (insertedCount === 0 && updatedCount === 0) processedMsg = "No changes needed. All records match.";
 
           alert("Import Successful!\n\n" + processedMsg);
           setIsImportModalOpen(false);
           
-          // Trigger app-wide refresh
           await supabase.channel('app_updates').send({
             type: 'broadcast', event: 'inventory_update', payload: {} 
           });
