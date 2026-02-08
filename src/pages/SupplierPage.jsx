@@ -152,29 +152,38 @@ export default function SupplierPage() {
             </div>
 
             {/* Add Form */}
-            <form onSubmit={handleAdd} className="p-4 bg-white border-b flex flex-col md:flex-row gap-4 items-end">
-                <div className="form-control flex-1 w-full">
-                    <label className="label"><span className="label-text text-xs font-bold uppercase">Supplier Name</span></label>
-                    <input 
-                        type="text" required 
-                        className="input input-bordered uppercase" 
-                        placeholder="Type Supplier..."
-                        value={newName} onChange={e => setNewName(e.target.value)}
-                    />
-                </div>
-                <div className="form-control flex-1 w-full">
-                    <label className="label"><span className="label-text text-xs font-bold uppercase">Contact Info (Optional)</span></label>
-                    <input 
-                        type="text" 
-                        className="input input-bordered" 
-                        placeholder="Phone / Address"
-                        value={newContact} onChange={e => setNewContact(e.target.value)}
-                    />
-                </div>
-                <button type="submit" disabled={isSubmitting} className="btn btn-primary">
-                    {isSubmitting ? "Saving..." : "Add Supplier"}
-                </button>
-            </form>
+            <div className="p-6 bg-white border-b">
+                <h3 className="text-sm font-bold text-gray-600 mb-4 uppercase tracking-wider">Add New Supplier</h3>
+                <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <div className="form-control md:col-span-5 w-full">
+                        <label className="label">
+                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Supplier Name</span>
+                        </label>
+                        <input 
+                            type="text" required 
+                            className="input input-bordered w-full uppercase focus:ring-2 focus:ring-primary/20" 
+                            placeholder="SUPPLIER NAME"
+                            value={newName} onChange={e => setNewName(e.target.value)}
+                        />
+                    </div>
+                    <div className="form-control md:col-span-5 w-full">
+                        <label className="label">
+                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Contact Info (Optional)</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            className="input input-bordered w-full focus:ring-2 focus:ring-primary/20" 
+                            placeholder="Phone, Email, or Address"
+                            value={newContact} onChange={e => setNewContact(e.target.value)}
+                        />
+                    </div>
+                    <div className="md:col-span-2 w-full">
+                        <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full shadow-md">
+                            {isSubmitting ? "Saving..." : "Add Supplier"}
+                        </button>
+                    </div>
+                </form>
+            </div>
 
             {/* List */}
             <div className="overflow-x-auto min-h-[400px]">
@@ -188,17 +197,37 @@ export default function SupplierPage() {
                     </thead>
                     <tbody>
                         {loading ? (
-                             <tr><td colSpan="3" className="text-center py-4">Loading...</td></tr>
+                             <tr><td colSpan="3" className="text-center py-10"><span className="loading loading-spinner loading-md text-primary"></span></td></tr>
                         ) : suppliers.length === 0 ? (
-                             <tr><td colSpan="3" className="text-center py-4 text-gray-400">No suppliers found.</td></tr>
+                             <tr><td colSpan="3" className="text-center py-10 text-gray-400 italic">No suppliers found in the database.</td></tr>
                         ) : (
                             suppliers.map(s => (
-                                <tr key={s.id} className="hover">
-                                    <td className="font-bold text-gray-700">{s.name}</td>
-                                    <td className="text-gray-500 text-sm">{s.contact_info || "-"}</td>
-                                    <td className="text-right">
-                                        <button onClick={() => handleEditClick(s)} className="btn btn-xs btn-ghost text-blue-500 mr-2">Edit</button>
-                                        <button onClick={() => handleDelete(s.id, s.name)} className="btn btn-xs btn-ghost text-red-500">Delete</button>
+                                <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="font-bold text-gray-800 py-4 max-w-[200px]">
+                                        <div className="break-all whitespace-normal leading-tight">
+                                            {s.name}
+                                        </div>
+                                    </td>
+                                    <td className="text-gray-500 text-sm max-w-[250px]">
+                                        <div className="break-all whitespace-normal">
+                                            {s.contact_info || <span className="text-gray-300 italic">No info</span>}
+                                        </div>
+                                    </td>
+                                    <td className="text-right whitespace-nowrap">
+                                        <div className="flex justify-end gap-2">
+                                            <button 
+                                                onClick={() => handleEditClick(s)} 
+                                                className="btn btn-sm btn-outline btn-info px-4"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(s.id, s.name)} 
+                                                className="btn btn-sm btn-outline btn-error px-4"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -266,31 +295,41 @@ export default function SupplierPage() {
       </main>
       {/* Edit Modal */}
       {editingSupplier && (
-        <div className="modal modal-open">
-            <div className="modal-box">
-                <h3 className="font-bold text-lg text-gray-700 border-b pb-2 mb-4">Edit Supplier</h3>
+        <div className="modal modal-open backdrop-blur-sm">
+            <div className="modal-box border border-slate-200 shadow-2xl">
+                <div className="flex justify-between items-center border-b pb-4 mb-6">
+                    <h3 className="font-black text-xl text-gray-800 uppercase tracking-tight">Edit Supplier Details</h3>
+                    <button onClick={() => setEditingSupplier(null)} className="btn btn-sm btn-circle btn-ghost">✕</button>
+                </div>
                 
-                <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+                <form onSubmit={handleUpdate} className="space-y-5">
                     <div className="form-control w-full">
-                        <label className="label"><span className="label-text text-xs font-bold uppercase">Supplier Name</span></label>
+                        <label className="label">
+                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Supplier Name</span>
+                        </label>
                         <input 
                             type="text" required 
-                            className="input input-bordered uppercase" 
+                            className="input input-bordered w-full uppercase font-semibold text-lg py-6 focus:ring-2 focus:ring-primary/20" 
                             value={editName} onChange={e => setEditName(e.target.value)}
                         />
                     </div>
                     <div className="form-control w-full">
-                        <label className="label"><span className="label-text text-xs font-bold uppercase">Contact Info</span></label>
-                        <input 
-                            type="text" 
-                            className="input input-bordered" 
+                        <label className="label">
+                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Contact Info</span>
+                        </label>
+                        <textarea 
+                            className="textarea textarea-bordered w-full min-h-[100px] text-base focus:ring-2 focus:ring-primary/20" 
+                            placeholder="Enter contact details..."
                             value={editContact} onChange={e => setEditContact(e.target.value)}
                         />
                     </div>
-                    <div className="modal-action mt-6">
-                        <button type="button" onClick={() => setEditingSupplier(null)} className="btn btn-ghost">Cancel</button>
-                        <button type="submit" disabled={isSaving} className="btn btn-primary">
-                            {isSaving ? "Saving..." : "Save Changes"}
+
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-8">
+                        <button type="button" onClick={() => setEditingSupplier(null)} className="btn btn-ghost sm:w-24">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={isSaving} className="btn btn-primary sm:w-40 shadow-lg">
+                            {isSaving ? "Updating..." : "Save Changes"}
                         </button>
                     </div>
                 </form>
