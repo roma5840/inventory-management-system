@@ -442,7 +442,6 @@ export default function TransactionForm({ onSuccess }) {
             .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
 
         if (salesError || !salesData || salesData.length === 0) {
-            // Req 4: Clear Header Data AND Queue if lookup fails
             setHeaderData(prev => ({
                 ...prev,
                 studentName: "",
@@ -451,7 +450,7 @@ export default function TransactionForm({ onSuccess }) {
                 yearLevel: "",
                 remarks: ""
             }));
-            setQueue([]); // Clear the queue
+            setQueue([]); 
             
             alert("Receipt not found, valid items not found, or transaction was voided.");
             setLookupLoading(false);
@@ -508,13 +507,39 @@ export default function TransactionForm({ onSuccess }) {
             alert("All items in this receipt have already been returned or are currently in your queue.");
         } else {
             setPastTransactionItems(validItems);
+            
             if(validItems[0]) {
+                const originalId = validItems[0].student_id || "";
+                
+                // DEFAULT: Use Snapshot from Receipt
+                let displayStudentName = validItems[0].student_name || "";
+                let displayCourse = validItems[0].course || "";
+                let displayYear = validItems[0].year_level || "";
+                
+                // OVERRIDE: Try to fetch CURRENT Student Data to avoid outdated info
+                if (originalId) {
+                    const { data: currentStudent } = await supabase
+                        .from('students')
+                        .select('name, course, year_level')
+                        .eq('student_id', originalId)
+                        .maybeSingle();
+
+                    if (currentStudent) {
+                        displayStudentName = currentStudent.name;
+                        displayCourse = currentStudent.course;
+                        displayYear = currentStudent.year_level;
+                        setIsNewStudent(false); // Mark as found in DB
+                    } else {
+                        setIsNewStudent(true); // ID exists on receipt but not in DB anymore
+                    }
+                }
+
                 setHeaderData(prev => ({
                     ...prev,
-                    studentName: validItems[0].student_name || "",
-                    studentId: validItems[0].student_id || "",
-                    course: validItems[0].course || "",
-                    yearLevel: validItems[0].year_level || "",
+                    studentName: displayStudentName,
+                    studentId: originalId,
+                    course: displayCourse,
+                    yearLevel: displayYear,
                     remarks: ""
                 }));
             }
