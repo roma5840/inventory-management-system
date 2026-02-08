@@ -124,15 +124,11 @@ export default function TransactionForm({ onSuccess }) {
         
         // Intelligent Focus Logic
         setTimeout(() => {
-            // 1. If receiving and no cost, go to Cost
+            // 1. If receiving and no cost, go to Cost input
             if (headerData.type === 'RECEIVING' && (!cost || parseFloat(cost) === 0)) {
                 document.getElementById('unitCostInput')?.focus();
             } 
-            // 2. If receiving/pullout and no price, go to Price
-            else if (['RECEIVING', 'PULL_OUT'].includes(headerData.type) && (!price || parseFloat(price) === 0)) {
-                 document.getElementById('priceInput')?.focus();
-            } 
-            // 3. Otherwise, go to Qty
+            // 2. For all other scenarios (including PULL_OUT or found items), jump to Qty
             else {
                 document.getElementById('qtyInput')?.focus();
             }
