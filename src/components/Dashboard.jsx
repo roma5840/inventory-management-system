@@ -584,14 +584,14 @@ const handleNext = () => {
 
                     {/* Product Name - Full view with wrap */}
                     <td className="min-w-[180px] max-w-[300px]">
-                      <div className="font-medium text-slate-700 whitespace-normal break-words leading-tight">
+                      <div className="font-medium text-slate-700 whitespace-normal break-all leading-tight">
                         {p.name}
                       </div>
                     </td>
 
                     {/* Location Cell - Full view with wrap */}
                     <td className="max-w-[120px]">
-                      <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-slate-500 whitespace-normal break-words leading-tight">
+                      <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-slate-500 whitespace-normal break-all leading-tight">
                         {p.location || "N/A"}
                       </span>
                     </td>
