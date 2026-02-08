@@ -827,7 +827,7 @@ export default function TransactionForm({ onSuccess }) {
                         Transaction Context
                     </h3>
                     <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${headerData.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : headerData.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${headerData.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : headerData.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' : headerData.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}`}>
                             {headerData.type}
                         </span>
                     </div>
