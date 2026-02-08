@@ -511,7 +511,24 @@ export default function TransactionForm({ onSuccess }) {
             .eq('is_voided', false) 
             .in('original_transaction_id', saleIds);
 
-        // 3. Calculate Remaining Qty
+        // 3. Fetch Current Product Names (To show updated name instead of snapshot)
+        const internalIds = salesData.map(s => s.product_internal_id).filter(Boolean);
+        let currentProductNames = {};
+
+        if (internalIds.length > 0) {
+            const { data: productsData } = await supabase
+                .from('products')
+                .select('internal_id, name')
+                .in('internal_id', internalIds);
+            
+            if (productsData) {
+                productsData.forEach(p => {
+                    currentProductNames[p.internal_id] = p.name;
+                });
+            }
+        }
+
+        // 4. Calculate Remaining Qty & Prepare Display
         const validItems = salesData.map(saleItem => {
             const alreadyReturnedQty = returnsData
                 ?.filter(r => r.original_transaction_id === saleItem.id)
@@ -523,7 +540,10 @@ export default function TransactionForm({ onSuccess }) {
 
             const remainingQty = saleItem.qty - alreadyReturnedQty - currentlyInQueueQty;
 
-            const displayName = saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
+            // Name Logic: Prefer Current DB Name > Snapshot > Legacy Name
+            const currentName = currentProductNames[saleItem.product_internal_id];
+            const displayName = currentName || saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
+            
             const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; 
             const priceSnapshot = saleItem.price_snapshot !== null ? saleItem.price_snapshot : saleItem.price;
             const costSnapshot = saleItem.unit_cost_snapshot !== null ? saleItem.unit_cost_snapshot : 0;
