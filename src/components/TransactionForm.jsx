@@ -226,16 +226,33 @@ export default function TransactionForm({ onSuccess }) {
         return;
     }
     
-    const newItem = { 
-      ...currentScan, 
-      priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
-      unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost, 
-      accpacCode: currentScan.accpacCode, 
-      id: Date.now() 
-    };
+    setQueue(prev => {
+        const existingIndex = prev.findIndex(item => item.barcode === currentScan.barcode);
+        
+        if (existingIndex > -1) {
+            // Update existing row
+            const newQueue = [...prev];
+            newQueue[existingIndex] = { 
+                ...newQueue[existingIndex], 
+                qty: parseInt(currentScan.qty), // Set to the new scanned quantity
+                priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
+                unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost,
+            };
+            return newQueue;
+        } else {
+            // Add new row
+            const newItem = { 
+              ...currentScan, 
+              priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
+              unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost, 
+              accpacCode: currentScan.accpacCode, 
+              id: Date.now() 
+            };
+            return [newItem, ...prev];
+        }
+    });
 
-    setQueue(prev => [newItem, ...prev]);
-
+    // Reset Scanner Input
     setCurrentScan(prev => ({
       ...prev,
       barcode: "",
@@ -1048,7 +1065,7 @@ export default function TransactionForm({ onSuccess }) {
             </div>
 
             {/* === SECTION 3: QUEUE TABLE === */}
-            <div className="flex-1 overflow-auto bg-white border border-slate-200 rounded-xl shadow-inner min-h-[150px]">
+            <div className="flex-1 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-inner min-h-[150px] max-h-[300px] custom-scrollbar">
                 <table className="table table-xs w-full table-pin-rows">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
