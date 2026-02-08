@@ -419,11 +419,11 @@ export default function ProductDetailsPage() {
                                             {/* 2. Type */}
                                             <td className="align-top py-3">
                                                 <div className={`badge badge-sm border-0 font-bold 
-                                                    ${tx.type === 'RECEIVING' ? 'bg-green-100 text-green-800' : 
-                                                      tx.type === 'ISSUANCE' ? 'bg-blue-100 text-blue-800' : 
-                                                      tx.type === 'ISSUANCE_RETURN' ? 'bg-indigo-100 text-indigo-800' :
-                                                      tx.type === 'PULL_OUT' ? 'bg-orange-100 text-orange-800' : 
-                                                      'bg-gray-100 text-gray-800'}`}>
+                                                    ${tx.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
+                                                    tx.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
+                                                    tx.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
+                                                    tx.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
+                                                    'bg-gray-100 text-gray-800'}`}>
                                                     {tx.type.replace('_', ' ')}
                                                 </div>
                                                 {tx.transaction_mode && (
