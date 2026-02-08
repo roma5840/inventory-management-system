@@ -79,18 +79,19 @@ export default function TransactionForm({ onSuccess }) {
         fetchStaticData();
         fetchSuppliers();
 
-        // Realtime Subscriptions for Suppliers (Updates dropdown automatically)
-        const dbChannel = supabase.channel('tf-supplier-db')
+        // ONLY LISTEN TO SPECIFIC TABLES FOR DROPDOWNS
+        // Removed 'app_updates' broadcast listener
+        const supplierChannel = supabase.channel('tf-supplier-db')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
             .subscribe();
-            
-        const appChannel = supabase.channel('app_updates')
-            .on('broadcast', { event: 'inventory_update' }, fetchSuppliers)
-            .subscribe();
 
+        const courseChannel = supabase.channel('tf-course-db')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, fetchStaticData)
+                .subscribe();
+            
         return () => {
-            supabase.removeChannel(dbChannel);
-            supabase.removeChannel(appChannel);
+            supabase.removeChannel(supplierChannel);
+            supabase.removeChannel(courseChannel);
         };
     }, []);
 

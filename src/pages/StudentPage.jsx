@@ -54,7 +54,7 @@ export default function StudentPage() {
   useEffect(() => {
     const fetchStudents = async () => {
         setLoading(true);
-        let query = supabase.from('students').select('*', { count: 'exact' }); // count is requested here
+        let query = supabase.from('students').select('*', { count: 'exact' });
 
         if (debouncedTerm.trim()) {
             query = query.or(`name.ilike.%${debouncedTerm}%,student_id.ilike.%${debouncedTerm}%`);
@@ -71,7 +71,7 @@ export default function StudentPage() {
             console.error("Error fetching students:", error);
         } else {
             setStudents(data || []);
-            setTotalCount(count || 0); // Save the total count
+            setTotalCount(count || 0);
         }
         
         setLoading(false);
@@ -79,18 +79,14 @@ export default function StudentPage() {
 
     fetchStudents();
 
-    // Listeners for realtime updates
+    // LISTEN ONLY TO DB CHANGES IN 'students' TABLE
+    // Removed 'app_updates' (inventory_update) because selling a book shouldn't refresh the student list
     const dbChannel = supabase.channel('student-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchStudents)
         .subscribe();
 
-    const appChannel = supabase.channel('app_updates')
-        .on('broadcast', { event: 'inventory_update' }, fetchStudents)
-        .subscribe();
-
     return () => {
         supabase.removeChannel(dbChannel);
-        supabase.removeChannel(appChannel);
     };
   }, [debouncedTerm, page]);
 

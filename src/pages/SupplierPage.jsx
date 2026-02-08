@@ -42,18 +42,14 @@ export default function SupplierPage() {
   useEffect(() => {
     fetchSuppliers();
 
-    // Listeners for realtime updates (DB changes + Broadcasts)
+    // LISTEN ONLY TO DB CHANGES IN 'suppliers' TABLE
+    // Removed 'app_updates' because inventory transactions do not affect supplier details
     const dbChannel = supabase.channel('supplier-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
         .subscribe();
 
-    const appChannel = supabase.channel('app_updates')
-        .on('broadcast', { event: 'inventory_update' }, fetchSuppliers)
-        .subscribe();
-
     return () => {
         supabase.removeChannel(dbChannel);
-        supabase.removeChannel(appChannel);
     };
   }, [page]);
 

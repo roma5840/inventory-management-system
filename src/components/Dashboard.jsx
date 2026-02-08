@@ -109,8 +109,7 @@ export default function Dashboard({ lastUpdated }) {
   }, [searchTerm]);
 
   // Handle Fetching (Immediate response to Page or Debounced Term)
-  // runs instantly when page changes, or after the 250ms search delay.
-  const fetchInventory = async () => {
+    const fetchInventory = async () => {
     setLoading(true);
     
     let query = supabase
@@ -118,7 +117,6 @@ export default function Dashboard({ lastUpdated }) {
         .select('internal_id, id:barcode, accpac_code, name, price, unit_cost, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
     if (debouncedTerm.trim()) {
-        // UPDATED: Search directly on name/barcode/accpac using standard text match
         query = query.or(`name.ilike.%${debouncedTerm}%,barcode.ilike.%${debouncedTerm}%,accpac_code.ilike.%${debouncedTerm}%`);
     } else {
         query = query.order('name', { ascending: true });
@@ -137,20 +135,50 @@ export default function Dashboard({ lastUpdated }) {
     }
     
     setLoading(false);
-  };
+    };
 
-  // Effect: Triggers on Search, Page Change, or External Updates
+    // Effect: Triggers on Search, Page Change, or External Updates
   useEffect(() => {
     fetchInventory();
     
-    // Realtime Subscription (Database Changes)
+    // Local variables to track burst rate
+    let changeCount = 0;
+    let burstResetTimer = null;
+    let debounceTimer = null;
+    
     const channel = supabase.channel('table-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-            fetchInventory();
+            
+            changeCount++;
+            
+            // 1. Reset the "burst counter" if silence for 300ms
+            if (burstResetTimer) clearTimeout(burstResetTimer);
+            burstResetTimer = setTimeout(() => {
+                changeCount = 0;
+            }, 300);
+            
+            // 2. Hybrid Logic
+            if (changeCount <= 2) {
+                // Low traffic: Update immediately (Realtime feel)
+                fetchInventory();
+            } else {
+                // High traffic (Bulk Import): Debounce to prevent freezing
+                // CRITICAL FIX: Clear the previous timer so we only fetch once at the END of the burst
+                if (debounceTimer) clearTimeout(debounceTimer);
+                
+                debounceTimer = setTimeout(() => {
+                    fetchInventory();
+                    changeCount = 0; 
+                }, 500);
+            }
         })
         .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+        if (burstResetTimer) clearTimeout(burstResetTimer);
+        if (debounceTimer) clearTimeout(debounceTimer);
+        supabase.removeChannel(channel);
+    };
   }, [debouncedTerm, currentPage, lastUpdated]);
 
   useEffect(() => {
