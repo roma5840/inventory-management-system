@@ -222,6 +222,11 @@ const handleNext = () => {
     const newPrice = Number(editForm.price);
     const newMinLevel = Number(editForm.minStockLevel);
 
+    // Validation
+    if (!editingProduct.id || !editingProduct.id.trim()) {
+        alert("Error: Barcode is required.");
+        setUpdateLoading(false); return;
+    }
     if (!editForm.name.trim()) {
         alert("Error: Product Name is required.");
         setUpdateLoading(false); return;
@@ -236,7 +241,7 @@ const handleNext = () => {
     }
 
     try {
-        const sanitizedBarcode = editingProduct.id.toUpperCase();
+        const sanitizedBarcode = editingProduct.id.trim().toUpperCase();
         const sanitizedName = editForm.name.toUpperCase();
         const sanitizedLocation = editForm.location ? editForm.location.toUpperCase() : "";
         const sanitizedAccPac = editForm.accpacCode ? editForm.accpacCode.toUpperCase() : null;
@@ -268,7 +273,14 @@ const handleNext = () => {
 
     } catch (err) {
         console.error(err);
-        alert("Update failed: " + err.message);
+        // specific error handling for Unique Constraints
+        if (err.message.includes("products_barcode_key")) {
+            alert("Error: This Barcode is already in use by another product.");
+        } else if (err.message.includes("products_accpac_code_key")) {
+            alert("Error: This AccPac Code is already in use by another product.");
+        } else {
+            alert("Update failed: " + err.message);
+        }
     } finally {
         setUpdateLoading(false);
     }
@@ -665,16 +677,28 @@ const handleNext = () => {
             
             <form onSubmit={handleUpdate} className="flex flex-col gap-4">
                 
-                {/* READ ONLY FIELDS (For Audit Safety) */}
+                {/* Barcode & Stock Row */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Barcode / ISBN</label>
-                        <input 
-                            type="text" 
-                            value={editingProduct.id} 
-                            onChange={(e) => setEditingProduct({...editingProduct, id: e.target.value})}
-                            className="input input-bordered input-sm font-mono font-bold text-blue-800 uppercase" 
-                        />
+                        <label className="label text-xs uppercase font-bold text-gray-500">Barcode / ISBN *</label>
+                        <div className="flex gap-1">
+                            <input 
+                                type="text" 
+                                value={editingProduct.id} 
+                                onChange={(e) => setEditingProduct({...editingProduct, id: e.target.value})}
+                                className="input input-bordered input-sm font-mono font-bold text-blue-800 uppercase w-full" 
+                                required
+                            />
+                            <button type="button" 
+                                onClick={() => setEditingProduct({...editingProduct, id: generateClientBarcode()})}
+                                className="btn btn-square btn-outline btn-primary btn-sm" 
+                                title="Generate New ID"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-400">Current Stock</label>
