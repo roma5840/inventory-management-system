@@ -280,6 +280,10 @@ export default function TransactionForm({ onSuccess }) {
         const restoredItem = {
             id: itemToRemove.originalTransactionId,
             product_id: itemToRemove.barcode,
+            
+            // CRITICAL FIX: Restore internal ID so the backend can find the product even if barcode changed
+            product_internal_id: itemToRemove.internalId,
+
             displayBarcode: itemToRemove.barcode,
             product_name: itemToRemove.itemName,
             displayName: itemToRemove.itemName,
@@ -289,7 +293,7 @@ export default function TransactionForm({ onSuccess }) {
             price_snapshot: itemToRemove.priceOverride,
             cost_snapshot: itemToRemove.unitCost, 
 
-            // FIX 2: CRITICAL - Restore the Reference Number
+            // FIX 2: Restore the Reference Number
             // This ensures if we re-add it to the queue, it still knows which receipt it belongs to.
             reference_number: itemToRemove.refNumber,
 
