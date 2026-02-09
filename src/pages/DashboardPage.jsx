@@ -52,7 +52,7 @@ export default function DashboardPage() {
                
                <ReceiptLookup />
 
-               <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
+               {/* <div className="card w-full bg-base-200 shadow-xl mt-6 p-6">
                  <h3 className="card-title text-gray-700 mb-2">Instructions</h3>
                  <ul className="text-sm list-disc list-inside text-gray-600 space-y-2">
                    <li><strong>Receiving:</strong> Stock In. Fills Name/Price if item is new.</li>
@@ -60,7 +60,7 @@ export default function DashboardPage() {
                    <li><strong>Return:</strong> Student returns item to shelf.</li>
                    <li><strong>Pull Out:</strong> Defective item sent back to supplier.</li>
                  </ul>
-               </div>
+               </div> */}
             </div>
           </div>
 

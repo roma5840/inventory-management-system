@@ -776,6 +776,22 @@ export default function TransactionForm({ onSuccess }) {
       setShowSupplierDropdown(false);
   };
 
+  const handleReturnRefChange = (e) => {
+    const input = e.target;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const val = input.value.toUpperCase();
+    
+    setReturnLookupRef(val);
+
+    // Restore cursor position after React state update
+    window.requestAnimationFrame(() => {
+        if (input) {
+            input.setSelectionRange(start, end);
+        }
+    });
+  };
+
   return (
     <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
       
@@ -951,7 +967,7 @@ export default function TransactionForm({ onSuccess }) {
                                 className="flex-1 h-10 px-4 rounded-lg border border-slate-300 font-mono uppercase text-sm shadow-inner focus:ring-2 focus:ring-blue-500 outline-none" 
                                 placeholder="ENTER REFERENCE #..."
                                 value={returnLookupRef}
-                                onChange={(e) => setReturnLookupRef(e.target.value.toUpperCase())}
+                                onChange={handleReturnRefChange}
                                 onKeyDown={(e) => e.key === 'Enter' && handleLookupReceipt(e)}
                             />
                             <button onClick={handleLookupReceipt} className="h-10 px-6 rounded-lg bg-slate-800 text-white text-xs font-bold shadow-lg" disabled={lookupLoading}>

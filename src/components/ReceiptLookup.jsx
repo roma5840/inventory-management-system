@@ -102,6 +102,22 @@ export default function ReceiptLookup() {
     }, 500);
   };
 
+  const handleInputChange = (e) => {
+    const input = e.target;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const val = input.value.toUpperCase();
+    
+    setSearchRef(val);
+
+    // Restore cursor position after React update
+    window.requestAnimationFrame(() => {
+      if (input) {
+        input.setSelectionRange(start, end);
+      }
+    });
+  };
+
   return (
     <>
       {/* 1. THE SEARCH CARD */}
@@ -118,7 +134,7 @@ export default function ReceiptLookup() {
               className="input input-sm input-bordered w-full font-mono uppercase" 
               placeholder="Enter REF-..." 
               value={searchRef}
-              onChange={(e) => setSearchRef(e.target.value.toUpperCase())}
+              onChange={handleInputChange}
             />
             <button type="submit" disabled={loading} className="btn btn-sm btn-outline btn-info w-full">
                 {loading ? "Searching..." : "Find Receipt"}
