@@ -90,7 +90,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Development Credits */}
-            <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[11px] text-gray-400">
+            {/* <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-[11px] text-gray-400">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-gray-500">Systems Lead:</span>
                 <span>Ryan Oliver Aquino</span>
@@ -100,7 +100,7 @@ export default function DashboardPage() {
                 <span className="font-semibold text-gray-500">Operations & PR:</span>
                 <span>Jancesar Pocoholo Taguiang</span>
               </div>
-            </div>
+            </div> */}
 
             {/* Project Context */}
             {/* <p className="mt-4 text-[10px] text-gray-400 italic">
