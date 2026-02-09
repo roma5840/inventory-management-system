@@ -795,6 +795,7 @@ const handleNext = () => {
                             className="input input-bordered w-full" 
                             value={editForm.price}
                             onChange={e => setEditForm({...editForm, price: e.target.value})}
+                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
                         />
                     </div>
@@ -807,6 +808,7 @@ const handleNext = () => {
                             className="input input-bordered w-full" 
                             value={editForm.minStockLevel}
                             onChange={e => setEditForm({...editForm, minStockLevel: e.target.value})}
+                            onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
                             required
                         />
                     </div>
@@ -889,6 +891,7 @@ const handleNext = () => {
                             className="input input-bordered w-full" 
                             value={newItemForm.price}
                             onChange={e => setNewItemForm({...newItemForm, price: e.target.value})}
+                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
                         />
                     </div>
@@ -908,10 +911,11 @@ const handleNext = () => {
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Initial Stock</label>
                         <input 
-                            type="number" min="0"
+                            type="number" min="0" step="1"
                             className="input input-bordered w-full" 
                             value={newItemForm.initialStock}
                             onChange={e => setNewItemForm({...newItemForm, initialStock: e.target.value})}
+                            onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
                         />
                     </div>
                     <div className="form-control">
@@ -923,6 +927,7 @@ const handleNext = () => {
                             className="input input-bordered w-full" 
                             value={newItemForm.minStockLevel}
                             onChange={e => setNewItemForm({...newItemForm, minStockLevel: e.target.value})}
+                            onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
                             required
                         />
                     </div>
