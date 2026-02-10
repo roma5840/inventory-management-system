@@ -149,10 +149,6 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
             </div>
             
             <div className="flex flex-col items-end gap-2">
-                <Link to="/transactions" className="btn btn-xs btn-ghost text-primary hover:bg-blue-50">
-                    View Full History &rarr;
-                </Link>
-                
                 <div className="flex items-center gap-3">
                     <span className="text-[10px] text-gray-400">
                         {totalCount > 0 
