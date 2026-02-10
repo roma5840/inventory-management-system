@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import * as XLSX from 'xlsx';
 import Pagination from "./Pagination";
 
 export default function TransactionsManager() {
+  const { userRole } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -300,22 +302,24 @@ export default function TransactionsManager() {
                     </select>
                 )}
 
-                {/* Export Button - Placed immediately after filters */}
-                <button 
-                    onClick={handleExport} 
-                    disabled={isExporting || totalCount === 0}
-                    className="btn btn-sm btn-outline btn-success gap-2"
-                    title="Download as Excel"
-                >
-                    {isExporting ? (
-                        <span className="loading loading-spinner loading-xs"></span>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                        </svg>
-                    )}
-                    Export
-                </button>
+                {/* Export Button - Restricted to SUPER_ADMIN */}
+                {userRole === 'SUPER_ADMIN' && (
+                    <button 
+                        onClick={handleExport} 
+                        disabled={isExporting || totalCount === 0}
+                        className="btn btn-sm btn-outline btn-success gap-2"
+                        title="Download as Excel"
+                    >
+                        {isExporting ? (
+                            <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                        )}
+                        Export
+                    </button>
+                )}
                 
                 {/* Search - Pushed to the right on larger screens */}
                 <input 
