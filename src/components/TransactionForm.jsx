@@ -793,9 +793,9 @@ export default function TransactionForm({ onSuccess }) {
   };
 
   return (
-    <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
-      
-      {/* TRANSACTION TYPE SELECTOR - REDESIGN */}
+    <div className="card w-full max-w-none bg-base-100 shadow-xl border border-gray-200 p-0 overflow-hidden">
+  
+    {/* TRANSACTION TYPE SELECTOR - REDESIGN */}
         <div className="p-1.5 bg-slate-100/50 flex border-b border-slate-200">
         {[
             { id: 'RECEIVING', label: 'Receiving' },
