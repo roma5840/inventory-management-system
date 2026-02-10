@@ -288,7 +288,10 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                   </div>
                                   {voidEntry && (
                                       <div className="text-gray-700 mt-1">
-                                          <span className="font-semibold">Voided By:</span> {voidEntry.staff_name}
+                                          <div><span className="font-semibold">Voided By:</span> {voidEntry.staff_name}</div>
+                                          <div className="text-gray-400 mt-0.5">
+                                              {new Date(voidEntry.timestamp).toLocaleString()}
+                                          </div>
                                       </div>
                                   )}
                               </div>
