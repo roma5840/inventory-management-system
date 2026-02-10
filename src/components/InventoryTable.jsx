@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import Papa from "papaparse";
 import { useNavigate } from "react-router-dom";
 
-export default function Dashboard({ lastUpdated }) {
+export default function InventoryTable({ lastUpdated }) {
   const { userRole } = useAuth();
   const navigate = useNavigate(); 
   const [products, setProducts] = useState([]);

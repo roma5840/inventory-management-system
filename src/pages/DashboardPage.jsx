@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase"; // Added Import
+import { supabase } from "../lib/supabase";
 
 import TransactionForm from "../components/TransactionForm";
 import AdminInvite from "../components/AdminInvite";
-import Dashboard from "../components/Dashboard";
 import TransactionHistory from "../components/TransactionHistory";
 import ReceiptLookup from "../components/ReceiptLookup";
 import StatsComprehensive from "../components/StatsComprehensive"; 

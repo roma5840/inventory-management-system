@@ -210,13 +210,13 @@ export default function ProductDetailsPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">
-      <Sidebar />
-      
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <Sidebar />
+        
+        <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
             <div>
                 <button onClick={() => navigate(-1)} className="btn btn-sm btn-ghost gap-2 mb-4 text-slate-500 hover:bg-slate-200">
-                    ← Back to Dashboard
+                    ← Back to Inventory
                 </button>
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Product Audit Trail</h1>
                 <p className="text-sm text-slate-500">Detailed historical movements and performance for this item.</p>

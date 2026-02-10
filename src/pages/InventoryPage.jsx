@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import Sidebar from "../components/Sidebar";
-import Dashboard from "../components/Dashboard"; // This is the inventory table component
+import InventoryTable from "../components/InventoryTable";
 
 export default function InventoryPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -27,7 +27,7 @@ export default function InventoryPage() {
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <Dashboard lastUpdated={refreshTrigger} />
+                <InventoryTable lastUpdated={refreshTrigger} />
             </div>
         </div>
       </main>
