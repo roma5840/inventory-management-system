@@ -246,11 +246,11 @@ export default function ProductDetailsPage() {
                             </div>
                             <div className="stat place-items-center">
                                 <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Unit Cost</div>
-                                <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
+                                <div className="stat-value text-xl text-slate-500">₱{product.unit_cost?.toLocaleString() || 0}</div>
                             </div>
                             <div className="stat place-items-center">
                                 <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Unit Price</div>
-                                <div className="stat-value text-xl text-indigo-600">₱{product.price.toLocaleString()}</div>
+                                <div className="stat-value text-xl text-slate-700 font-bold">₱{product.price.toLocaleString()}</div>
                             </div>
                         </div>
                     </div>
@@ -258,251 +258,207 @@ export default function ProductDetailsPage() {
             </div>
 
         {/* PRODUCT PERFORMANCE STATS */}
-        <div className="card bg-white shadow-lg mb-8 border border-gray-200">
-            <div className="card-body p-6">
-                
-                {/* Header & Controls */}
-                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
-                        </svg>
-                        Performance Metrics
-                    </h3>
-                    
-                    <div className="flex items-center gap-3 bg-gray-50 p-2 px-3 rounded-lg border border-gray-100 shadow-sm">
-                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Period:</span>
-                        <input 
-                            type="date" 
-                            className="input input-xs input-ghost focus:bg-white text-gray-600 font-mono w-32"
-                            value={statsDateRange.start}
-                            onChange={(e) => setStatsDateRange(prev => ({ ...prev, start: e.target.value }))}
-                        />
-                        <span className="text-gray-300">→</span>
-                        <input 
-                            type="date" 
-                            className="input input-xs input-ghost focus:bg-white text-gray-600 font-mono w-32"
-                            value={statsDateRange.end}
-                            onChange={(e) => setStatsDateRange(prev => ({ ...prev, end: e.target.value }))}
-                        />
-                        {statsLoading && <span className="loading loading-dots loading-xs text-primary ml-2"></span>}
-                    </div>
+        <div className="space-y-6 mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 className="text-xl font-bold text-slate-800">Performance Metrics</h3>
+                    <p className="text-xs text-slate-500 font-medium">Reconciliation flow for the selected period</p>
                 </div>
+                
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 px-3 shadow-sm">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Period:</span>
+                    <input 
+                        type="date" 
+                        className="bg-transparent text-xs font-bold text-slate-600 outline-none border-none p-0 w-28"
+                        value={statsDateRange.start}
+                        onChange={(e) => setStatsDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    />
+                    <span className="text-slate-300 mx-1">—</span>
+                    <input 
+                        type="date" 
+                        className="bg-transparent text-xs font-bold text-slate-600 outline-none border-none p-0 w-28"
+                        value={statsDateRange.end}
+                        onChange={(e) => setStatsDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    />
+                    {statsLoading && <span className="loading loading-dots loading-xs text-primary ml-2"></span>}
+                </div>
+            </div>
 
-                <div className="space-y-6">
-                    {/* 1. Financial KPI Cards */}
-                    <div className={`grid grid-cols-1 ${SHOW_PROFIT_MARGIN ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
-                        {/* Revenue */}
+            {/* Reconciliation Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[
+                    { label: "Beginning Inv", qty: statsData.beginning.qty, val: statsData.beginning.val },
+                    { label: "Total Inflow", qty: statsData.inflow.qty, val: statsData.inflow.val },
+                    { label: "Net Outflow", qty: statsData.outflow.qty, val: statsData.outflow.val },
+                    { label: "Ending Inv", qty: statsData.ending.qty, val: statsData.ending.val, active: true },
+                ].map((box, i) => (
+                    <div key={i} className={`p-5 rounded-xl border ${box.active ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:border-slate-300'} transition-all`}>
+                        <div className={`text-[10px] font-black uppercase tracking-widest mb-3 ${box.active ? 'text-slate-400' : 'text-slate-400'}`}>
+                            {box.label}
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className={`text-3xl font-bold tracking-tighter ${!box.active ? 'text-slate-800' : ''}`}>{box.qty.toLocaleString()}</span>
+                            <span className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Units</span>
+                        </div>
                         {SHOW_PROFIT_MARGIN && (
-                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Total Revenue - Returns Refunds">
-                                <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Net Sales Revenue</div>
-                                <div className="stat-value text-primary text-2xl">₱{statsData.outflow.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                                <div className="stat-desc text-[10px] text-gray-400 mt-1">Gross Sales minus Returns</div>
-                            </div>
-                        )}
-
-                        {/* Outflow Cost */}
-                        {SHOW_PROFIT_MARGIN && (
-                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Sum of (Qty × Unit Cost) for Sales + Pull Outs">
-                                <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Net COGS</div>
-                                <div className="stat-value text-gray-700 text-2xl">₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                                <div className="stat-desc text-[10px] text-gray-400 mt-1">Cost of Goods Sold minus Cost of Returns</div>
-                            </div>
-                        )}
-
-                        {/* Profit (HIDDEN BY DEFAULT) */}
-                        {SHOW_PROFIT_MARGIN && (
-                            <div className="stat bg-white shadow-sm border border-gray-100 rounded-lg py-3" title="Revenue - Outflow Cost">
-                                <div className="stat-title font-bold text-gray-400 uppercase text-[10px] tracking-wider">Est. Gross Profit</div>
-                                <div className={`stat-value text-2xl ${(statsData.outflow.revenue - statsData.outflow.val) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    ₱{(statsData.outflow.revenue - statsData.outflow.val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>
-                                <div className="stat-desc text-[10px] text-gray-400 mt-1">Net Margin for Period</div>
+                            <div className={`mt-4 pt-3 border-t font-mono text-xs ${box.active ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                                ₱ {box.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </div>
                         )}
                     </div>
+                ))}
+            </div>
 
-                    {/* 2. Inventory Flow (4 Boxes) */}
-                    <div>
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Inventory Reconciliation Flow</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            
-                            {/* Beginning */}
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Starting Stock">
-                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Beginning Inv</div>
-                                <div className="text-xl font-bold text-gray-700">{statsData.beginning.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
-                                    Est: ₱{statsData.beginning.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>}
-                            </div>
-
-                            {/* Inflow */}
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Receiving">
-                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
-                                <div className="text-xl font-bold text-gray-700">{statsData.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
-                                    Purchases / Receiving Only (Returns excluded)
-                                </div>
-                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
-                                    Cost: ₱{statsData.inflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>}
-                            </div>
-
-                            {/* Outflow */}
-                            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Issuance + Pull Outs">
-                                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Net Outflow</div>
-                                <div className="text-xl font-bold text-gray-700">{statsData.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                <div className="text-[9px] text-gray-400 mt-1 italic">
-                                    Sales + Pull Outs - Returns
-                                </div>
-                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">
-                                    Cost: ₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>}
-                            </div>
-
-                            {/* Ending */}
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm" title="Final Stock for Period">
-                                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wider">Ending Inv</div>
-                                <div className="text-xl font-bold text-gray-900">{statsData.ending.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                                {SHOW_PROFIT_MARGIN && <div className="text-[10px] font-mono mt-1 text-gray-600 border-t border-gray-200 pt-1">
-                                    Val: ₱{statsData.ending.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </div>}
-                            </div>
-
+            {/* Financial Performance (Only if Margin is ON) */}
+            {SHOW_PROFIT_MARGIN && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Net Sales Revenue</div>
+                        <div className="text-xl font-bold text-indigo-600 font-mono">₱{statsData.outflow.revenue.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cost of Goods Sold</div>
+                        <div className="text-xl font-bold text-slate-700 font-mono">₱{statsData.outflow.val.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Est. Gross Profit</div>
+                        <div className={`text-xl font-bold font-mono ${(statsData.outflow.revenue - statsData.outflow.val) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            ₱{(statsData.outflow.revenue - statsData.outflow.val).toLocaleString(undefined, {minimumFractionDigits: 2})}
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
 
         {/* AUDIT TRAIL TABLE */}
-        <div className="card bg-white shadow-lg">
+        <div className="card bg-white shadow-xl border border-slate-200 overflow-hidden">
              <div className="card-body p-0">
-                <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-gray-700">Audit Trail (Transaction History)</h2>
-                    <span className="text-xs text-gray-500">Total Records: {totalCount}</span>
+                <div className="p-5 border-b flex justify-between items-center bg-white">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">Audit Trail</h2>
+                        <p className="text-xs text-slate-500 font-medium">Historical transaction logs for this item</p>
+                    </div>
+                    <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                        Total Records: {totalCount}
+                    </span>
                 </div>
-                <div className="overflow-x-auto min-h-[400px]">
-                    <table className="table w-full text-sm">
-                        <thead className="bg-gray-100 text-gray-600">
-                            <tr>
-                                <th>Date / Reference</th>
-                                <th>Activity Type</th>
-                                <th>Entity / Details</th>
-                                <th className="text-right">Cost Snapshot</th>
-                                <th className="text-right">Price Snapshot</th>
-                                <th className="text-center">Qty Change</th>
-                                <th className="text-center">Stock Balance</th>
-                                <th className="text-right">Encoded By</th>
+                <div className="overflow-x-auto min-h-[450px]">
+                    <table className="table w-full">
+                        <thead>
+                            <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                                <th className="bg-slate-50/80">Date / Reference</th>
+                                <th className="bg-slate-50/80">Activity Type</th>
+                                <th className="bg-slate-50/80">Entity / Details</th>
+                                <th className="text-right bg-slate-50/80">Cost</th>
+                                <th className="text-right bg-slate-50/80">Price</th>
+                                <th className="text-center bg-slate-50/80">Qty Change</th>
+                                <th className="text-center bg-slate-50/80">Balance</th>
+                                <th className="text-right bg-slate-50/80">Encoder</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-100">
                             {tableLoading ? (
-                                <tr><td colSpan="8" className="text-center py-10"><span className="loading loading-spinner loading-md"></span> Loading records...</td></tr>
+                                <tr><td colSpan="8" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                             ) : history.length === 0 ? (
-                                <tr><td colSpan="8" className="text-center py-8 text-gray-400">No transactions found for this item.</td></tr>
+                                <tr><td colSpan="8" className="text-center py-12 text-slate-400 font-medium">No transactions found for this item.</td></tr>
                             ) : (
                                 history.map((tx) => {
                                     const isIncoming = tx.type === 'RECEIVING' || tx.type === 'ISSUANCE_RETURN';
                                     
                                     return (
-                                        <tr key={tx.id} className={`hover transition-colors border-b border-gray-50 ${tx.is_voided ? 'bg-gray-50 opacity-60 grayscale' : ''}`}>
+                                        <tr key={tx.id} className={`hover:bg-slate-50/50 transition-colors group ${tx.is_voided ? 'opacity-40 grayscale italic bg-slate-50' : ''}`}>
                                             
                                             {/* 1. Date & Ref */}
-                                            <td className="align-top py-3">
-                                                <div className="font-mono font-bold text-xs">{tx.reference_number}</div>
-                                                <div className="text-[10px] text-gray-500">
-                                                    {new Date(tx.timestamp).toLocaleDateString()}
+                                            <td className="py-4">
+                                                <div className="font-mono font-bold text-[11px] text-indigo-600">{tx.reference_number}</div>
+                                                <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
+                                                    {new Date(tx.timestamp).toLocaleDateString()} • {new Date(tx.timestamp).toLocaleTimeString()}
                                                 </div>
-                                                <div className="text-[10px] text-gray-400">
-                                                    {new Date(tx.timestamp).toLocaleTimeString()}
-                                                </div>
-                                                {tx.is_voided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
+                                                {tx.is_voided && <span className="badge badge-error badge-xs font-bold text-[8px] mt-1">VOIDED</span>}
                                             </td>
 
-                                            {/* ... (Rest of table row remains exactly the same as your file) ... */}
                                             {/* 2. Type */}
-                                            <td className="align-top py-3">
-                                                <div className={`badge badge-sm border-0 font-bold 
+                                            <td>
+                                                <div className={`badge badge-sm border-0 font-bold text-[10px] px-2
                                                     ${tx.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
                                                     tx.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
                                                     tx.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
                                                     tx.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
-                                                    'bg-gray-100 text-gray-800'}`}>
+                                                    'bg-slate-100 text-slate-800'}`}>
                                                     {tx.type.replace('_', ' ')}
                                                 </div>
                                                 {tx.transaction_mode && (
-                                                    <div className="text-[10px] mt-1 font-semibold text-gray-400 uppercase">
+                                                    <div className="text-[9px] mt-1 font-black text-slate-400 uppercase tracking-tighter">
                                                         {tx.transaction_mode}
                                                     </div>
                                                 )}
                                             </td>
 
                                             {/* 3. Entity (Student/Supplier) */}
-                                            <td className="align-top py-3">
+                                            <td>
                                                 {tx.student_name ? (
                                                     <div>
-                                                        <div className="font-bold text-xs text-gray-700">{tx.student_name}</div>
-                                                        <div className="text-[10px] text-gray-500 mt-0.5">
-                                                            {tx.student_id && <span className="font-mono text-gray-400 mr-1">{tx.student_id} •</span>}
-                                                            {tx.course} {tx.year_level}
+                                                        <div className="font-bold text-xs text-slate-700">{tx.student_name}</div>
+                                                        <div className="text-[10px] text-slate-400">
+                                                            {tx.student_id && <span className="font-mono mr-1">{tx.student_id} •</span>}
+                                                            {tx.course}
                                                         </div>
                                                     </div>
                                                 ) : tx.supplier ? (
                                                     <div>
-                                                        <span className="text-[9px] text-gray-400 uppercase">Supplier:</span>
-                                                        <div className="font-bold text-gray-700 text-xs">{tx.supplier}</div>
+                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Supplier</span>
+                                                        <div className="font-bold text-slate-700 text-xs">{tx.supplier}</div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-400 italic text-xs">N/A</span>
+                                                    <span className="text-slate-300 italic text-[10px]">N/A</span>
                                                 )}
                                                 {tx.remarks && (
-                                                    <div className="mt-2 text-[10px] text-orange-600 bg-orange-50 inline-block px-1.5 py-0.5 rounded border border-orange-100">
+                                                    <div className="mt-1 text-[10px] text-amber-600 font-medium truncate max-w-[150px]" title={tx.remarks}>
                                                         Note: {tx.remarks}
                                                     </div>
                                                 )}
                                             </td>
 
                                             {/* 4. Cost Snapshot */}
-                                            <td className="text-right font-mono align-top py-3 text-orange-700">
-                                                {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString()}` : '-'}
+                                            <td className="text-right font-mono text-xs text-slate-500">
+                                                {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
 
                                             {/* 5. Price Snapshot */}
-                                            <td className="text-right font-mono align-top py-3 text-gray-600">
-                                                {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString()}` : '-'}
+                                            <td className="text-right font-mono text-xs font-semibold text-slate-700">
+                                                {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
 
                                             {/* 6. Qty Change */}
-                                            <td className="text-center align-top py-3">
-                                                <span className={`font-bold text-lg ${isIncoming ? 'text-green-600' : 'text-red-600'}`}>
+                                            <td className="text-center">
+                                                <span className={`font-black text-base tracking-tighter ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     {isIncoming ? '+' : '-'}{tx.qty}
                                                 </span>
                                             </td>
 
                                             {/* 7. Stock Balance Snapshot */}
-                                            <td className="text-center align-top py-3">
+                                            <td className="text-center">
                                                 <div className="flex flex-col items-center">
-                                                    <span className="font-bold text-gray-700">{tx.new_stock}</span>
-                                                    <span className="text-[9px] text-gray-400">prev: {tx.previous_stock}</span>
+                                                    <span className="font-bold text-slate-700 text-sm">{tx.new_stock}</span>
+                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Prev: {tx.previous_stock}</span>
                                                 </div>
                                             </td>
 
                                             {/* 8. Staff & Void Details */}
-                                            <td className="text-right align-top py-3">
-                                                <div className="text-xs font-semibold text-gray-600">{tx.staff_name}</div>
+                                            <td className="text-right">
+                                                <div className="text-[11px] font-bold text-slate-600">{tx.staff_name}</div>
                                                 
                                                 {tx.is_voided && tx.void_details && (
-                                                    <div className="mt-2 pt-1 border-t border-red-200 flex flex-col items-end">
-                                                        <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
-                                                        <div className="text-[10px] text-red-700 font-medium">
+                                                    <div className="mt-2 pt-1 border-t border-rose-100 flex flex-col items-end">
+                                                        <span className="text-[8px] text-rose-500 font-black uppercase tracking-widest">Voided By</span>
+                                                        <div className="text-[10px] text-rose-700 font-bold leading-tight">
                                                             {tx.void_details.who}
                                                         </div>
-                                                        <div className="text-[9px] text-red-400 flex flex-col items-end">
+                                                        <div className="text-[9px] text-rose-400 flex flex-col items-end">
                                                             <span>{new Date(tx.void_details.when).toLocaleDateString()}</span>
                                                             <span>{new Date(tx.void_details.when).toLocaleTimeString()}</span>
                                                         </div>
-                                                        <div className="text-[9px] text-red-600 italic mt-0.5 max-w-[120px] text-right">
+                                                        <div className="text-[9px] text-rose-600 italic mt-0.5 max-w-[120px] truncate" title={tx.void_details.reason}>
                                                             "{tx.void_details.reason}"
                                                         </div>
                                                     </div>
@@ -516,27 +472,32 @@ export default function ProductDetailsPage() {
                         </tbody>
                     </table>
                 </div>
+                 
                  {/* PAGINATION FOOTER */}
-                 <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-gray-50 gap-4 rounded-b-lg">
-                    <div className="text-xs text-gray-500">
+                 <div className="p-4 border-t flex flex-col sm:flex-row justify-between items-center bg-white rounded-b-xl gap-4">
+                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
                         {totalCount > 0 
-                        ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                        ? `${totalCount} Records Found`
                         : "No records found"}
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button 
-                            className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
+                            className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-200"
                             disabled={currentPage === 1 || tableLoading}
                             onClick={() => {
-                                setCurrentPage(p => p - 1);
-                                setJumpPage(p => p - 1);
+                                const p = currentPage - 1;
+                                setCurrentPage(p);
+                                setJumpPage(p);
                             }}
                         >
-                            « Prev
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                            </svg>
                         </button>
                         
-                        <div className="flex items-center gap-1 mx-2">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page</span>
                             <input 
                                 type="number" 
                                 min="1" 
@@ -547,25 +508,26 @@ export default function ProductDetailsPage() {
                                     if (e.key === 'Enter') {
                                         let p = parseInt(jumpPage);
                                         const max = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-                                        if (p > 0 && p <= max) {
-                                            setCurrentPage(p);
-                                        }
+                                        if (p > 0 && p <= max) setCurrentPage(p);
                                     }
                                 }}
-                                className="input input-sm input-bordered w-16 text-center"
+                                className="w-8 bg-transparent text-center font-bold text-xs text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
-                            <span className="text-sm">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
+                            <span className="text-xs font-bold text-slate-400">/ {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
                         </div>
 
                         <button 
-                            className="btn btn-sm btn-outline bg-white hover:bg-gray-100"
+                            className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-200"
                             disabled={currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE) || tableLoading}
                             onClick={() => {
-                                setCurrentPage(p => p + 1);
-                                setJumpPage(p => p + 1);
+                                const p = currentPage + 1;
+                                setCurrentPage(p);
+                                setJumpPage(p);
                             }}
                         >
-                            Next »
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                            </svg>
                         </button>
                     </div>
                 </div>
