@@ -267,15 +267,21 @@ export default function TransactionsManager() {
       <div className="card-body p-6">
         
         {/* HEADER & FILTERS */}
-        <div className="flex flex-col gap-4 mb-6 border-b pb-4">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-800">Transaction Ledger</h2>
-                <p className="text-sm text-gray-500">View and audit all inventory movements</p>
+        <div className="p-5 border-b flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+          <div className="flex flex-col lg:flex-row items-center gap-4 w-full xl:w-auto">
+            <div className="text-center lg:text-left">
+              <h2 className="text-xl font-bold text-slate-800">Transaction Ledger</h2>
+              <p className="text-xs text-slate-500 font-medium whitespace-nowrap">View and audit all inventory movements</p>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-2">
+
+            {/* Filter Controls Group */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                 {/* Date Filter */}
-                <select className="select select-sm select-bordered" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
+                <select 
+                  className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
+                  value={dateFilter} 
+                  onChange={e => setDateFilter(e.target.value)}
+                >
                     <option value="TODAY">Today</option>
                     <option value="7DAYS">Last 7 Days</option>
                     <option value="30DAYS">Last 30 Days</option>
@@ -283,7 +289,11 @@ export default function TransactionsManager() {
                 </select>
 
                 {/* Type Filter */}
-                <select className="select select-sm select-bordered" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setModeFilter("ALL"); }}>
+                <select 
+                  className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
+                  value={typeFilter} 
+                  onChange={e => { setTypeFilter(e.target.value); setModeFilter("ALL"); }}
+                >
                     <option value="ALL">All Types</option>
                     <option value="ISSUANCE">Issuance</option>
                     <option value="RECEIVING">Receiving</option>
@@ -293,7 +303,11 @@ export default function TransactionsManager() {
 
                 {/* Mode Filter */}
                 {(typeFilter === "ALL" || typeFilter === "ISSUANCE") && (
-                     <select className="select select-sm select-bordered" value={modeFilter} onChange={e => setModeFilter(e.target.value)}>
+                     <select 
+                      className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
+                      value={modeFilter} 
+                      onChange={e => setModeFilter(e.target.value)}
+                    >
                         <option value="ALL">All Modes</option>
                         <option value="CASH">Cash</option>
                         <option value="CHARGED">Charged</option>
@@ -302,34 +316,42 @@ export default function TransactionsManager() {
                     </select>
                 )}
 
-                {/* Export Button - Restricted to SUPER_ADMIN */}
+                {/* Export Button */}
                 {userRole === 'SUPER_ADMIN' && (
                     <button 
                         onClick={handleExport} 
                         disabled={isExporting || totalCount === 0}
-                        className="btn btn-sm btn-outline btn-success gap-2"
+                        className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50 gap-2"
                         title="Download as Excel"
                     >
                         {isExporting ? (
                             <span className="loading loading-spinner loading-xs"></span>
                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-600">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                             </svg>
                         )}
                         Export
                     </button>
                 )}
-                
-                {/* Search - Pushed to the right on larger screens */}
-                <input 
-                    type="text" 
-                    placeholder="Search Name, ID or Supplier..." 
-                    className="input input-sm input-bordered w-full sm:w-64 sm:ml-auto"
-                    value={localSearch}
-                    onChange={e => setLocalSearch(e.target.value)}
-                />
             </div>
+          </div>
+
+          {/* Search Input Container */}
+          <div className="relative w-full md:w-72">
+             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+             </div>
+             <input 
+              type="text" 
+              placeholder="Search Name, ID or Supplier..." 
+              className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+              value={localSearch}
+              onChange={e => setLocalSearch(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* DETAILED TABLE */}

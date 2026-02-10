@@ -898,7 +898,8 @@ export default function InventoryTable({ lastUpdated }) {
                     type="file" 
                     accept=".csv"
                     onChange={handleCSVImport}
-                    className="file-input file-input-bordered file-input-primary w-full" 
+                    className="file-input file-input-bordered w-full file-input-sm 
+                               file:bg-blue-600 file:text-white file:border-none hover:file:bg-blue-700 transition-all" 
                 />
 
                 <div className="modal-action">

@@ -327,56 +327,60 @@ export default function StudentPage() {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
             {/* Header */}
-            <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-t-xl gap-4">
-                <div className="flex items-center gap-2">
-                    <h2 className="card-title text-xl text-gray-700">Enrollment Summary</h2>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
-                        {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                            <>
-                                <button 
-                                    onClick={handleDownloadTemplate}
-                                    className="btn btn-sm btn-outline btn-info gap-2"
-                                    title="Download CSV Template"
-                                >
-                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                    </svg>
-                                    Template
-                                </button>
-
-                                <button 
-                                    onClick={() => setIsImportModalOpen(true)}
-                                    className="btn btn-sm btn-outline btn-success gap-2"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                    </svg>
-                                    Import CSV
-                                </button>
-                                
-                                <button 
-                                    onClick={() => setShowCourseModal(true)}
-                                    className="btn btn-sm btn-outline gap-2"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                        <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                                    </svg>
-                                    Courses
-                                </button>
-                            </>
-                        )}
-                    </div>
+            <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div>
+                      <h2 className="text-xl font-bold text-slate-800">Enrollment Summary</h2>
+                      <p className="text-xs text-slate-500 font-medium">Database of registered students for transaction billing</p>
+                  </div>
+                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={handleDownloadTemplate}
+                                className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
+                                title="Download CSV Template"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                Template
+                            </button>
+                            <button 
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="btn btn-sm btn-primary px-4 normal-case"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                </svg>
+                                Import CSV
+                            </button>
+                            <button 
+                                onClick={() => setShowCourseModal(true)}
+                                className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
+                                    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                                </svg>
+                                Courses
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                <input 
-                    type="text" 
-                    placeholder="Search Name or ID..." 
-                    className="input input-bordered input-sm w-full max-w-xs bg-white"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <div className="relative w-full md:w-72">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="Search Name or ID..." 
+                        className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
 
             {/* Table */}
@@ -393,31 +397,35 @@ export default function StudentPage() {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-10">Loading Data...</td></tr>
+                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-12 text-slate-400 font-medium">Loading Data...</td></tr>
                         ) : students.length === 0 ? (
-                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-10 text-gray-400">No students found.</td></tr>
+                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-12 text-slate-400 font-medium">No students found.</td></tr>
                         ) : (
                             students.map(s => (
-                                <tr key={s.id || s.student_id} className="hover">
-                                    <td className="font-mono font-bold text-gray-500">{s.student_id}</td>
-                                    <td className="font-semibold text-gray-700">{s.name}</td>
+                                <tr key={s.id || s.student_id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <td className="font-mono font-bold text-[11px] text-slate-500">{s.student_id}</td>
+                                    <td className="font-semibold text-slate-700">{s.name}</td>
                                     <td>
-                                        <span className="badge badge-ghost badge-sm">{s.course || "N/A"}</span>
+                                        <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-slate-500 whitespace-normal break-all leading-tight">
+                                            {s.course || "N/A"}
+                                        </span>
                                     </td>
                                     <td>
-                                        {s.year_level ? <span className="badge badge-outline badge-sm">{s.year_level}</span> : "-"}
+                                        {s.year_level ? <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter border border-slate-200 px-1.5 py-0.5 rounded">{s.year_level}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                                         <td className="text-right">
-                                            <button 
-                                                onClick={() => handleEditClick(s)}
-                                                className="btn btn-square btn-xs btn-ghost text-blue-500"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                                    <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                                                    <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                                                </svg>
-                                            </button>
+                                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => handleEditClick(s)}
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors tooltip tooltip-left"
+                                                    data-tip="Edit Student"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </td>
                                     )}
                                 </tr>
@@ -599,7 +607,8 @@ export default function StudentPage() {
                     type="file" 
                     accept=".csv"
                     onChange={handleStudentImport}
-                    className="file-input file-input-bordered file-input-primary w-full" 
+                    className="file-input file-input-bordered w-full file-input-sm 
+                               file:bg-blue-600 file:text-white file:border-none hover:file:bg-blue-700 transition-all" 
                 />
 
                 <div className="modal-action">
