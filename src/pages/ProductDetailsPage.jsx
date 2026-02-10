@@ -138,37 +138,45 @@ export default function ProductDetailsPage() {
 
       let combinedData = [...(txs || [])];
 
-      // Enrich with Staff Names
-      const userIds = [...new Set(combinedData.map(t => t.user_id).filter(Boolean))];
-      let userMap = {};
-      if (userIds.length > 0) {
-        const { data: users } = await supabase
-          .from('authorized_users')
-          .select('auth_uid, full_name, email')
-          .in('auth_uid', userIds);
-        users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
-      }
-
-      // Fetch void details for original rows that were voided 
-      // (even if the VOID row is on a different page)
+      // 1. Fetch void details FIRST so we can get the User IDs of the people who voided items
       const voidedRefs = combinedData.filter(t => t.is_voided).map(t => t.reference_number);
-      let voidDetailMap = {};
+      let voidRows = [];
       if (voidedRefs.length > 0) {
-        const { data: voidRows } = await supabase
+        const { data: vRows } = await supabase
           .from('transactions')
           .select('*')
           .eq('type', 'VOID')
           .in('reference_number', voidedRefs);
-        
-        voidRows?.forEach(v => {
-          voidDetailMap[v.reference_number] = {
-            reason: v.void_reason,
-            who: userMap[v.user_id] || v.user_id,
-            when: v.timestamp
-          };
-        });
+        voidRows = vRows || [];
       }
 
+      // 2. Collect ALL unique User IDs (from main rows AND void rows)
+      const allUserIds = new Set([
+        ...combinedData.map(t => t.user_id),
+        ...voidRows.map(v => v.user_id)
+      ].filter(Boolean));
+
+      // 3. Fetch Staff Names for EVERYONE found
+      let userMap = {};
+      if (allUserIds.size > 0) {
+        const { data: users } = await supabase
+          .from('authorized_users')
+          .select('auth_uid, full_name, email')
+          .in('auth_uid', Array.from(allUserIds));
+        users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
+      }
+
+      // 4. Map Void Details using the populated userMap
+      let voidDetailMap = {};
+      voidRows.forEach(v => {
+        voidDetailMap[v.reference_number] = {
+          reason: v.void_reason,
+          who: userMap[v.user_id] || 'Unknown Staff', // Should now resolve correctly
+          when: v.timestamp
+        };
+      });
+
+      // 5. Enrich the main data
       const enriched = combinedData.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown',
