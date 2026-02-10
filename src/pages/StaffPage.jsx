@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import AdminInvite from "../components/AdminInvite";
+import Sidebar from "../components/Sidebar";
 
 export default function StaffPage() {
   const { userRole, currentUser } = useAuth();
@@ -240,14 +241,19 @@ export default function StaffPage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-10">
-      <Navbar />
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      <Sidebar />
       
-      <main className="container mx-auto px-4 max-w-7xl">
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-            
-            {/* LEFT: Invite Form */}
-            <div className="w-full lg:w-1/4 sticky top-6">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
+                <p className="text-sm text-slate-500">Manage user roles, access status, and system permissions.</p>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+                {/* LEFT: Invite Form */}
+                <div className="w-full lg:w-1/4 lg:sticky lg:top-0">
                 <AdminInvite onSuccess={() => setRefreshTrigger(prev => prev + 1)} />
                 <div className="mt-4 p-4 text-xs text-gray-500 bg-white rounded-lg shadow border">
                     <p className="font-bold text-gray-700">Privilege Levels:</p>
@@ -272,7 +278,7 @@ export default function StaffPage() {
             </div>
 
             {/* RIGHT: User List */}
-            <div className="w-full lg:w-3/4 card bg-base-100 shadow-xl">
+            <div className="w-full lg:w-3/4 card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
                 <div className="p-4 border-b">
                     <h2 className="card-title text-gray-700">Authorized Personnel ({staff.length})</h2>
                 </div>
@@ -410,6 +416,7 @@ export default function StaffPage() {
                     </table>
                 </div>
             </div>
+        </div>
         </div>
       </main>
     </div>

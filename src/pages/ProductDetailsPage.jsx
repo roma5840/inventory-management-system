@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
+import Sidebar from "../components/Sidebar";
 
 export default function ProductDetailsPage() {
   // --- CONFIG: TEMPORARILY SET TO FALSE TO HIDE PROFIT/MARGIN ---
@@ -209,48 +210,53 @@ export default function ProductDetailsPage() {
   if (!product) return <div className="p-10 text-center">Product not found.</div>;
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-10">
-      <Navbar />
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      <Sidebar />
       
-      <main className="container mx-auto px-4 mt-6">
-        <button onClick={() => navigate(-1)} className="btn btn-sm btn-ghost gap-2 mb-4 text-gray-500">
-            ← Back to Dashboard
-        </button>
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+            <div>
+                <button onClick={() => navigate(-1)} className="btn btn-sm btn-ghost gap-2 mb-4 text-slate-500 hover:bg-slate-200">
+                    ← Back to Dashboard
+                </button>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Product Audit Trail</h1>
+                <p className="text-sm text-slate-500">Detailed historical movements and performance for this item.</p>
+            </div>
 
-        {/* HEADER CARD: MASTER DATA */}
-        <div className="card bg-white shadow-lg border-t-4 border-primary mb-8">
-            <div className="card-body">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
-                            {product.accpac_code && <span className="badge badge-primary badge-outline">{product.accpac_code}</span>}
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-500 font-mono">
-                            <span className="bg-gray-100 px-2 py-1 rounded">BARCODE: {product.barcode}</span>
-                            <span>LOC: {product.location || "N/A"}</span>
-                        </div>
-                    </div>
-
-                   <div className="stats shadow bg-slate-50 border border-slate-200">
-                        <div className="stat place-items-center">
-                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Current Stock</div>
-                            <div className={`stat-value text-2xl ${product.current_stock <= product.min_stock_level ? 'text-red-600' : 'text-gray-700'}`}>
-                                {product.current_stock}
+            {/* HEADER CARD: MASTER DATA */}
+            <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="card-body p-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h2 className="text-2xl font-bold text-slate-800">{product.name}</h2>
+                                {product.accpac_code && <span className="badge badge-primary badge-outline">{product.accpac_code}</span>}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-slate-500 font-mono">
+                                <span className="bg-slate-100 px-2 py-1 rounded">BARCODE: {product.barcode}</span>
+                                <span>LOC: {product.location || "N/A"}</span>
                             </div>
                         </div>
-                        <div className="stat place-items-center">
-                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Cost</div>
-                            <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
-                        </div>
-                        <div className="stat place-items-center">
-                            <div className="stat-title text-xs uppercase font-bold text-gray-400">Unit Price</div>
-                            <div className="stat-value text-xl text-primary">₱{product.price.toLocaleString()}</div>
+
+                        <div className="stats shadow-none bg-slate-50 border border-slate-200 rounded-xl">
+                            <div className="stat place-items-center">
+                                <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Current Stock</div>
+                                <div className={`stat-value text-2xl ${product.current_stock <= product.min_stock_level ? 'text-rose-600' : 'text-slate-700'}`}>
+                                    {product.current_stock}
+                                </div>
+                            </div>
+                            <div className="stat place-items-center">
+                                <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Unit Cost</div>
+                                <div className="stat-value text-xl text-orange-600">₱{product.unit_cost?.toLocaleString() || 0}</div>
+                            </div>
+                            <div className="stat place-items-center">
+                                <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Unit Price</div>
+                                <div className="stat-value text-xl text-indigo-600">₱{product.price.toLocaleString()}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
         {/* PRODUCT PERFORMANCE STATS */}
         <div className="card bg-white shadow-lg mb-8 border border-gray-200">
@@ -565,7 +571,8 @@ export default function ProductDetailsPage() {
                     </div>
                 </div>
              </div>
-        </div>
+         </div>
+       </div>
       </main>
     </div>
   );

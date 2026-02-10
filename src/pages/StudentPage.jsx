@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
 import Papa from "papaparse"; // Import CSV Parser
+import Sidebar from "../components/Sidebar";
 
 export default function StudentPage() {
   const { userRole } = useAuth();
@@ -330,11 +331,18 @@ export default function StudentPage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-10">
-      <Navbar />
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      <Sidebar />
       
-      <main className="container mx-auto px-4 max-w-5xl">
-        <div className="card bg-base-100 shadow-xl">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Students & Enrollment</h1>
+                <p className="text-sm text-slate-500">Database of registered students for transaction billing.</p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+
             {/* Header */}
             <div className="p-4 border-b flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-t-xl gap-4">
                 <div className="flex items-center gap-2">
@@ -487,6 +495,7 @@ export default function StudentPage() {
                  </button>
                </div>
             </div>
+          </div>
         </div>
       </main>
 

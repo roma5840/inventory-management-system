@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
+import Sidebar from "../components/Sidebar";
 
 export default function SupplierPage() {
   const [suppliers, setSuppliers] = useState([]);
@@ -142,14 +143,18 @@ export default function SupplierPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-10">
-      <Navbar />
-      <main className="container mx-auto px-4 max-w-4xl">
-        <div className="card bg-base-100 shadow-xl">
-            <div className="p-4 border-b bg-gray-50 rounded-t-xl">
-                <h2 className="card-title text-xl text-gray-700">Manage Suppliers</h2>
-                <p className="text-xs text-gray-500">Add suppliers here to see them in the autocomplete list during Receiving/Pull-out.</p>
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      <Sidebar />
+      
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        <div className="p-8 space-y-8 max-w-[1200px] mx-auto w-full">
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Suppliers</h1>
+                <p className="text-sm text-slate-500">Manage vendor profiles for inventory receiving and procurement.</p>
             </div>
+
+            <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+
 
             {/* Add Form */}
             <div className="p-6 bg-white border-b">
@@ -290,6 +295,7 @@ export default function SupplierPage() {
                         Next »
                     </button>
                 </div>
+            </div>
             </div>
         </div>
       </main>
