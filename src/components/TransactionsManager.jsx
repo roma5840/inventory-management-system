@@ -16,7 +16,6 @@ export default function TransactionsManager() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [jumpPage, setJumpPage] = useState(1); // For the manual input
   const ITEMS_PER_PAGE = 20;
   
   // Export State

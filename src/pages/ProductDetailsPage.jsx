@@ -37,7 +37,6 @@ export default function ProductDetailsPage() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [jumpPage, setJumpPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
   const [statsDateRange, setStatsDateRange] = useState({

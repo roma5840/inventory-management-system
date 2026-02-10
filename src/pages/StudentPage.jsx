@@ -16,7 +16,6 @@ export default function StudentPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 30;
   const [totalCount, setTotalCount] = useState(0);
-  const [jumpPage, setJumpPage] = useState(1);
 
   // Edit State
   const [editingStudent, setEditingStudent] = useState(null);

@@ -16,9 +16,6 @@ export default function InventoryTable({ lastUpdated }) {
   // Pagination State
   const ITEMS_PER_PAGE = 20;
   const [currentPage, setCurrentPage] = useState(1);
-  const [jumpPage, setJumpPage] = useState(1);
-  const [pageStack, setPageStack] = useState([]); 
-  const [lastVisible, setLastVisible] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
 
   // Edit Modal State
@@ -181,22 +178,6 @@ export default function InventoryTable({ lastUpdated }) {
         supabase.removeChannel(channel);
     };
   }, [debouncedTerm, currentPage, lastUpdated]);
-
-  useEffect(() => {
-    setJumpPage(currentPage);
-  }, [currentPage]);
-
-
-const handleNext = () => {
-    // Prevent going next if we have reached the total count
-    if (currentPage * ITEMS_PER_PAGE >= totalCount) return;
-    setCurrentPage(prev => prev + 1);
-  };
-
-  const handlePrev = () => {
-    if (currentPage === 1) return;
-    setCurrentPage(prev => prev - 1);
-  };
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value); 

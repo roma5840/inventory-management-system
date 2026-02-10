@@ -19,7 +19,6 @@ export default function SupplierPage() {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [jumpPage, setJumpPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
   const fetchSuppliers = async () => {
