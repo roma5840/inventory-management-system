@@ -338,9 +338,6 @@ export default function ProductDetailsPage() {
                         <h2 className="text-xl font-bold text-slate-800">Audit Trail</h2>
                         <p className="text-xs text-slate-500 font-medium">Historical transaction logs for this item</p>
                     </div>
-                    <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                        Total Records: {totalCount}
-                    </span>
                 </div>
                 <div className="overflow-x-auto min-h-[450px]">
                     <table className="table w-full">
