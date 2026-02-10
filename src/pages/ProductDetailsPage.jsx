@@ -126,7 +126,6 @@ export default function ProductDetailsPage() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      // 1. Fetch Page Data with Count
       let query = supabase
         .from('transactions')
         .select('*', { count: 'exact' })
@@ -137,34 +136,11 @@ export default function ProductDetailsPage() {
       const { data: txs, count, error: txError } = await query;
       if (txError) throw txError;
 
-      // 2. ORPHAN VOID FIX (From TransactionsManager)
-      // If we have a VOID row but pagination hid the original, fetch it now.
       let combinedData = [...(txs || [])];
-      const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
-      const orphanRefs = [];
 
-      distinctRefs.forEach(ref => {
-          const items = combinedData.filter(t => t.reference_number === ref);
-          const hasOriginal = items.some(t => t.type !== 'VOID');
-          if (!hasOriginal) orphanRefs.push(ref);
-      });
-
-      if (orphanRefs.length > 0) {
-          const { data: originals } = await supabase
-              .from('transactions')
-              .select('*')
-              .in('reference_number', orphanRefs)
-              .neq('type', 'VOID');
-          
-          if (originals?.length > 0) {
-              combinedData = [...combinedData, ...originals];
-          }
-      }
-
-      // 3. Enrich with Staff Names
+      // Enrich with Staff Names
       const userIds = [...new Set(combinedData.map(t => t.user_id).filter(Boolean))];
       let userMap = {};
-      
       if (userIds.length > 0) {
         const { data: users } = await supabase
           .from('authorized_users')
@@ -173,31 +149,34 @@ export default function ProductDetailsPage() {
         users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
       }
 
-      // 4. Process Voids for UI Display
-      const voidRows = combinedData.filter(t => t.type === 'VOID');
-      const displayRows = combinedData.filter(t => t.type !== 'VOID');
-      
-      // Sort desc again to ensure injected orphans are in place (though display logic handles order mostly)
-      displayRows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-      const voidMap = {};
-      voidRows.forEach(v => {
-          voidMap[v.reference_number] = {
-              reason: v.void_reason,
-              who: userMap[v.user_id] || 'Unknown',
-              when: v.timestamp
+      // Fetch void details for original rows that were voided 
+      // (even if the VOID row is on a different page)
+      const voidedRefs = combinedData.filter(t => t.is_voided).map(t => t.reference_number);
+      let voidDetailMap = {};
+      if (voidedRefs.length > 0) {
+        const { data: voidRows } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('type', 'VOID')
+          .in('reference_number', voidedRefs);
+        
+        voidRows?.forEach(v => {
+          voidDetailMap[v.reference_number] = {
+            reason: v.void_reason,
+            who: userMap[v.user_id] || v.user_id,
+            when: v.timestamp
           };
-      });
+        });
+      }
 
-      const enriched = displayRows.map(t => ({
+      const enriched = combinedData.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown',
-        void_details: t.is_voided ? voidMap[t.reference_number] : null
+        void_details: t.is_voided ? voidDetailMap[t.reference_number] : null
       }));
 
       setHistory(enriched);
       setTotalCount(count || 0);
-
     } catch (err) {
       console.error(err);
     } finally {
@@ -360,68 +339,84 @@ export default function ProductDetailsPage() {
                                 <tr><td colSpan="8" className="text-center py-12 text-slate-400 font-medium">No transactions found for this item.</td></tr>
                             ) : (
                                 history.map((tx) => {
-                                    const isIncoming = tx.type === 'RECEIVING' || tx.type === 'ISSUANCE_RETURN';
+                                    // A VOID row adds stock back if it was an issuance, or removes if it was receiving
+                                    const isIncoming = (tx.new_stock > tx.previous_stock);
+                                    const isVoidRow = tx.type === 'VOID';
                                     
                                     return (
-                                        <tr key={tx.id} className={`hover:bg-slate-50/50 transition-colors group ${tx.is_voided ? 'opacity-40 grayscale italic bg-slate-50' : ''}`}>
+                                        <tr key={tx.id} className={`hover:bg-slate-50/50 transition-colors group 
+                                            ${tx.is_voided ? 'opacity-50 grayscale italic bg-slate-50' : ''} 
+                                            ${isVoidRow ? 'bg-amber-50/30' : ''}`}>
                                             
                                             {/* 1. Date & Ref */}
                                             <td className="py-4">
-                                                <div className="font-mono font-bold text-[11px] text-indigo-600">{tx.reference_number}</div>
+                                                <div className={`font-mono font-bold text-[11px] ${isVoidRow ? 'text-amber-700' : 'text-indigo-600'}`}>
+                                                    {tx.reference_number}
+                                                </div>
                                                 <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
                                                     {new Date(tx.timestamp).toLocaleDateString()} • {new Date(tx.timestamp).toLocaleTimeString()}
                                                 </div>
                                                 {tx.is_voided && <span className="badge badge-error badge-xs font-bold text-[8px] mt-1">VOIDED</span>}
+                                                {isVoidRow && <span className="badge badge-warning badge-xs font-bold text-[8px] mt-1">REVERSAL</span>}
                                             </td>
 
                                             {/* 2. Type */}
                                             <td>
                                                 <div className={`badge badge-sm border-0 font-bold text-[10px] px-2
-                                                    ${tx.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
+                                                    ${isVoidRow ? 'bg-amber-600 text-white' : 
+                                                    tx.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
                                                     tx.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
                                                     tx.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
-                                                    tx.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
                                                     'bg-slate-100 text-slate-800'}`}>
                                                     {tx.type.replace('_', ' ')}
                                                 </div>
-                                                {tx.transaction_mode && (
+                                                {tx.transaction_mode && !isVoidRow && (
                                                     <div className="text-[9px] mt-1 font-black text-slate-400 uppercase tracking-tighter">
                                                         {tx.transaction_mode}
                                                     </div>
                                                 )}
                                             </td>
 
-                                            {/* 3. Entity (Student/Supplier) */}
+                                            {/* 3. Entity / Details */}
                                             <td>
-                                                {tx.student_name ? (
-                                                    <div>
-                                                        <div className="font-bold text-xs text-slate-700">{tx.student_name}</div>
-                                                        <div className="text-[10px] text-slate-400">
-                                                            {tx.student_id && <span className="font-mono mr-1">{tx.student_id} •</span>}
-                                                            {tx.course} {tx.year_level}
-                                                        </div>
-                                                    </div>
-                                                ) : tx.supplier ? (
-                                                    <div>
-                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Supplier</span>
-                                                        <div className="font-bold text-slate-700 text-xs">{tx.supplier}</div>
+                                                {isVoidRow ? (
+                                                    <div className="max-w-[150px]">
+                                                        <span className="text-[9px] text-amber-600 font-bold uppercase tracking-widest block">Void Reason</span>
+                                                        <div className="text-xs italic text-slate-600 leading-tight">"{tx.void_reason}"</div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-slate-300 italic text-[10px]">N/A</span>
+                                                    <>
+                                                        {tx.student_name ? (
+                                                            <div>
+                                                                <div className="font-bold text-xs text-slate-700">{tx.student_name}</div>
+                                                                <div className="text-[10px] text-slate-400">
+                                                                    {tx.student_id && <span className="font-mono mr-1">{tx.student_id} •</span>}
+                                                                    {tx.course} {tx.year_level}
+                                                                </div>
+                                                            </div>
+                                                        ) : tx.supplier ? (
+                                                            <div>
+                                                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Supplier</span>
+                                                                <div className="font-bold text-slate-700 text-xs">{tx.supplier}</div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-300 italic text-[10px]">N/A</span>
+                                                        )}
+                                                    </>
                                                 )}
-                                                {tx.remarks && (
-                                                    <div className="mt-1 text-[10px] text-amber-600 font-medium whitespace-normal break-words max-w-[150px]" title={tx.remarks}>
+                                                {tx.remarks && !isVoidRow && (
+                                                    <div className="mt-1 text-[10px] text-amber-600 font-medium whitespace-normal break-words max-w-[150px]">
                                                         Note: {tx.remarks}
                                                     </div>
                                                 )}
                                             </td>
 
-                                            {/* 4. Cost Snapshot */}
+                                            {/* 4. Cost */}
                                             <td className="text-right font-mono text-xs text-slate-500">
                                                 {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
 
-                                            {/* 5. Price Snapshot */}
+                                            {/* 5. Price */}
                                             <td className="text-right font-mono text-xs font-semibold text-slate-700">
                                                 {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
@@ -433,7 +428,7 @@ export default function ProductDetailsPage() {
                                                 </span>
                                             </td>
 
-                                            {/* 7. Stock Balance Snapshot */}
+                                            {/* 7. Balance */}
                                             <td className="text-center">
                                                 <div className="flex flex-col items-center">
                                                     <span className="font-bold text-slate-700 text-sm">{tx.new_stock}</span>
@@ -441,27 +436,15 @@ export default function ProductDetailsPage() {
                                                 </div>
                                             </td>
 
-                                            {/* 8. Staff & Void Details */}
+                                            {/* 8. Encoder */}
                                             <td className="text-right">
                                                 <div className="text-[11px] font-bold text-slate-600">{tx.staff_name}</div>
-                                                
-                                                {tx.is_voided && tx.void_details && (
-                                                    <div className="mt-2 pt-1 border-t border-rose-100 flex flex-col items-end">
-                                                        <span className="text-[8px] text-rose-500 font-black uppercase tracking-widest">Voided By</span>
-                                                        <div className="text-[10px] text-rose-700 font-bold leading-tight">
-                                                            {tx.void_details.who}
-                                                        </div>
-                                                        <div className="text-[9px] text-rose-400 flex flex-col items-end">
-                                                            <span>{new Date(tx.void_details.when).toLocaleDateString()}</span>
-                                                            <span>{new Date(tx.void_details.when).toLocaleTimeString()}</span>
-                                                        </div>
-                                                        <div className="text-[9px] text-rose-600 italic mt-1 bg-rose-50/50 p-1.5 rounded border border-rose-100/50 max-w-[140px] text-right leading-tight break-words whitespace-normal">
-                                                            "{tx.void_details.reason}"
-                                                        </div>
+                                                {!isVoidRow && tx.is_voided && tx.void_details && (
+                                                    <div className="mt-1 text-[9px] text-rose-500 font-medium">
+                                                        Voided by {tx.void_details.who}
                                                     </div>
                                                 )}
                                             </td>
-
                                         </tr>
                                     );
                                 })
