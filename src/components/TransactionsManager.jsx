@@ -11,7 +11,8 @@ export default function TransactionsManager() {
   const [dateFilter, setDateFilter] = useState("7DAYS"); 
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [modeFilter, setModeFilter] = useState("ALL"); 
-  const [searchRef, setSearchRef] = useState("");
+  const [searchRef, setSearchRef] = useState(""); // Debounced value used for fetching
+  const [localSearch, setLocalSearch] = useState(""); // Immediate value for input
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -20,6 +21,17 @@ export default function TransactionsManager() {
   
   // Export State
   const [isExporting, setIsExporting] = useState(false);
+
+  // Debounce Search Effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchRef(localSearch);
+    }, 400); // Wait 400ms after typing stops
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSearch]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -310,8 +322,8 @@ export default function TransactionsManager() {
                     type="text" 
                     placeholder="Search Name, ID or Supplier..." 
                     className="input input-sm input-bordered w-full sm:w-64 sm:ml-auto"
-                    value={searchRef}
-                    onChange={e => setSearchRef(e.target.value)}
+                    value={localSearch}
+                    onChange={e => setLocalSearch(e.target.value)}
                 />
             </div>
         </div>
