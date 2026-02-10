@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 
 export default function SupplierPage() {

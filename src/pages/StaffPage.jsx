@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import Navbar from "../components/Navbar";
 import AdminInvite from "../components/AdminInvite";
 import Sidebar from "../components/Sidebar";
 

@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase"; // Added Import
 
-// Components moved here
-import Navbar from "../components/Navbar";
 import TransactionForm from "../components/TransactionForm";
 import AdminInvite from "../components/AdminInvite";
 import Dashboard from "../components/Dashboard";

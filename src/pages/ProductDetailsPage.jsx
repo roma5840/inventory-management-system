@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 

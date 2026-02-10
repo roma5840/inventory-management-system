@@ -1,4 +1,3 @@
-import Navbar from "../components/Navbar";
 import TransactionsManager from "../components/TransactionsManager";
 import Sidebar from "../components/Sidebar";
 
