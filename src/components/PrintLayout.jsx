@@ -167,7 +167,7 @@ export default function PrintLayout({ data, elementId }) {
           {/* Received By */}
           <div className="w-[45%] flex flex-col justify-end">
               <p className="text-[10px] italic mb-8 text-left leading-tight">
-                  "Acknowledging that I have received all items indicated on this list."
+                  Acknowledging that I have received all items indicated on this list.
               </p>
               <div className="border-b border-black w-full mb-1"></div>
               <p className="text-[10px] font-bold uppercase text-center">Signature over printed name</p>
