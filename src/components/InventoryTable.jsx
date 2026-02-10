@@ -31,7 +31,7 @@ export default function InventoryTable({ lastUpdated }) {
     accpacCode: "",
     name: "", 
     price: "", 
-    unitCost: "",
+    unitCost: "0",
     minStockLevel: "10",
     location: "",
     initialStock: "0" 
@@ -70,7 +70,7 @@ export default function InventoryTable({ lastUpdated }) {
             accpac_code: sanitizedAccPac,
             name: sanitizedName,
             price: Number(newItemForm.price),
-            unit_cost: Number(newItemForm.unitCost),
+            unit_cost: Number(newItemForm.unitCost || 0),
             min_stock_level: Number(newItemForm.minStockLevel),
             current_stock: Number(newItemForm.initialStock), 
             location: sanitizedLocation,
@@ -81,7 +81,7 @@ export default function InventoryTable({ lastUpdated }) {
 
         alert("Success: New product registered.");
         setIsAddModalOpen(false);
-        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
+        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
         fetchInventory();
         
         await supabase.channel('app_updates').send({
@@ -861,7 +861,7 @@ export default function InventoryTable({ lastUpdated }) {
                 <div className="modal-action">
                     <button type="button" className="btn btn-ghost" onClick={() => {
                         setIsAddModalOpen(false);
-                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", minStockLevel: "10", location: "", initialStock: "0" });
+                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
                     }}>Cancel</button>
                     <button type="submit" className={`btn btn-primary ${createLoading ? 'loading' : ''}`}>
                         Register Item
