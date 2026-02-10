@@ -241,7 +241,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                         </td>
 
                        {/* Column 3: Context */}
-                       <td className="align-top py-3">
+                       <td className="align-top py-3 max-w-[300px] md:max-w-[400px]">
                           {/* Student Info */}
                           {first.student_name && (
                              <div className="mb-1">
@@ -266,8 +266,8 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
 
                           {/* Remarks */}
                           {first.remarks && (
-                             <div className="text-[10px] italic text-gray-600 mb-1 bg-yellow-50 p-1 rounded border border-yellow-100 inline-block">
-                                Note: {first.remarks}
+                             <div className="text-[10px] italic text-gray-600 mb-1 bg-yellow-50 p-2 rounded border border-yellow-100 block whitespace-normal break-words max-h-24 overflow-y-auto">
+                                <span className="font-bold not-italic">Note:</span> {first.remarks}
                              </div>
                           )}
 
