@@ -23,16 +23,19 @@ export default function Pagination({
     if (currentPage < maxPages) onPageChange(currentPage + 1);
   };
 
-  const handleJump = (e) => {
-    if (e.key === 'Enter') {
-      let p = parseInt(jumpPage);
-      if (!isNaN(p) && p > 0 && p <= maxPages) {
-        onPageChange(p);
-      } else {
-        setJumpPage(currentPage);
-      }
+  const applyPageJump = () => {
+    let p = parseInt(jumpPage);
+    if (!isNaN(p) && p > 0 && p <= maxPages) {
+      onPageChange(p);
+    } else {
+      setJumpPage(currentPage); // Reset if invalid
     }
   };
+
+  const handleJump = (e) => {
+    if (e.key === 'Enter') applyPageJump();
+  };
+
 
   return (
     <div className="p-4 border-t flex flex-col sm:flex-row justify-between items-center bg-white rounded-b-xl gap-4">
@@ -64,6 +67,7 @@ export default function Pagination({
             value={jumpPage}
             onChange={(e) => setJumpPage(e.target.value)}
             onKeyDown={handleJump}
+            onBlur={applyPageJump}
             className="w-8 bg-transparent text-center font-bold text-xs text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <span className="text-xs font-bold text-slate-400">/ {maxPages}</span>
