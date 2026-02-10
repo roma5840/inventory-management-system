@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import * as XLSX from 'xlsx';
+import Pagination from "./Pagination";
 
 export default function TransactionsManager() {
   const [transactions, setTransactions] = useState([]);
@@ -13,7 +14,7 @@ export default function TransactionsManager() {
   const [searchRef, setSearchRef] = useState("");
 
   // Pagination
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [jumpPage, setJumpPage] = useState(1); // For the manual input
   const ITEMS_PER_PAGE = 20;
@@ -23,13 +24,12 @@ export default function TransactionsManager() {
 
   // Reset page when filters change
   useEffect(() => {
-    setPage(1);
-    setJumpPage(1);
+    setCurrentPage(1);
   }, [dateFilter, typeFilter, modeFilter, searchRef]);
 
   useEffect(() => {
     fetchTransactions();
-  }, [page, dateFilter, typeFilter, modeFilter, searchRef]); // Re-fetch on page change
+  }, [currentPage, dateFilter, typeFilter, modeFilter, searchRef]);
 
   // Helper to build the base query based on filters
   const buildQuery = (isForExport = false) => {
@@ -72,7 +72,7 @@ export default function TransactionsManager() {
       let query = buildQuery(false);
 
       // Pagination Range
-      const from = (page - 1) * ITEMS_PER_PAGE;
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
       query = query.range(from, to);
 
@@ -491,7 +491,7 @@ export default function TransactionsManager() {
                                           <div className="text-[9px] text-red-400">
                                               {new Date(voidSource.timestamp).toLocaleString()}
                                           </div>
-                                          <div className="text-[9px] text-red-500 italic mt-0.5 max-w-[100px] truncate" title={voidSource.void_reason || first.void_reason}>
+                                          <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1.5 rounded border border-red-100/50 max-w-[150px] text-right leading-tight break-words whitespace-normal">
                                               "{voidSource.void_reason || first.void_reason || "N/A"}"
                                           </div>
                                       </div>
@@ -504,58 +504,14 @@ export default function TransactionsManager() {
             </tbody>
           </table>
         </div>
-        {/* PAGINATION FOOTER */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mt-4 border-t pt-4 gap-4">
-            <div className="text-xs text-gray-500">
-                {totalCount > 0 
-                  ? `Page ${page} of ${Math.ceil(totalCount / ITEMS_PER_PAGE)}`
-                  : "No records found"}
-            </div>
-
-            <div className="flex items-center gap-2">
-                <button 
-                    className="btn btn-sm btn-outline"
-                    disabled={page === 1 || loading}
-                    onClick={() => {
-                        setPage(p => p - 1);
-                        setJumpPage(p => p - 1);
-                    }}
-                >
-                    « Prev
-                </button>
-                
-                <div className="flex items-center gap-1">
-                    <input 
-                        type="number" 
-                        min="1" 
-                        max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-                        value={jumpPage}
-                        onChange={(e) => setJumpPage(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                let p = parseInt(jumpPage);
-                                if (p > 0 && p <= Math.ceil(totalCount / ITEMS_PER_PAGE)) {
-                                    setPage(p);
-                                }
-                            }
-                        }}
-                        className="input input-sm input-bordered w-16 text-center"
-                    />
-                    <span className="text-sm">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
-                </div>
-
-                <button 
-                    className="btn btn-sm btn-outline"
-                    disabled={page >= Math.ceil(totalCount / ITEMS_PER_PAGE) || loading}
-                    onClick={() => {
-                        setPage(p => p + 1);
-                        setJumpPage(p => p + 1);
-                    }}
-                >
-                    Next »
-                </button>
-            </div>
-        </div>
+        {/* Pagination Controls */}
+        <Pagination 
+            totalCount={totalCount}
+            itemsPerPage={ITEMS_PER_PAGE}
+            currentPage={currentPage}
+            onPageChange={(p) => setCurrentPage(p)}
+            loading={loading}
+        />
       </div>
     </div>
   );

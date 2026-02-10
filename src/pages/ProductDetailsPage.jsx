@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
+import Pagination from "../components/Pagination";
 
 export default function ProductDetailsPage() {
   // --- CONFIG: TEMPORARILY SET TO FALSE TO HIDE PROFIT/MARGIN ---
@@ -401,7 +402,7 @@ export default function ProductDetailsPage() {
                                                         <div className="font-bold text-xs text-slate-700">{tx.student_name}</div>
                                                         <div className="text-[10px] text-slate-400">
                                                             {tx.student_id && <span className="font-mono mr-1">{tx.student_id} •</span>}
-                                                            {tx.course}
+                                                            {tx.course} {tx.year_level}
                                                         </div>
                                                     </div>
                                                 ) : tx.supplier ? (
@@ -413,7 +414,7 @@ export default function ProductDetailsPage() {
                                                     <span className="text-slate-300 italic text-[10px]">N/A</span>
                                                 )}
                                                 {tx.remarks && (
-                                                    <div className="mt-1 text-[10px] text-amber-600 font-medium truncate max-w-[150px]" title={tx.remarks}>
+                                                    <div className="mt-1 text-[10px] text-amber-600 font-medium whitespace-normal break-words max-w-[150px]" title={tx.remarks}>
                                                         Note: {tx.remarks}
                                                     </div>
                                                 )}
@@ -458,7 +459,7 @@ export default function ProductDetailsPage() {
                                                             <span>{new Date(tx.void_details.when).toLocaleDateString()}</span>
                                                             <span>{new Date(tx.void_details.when).toLocaleTimeString()}</span>
                                                         </div>
-                                                        <div className="text-[9px] text-rose-600 italic mt-0.5 max-w-[120px] truncate" title={tx.void_details.reason}>
+                                                        <div className="text-[9px] text-rose-600 italic mt-1 bg-rose-50/50 p-1.5 rounded border border-rose-100/50 max-w-[140px] text-right leading-tight break-words whitespace-normal">
                                                             "{tx.void_details.reason}"
                                                         </div>
                                                     </div>
@@ -473,64 +474,14 @@ export default function ProductDetailsPage() {
                     </table>
                 </div>
                  
-                 {/* PAGINATION FOOTER */}
-                 <div className="p-4 border-t flex flex-col sm:flex-row justify-between items-center bg-white rounded-b-xl gap-4">
-                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
-                        {totalCount > 0 
-                        ? `${totalCount} Records Found`
-                        : "No records found"}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button 
-                            className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-200"
-                            disabled={currentPage === 1 || tableLoading}
-                            onClick={() => {
-                                const p = currentPage - 1;
-                                setCurrentPage(p);
-                                setJumpPage(p);
-                            }}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                        
-                        <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page</span>
-                            <input 
-                                type="number" 
-                                min="1" 
-                                max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-                                value={jumpPage}
-                                onChange={(e) => setJumpPage(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        let p = parseInt(jumpPage);
-                                        const max = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-                                        if (p > 0 && p <= max) setCurrentPage(p);
-                                    }
-                                }}
-                                className="w-8 bg-transparent text-center font-bold text-xs text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                            <span className="text-xs font-bold text-slate-400">/ {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
-                        </div>
-
-                        <button 
-                            className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-200"
-                            disabled={currentPage >= Math.ceil(totalCount / ITEMS_PER_PAGE) || tableLoading}
-                            onClick={() => {
-                                const p = currentPage + 1;
-                                setCurrentPage(p);
-                                setJumpPage(p);
-                            }}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
+                 {/* Pagination Controls */}
+                <Pagination 
+                    totalCount={totalCount}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={(p) => setCurrentPage(p)}
+                    loading={loading}
+                />
              </div>
          </div>
        </div>

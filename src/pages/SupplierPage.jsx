@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import Sidebar from "../components/Sidebar";
+import Pagination from "../components/Pagination";
 
 export default function SupplierPage() {
   const [suppliers, setSuppliers] = useState([]);
@@ -16,14 +17,14 @@ export default function SupplierPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   // Pagination State
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [jumpPage, setJumpPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
 
   const fetchSuppliers = async () => {
     setLoading(true);
-    const from = (page - 1) * ITEMS_PER_PAGE;
+    const from = (currentPage - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
     const { data, count, error } = await supabase
@@ -42,8 +43,6 @@ export default function SupplierPage() {
   useEffect(() => {
     fetchSuppliers();
 
-    // LISTEN ONLY TO DB CHANGES IN 'suppliers' TABLE
-    // Removed 'app_updates' because inventory transactions do not affect supplier details
     const dbChannel = supabase.channel('supplier-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
         .subscribe();
@@ -51,7 +50,7 @@ export default function SupplierPage() {
     return () => {
         supabase.removeChannel(dbChannel);
     };
-  }, [page]);
+  }, [currentPage]); // Dependency updated
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -240,61 +239,14 @@ export default function SupplierPage() {
                 </table>
             </div>
 
-            {/* Pagination Footer */}
-            <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t bg-gray-50 rounded-b-xl gap-4">
-                <div className="text-xs text-gray-500">
-                    {totalCount > 0 
-                    ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
-                    : "No records found"}
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button 
-                        className="btn btn-sm btn-outline bg-white"
-                        disabled={page === 1 || loading}
-                        onClick={() => {
-                            const newPage = page - 1;
-                            setPage(newPage);
-                            setJumpPage(newPage);
-                        }}
-                    >
-                        « Prev
-                    </button>
-                    
-                    <div className="flex items-center gap-1">
-                        <input 
-                            type="number" 
-                            min="1" 
-                            max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-                            value={jumpPage}
-                            onChange={(e) => setJumpPage(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    let p = parseInt(jumpPage);
-                                    const max = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-                                    if (p > 0 && p <= max) {
-                                        setPage(p);
-                                    }
-                                }
-                            }}
-                            className="input input-sm input-bordered w-16 text-center"
-                        />
-                        <span className="text-xs text-gray-500">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
-                    </div>
-
-                    <button 
-                        className="btn btn-sm btn-outline bg-white"
-                        disabled={page >= Math.ceil(totalCount / ITEMS_PER_PAGE) || loading}
-                        onClick={() => {
-                            const newPage = page + 1;
-                            setPage(newPage);
-                            setJumpPage(newPage);
-                        }}
-                    >
-                        Next »
-                    </button>
-                </div>
-            </div>
+            {/* Pagination Controls */}
+                    <Pagination 
+                        totalCount={totalCount}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={(p) => setCurrentPage(p)}
+                        loading={loading}
+                    />
             </div>
         </div>
       </main>

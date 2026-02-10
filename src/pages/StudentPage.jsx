@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import Papa from "papaparse"; // Import CSV Parser
 import Sidebar from "../components/Sidebar";
+import Pagination from "../components/Pagination";
 
 export default function StudentPage() {
   const { userRole } = useAuth();
@@ -12,7 +13,7 @@ export default function StudentPage() {
   // Search & Pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 30;
   const [totalCount, setTotalCount] = useState(0);
   const [jumpPage, setJumpPage] = useState(1);
@@ -45,7 +46,7 @@ export default function StudentPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
         setDebouncedTerm(searchTerm);
-        setPage(1); 
+        setCurrentPage(1); 
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -62,7 +63,7 @@ export default function StudentPage() {
             query = query.order('name', { ascending: true });
         }
 
-        const from = (page - 1) * ITEMS_PER_PAGE;
+        const from = (currentPage - 1) * ITEMS_PER_PAGE;
         const to = from + ITEMS_PER_PAGE - 1;
 
         const { data, count, error } = await query.range(from, to);
@@ -79,8 +80,6 @@ export default function StudentPage() {
 
     fetchStudents();
 
-    // LISTEN ONLY TO DB CHANGES IN 'students' TABLE
-    // Removed 'app_updates' (inventory_update) because selling a book shouldn't refresh the student list
     const dbChannel = supabase.channel('student-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchStudents)
         .subscribe();
@@ -88,21 +87,7 @@ export default function StudentPage() {
     return () => {
         supabase.removeChannel(dbChannel);
     };
-  }, [debouncedTerm, page]);
-
-  useEffect(() => {
-    setJumpPage(page);
-  }, [page]);
-
-  const handleNext = () => {
-    if (page * ITEMS_PER_PAGE >= totalCount) return;
-    setPage(prev => prev + 1);
-  };
-
-  const handlePrev = () => {
-    if (page === 1) return;
-    setPage(prev => prev - 1);
-  };
+  }, [debouncedTerm, currentPage]);
 
 
   // 3. Handlers
@@ -444,56 +429,13 @@ export default function StudentPage() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="p-4 border-t flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-b-xl gap-4">
-               
-               {/* "Showing X - Y of Z" Text */}
-               <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-                 {totalCount > 0 
-                    ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
-                    : "No records found"}
-               </div>
-
-               {/* Controls */}
-               <div className="flex items-center gap-2">
-                 <button 
-                   className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
-                   onClick={handlePrev} 
-                   disabled={page === 1 || loading}
-                 >
-                   « Previous
-                 </button>
-
-                 {/* Jump Page Input */}
-                 <div className="flex items-center gap-1 mx-2">
-                    <input 
-                        type="number" 
-                        min="1" 
-                        max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-                        value={jumpPage}
-                        onChange={(e) => setJumpPage(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                let p = parseInt(jumpPage);
-                                const maxPage = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-                                if (p > 0 && p <= maxPage) {
-                                    setPage(p);
-                                }
-                            }
-                        }}
-                        className="input input-sm input-bordered w-16 text-center"
+                    <Pagination 
+                        totalCount={totalCount}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={(p) => setCurrentPage(p)}
+                        loading={loading}
                     />
-                    <span className="text-sm text-gray-500">of {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
-                </div>
-
-                 <button 
-                   className="btn btn-sm btn-outline bg-white hover:bg-gray-100" 
-                   onClick={handleNext} 
-                   disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading}
-                 >
-                   Next »
-                 </button>
-               </div>
-            </div>
           </div>
         </div>
       </main>

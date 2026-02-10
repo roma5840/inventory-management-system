@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import Papa from "papaparse";
 import { useNavigate } from "react-router-dom";
+import Pagination from "./Pagination";
 
 export default function InventoryTable({ lastUpdated }) {
   const { userRole } = useAuth();
@@ -644,56 +645,14 @@ const handleNext = () => {
         </div>
 
         {/* Pagination Controls */}
-        <div className="p-4 border-t flex flex-col sm:flex-row justify-between items-center bg-white rounded-b-xl gap-4">
-           <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">
-             {totalCount > 0 
-                ? `Records ${((currentPage - 1) * ITEMS_PER_PAGE) + 1} - ${Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} OF ${totalCount}`
-                : "No records found"}
-           </div>
-
-           <div className="flex items-center gap-4">
-             <div className="flex items-center gap-1">
-                <button 
-                  className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-300" 
-                  onClick={handlePrev} 
-                  disabled={currentPage === 1 || loading}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                  </svg>
-                </button>
-
-                <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg">
-                    <input 
-                        type="number" 
-                        min="1" 
-                        max={Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}
-                        value={jumpPage}
-                        onChange={(e) => setJumpPage(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                let p = parseInt(jumpPage);
-                                const maxPage = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-                                if (p > 0 && p <= maxPage) setCurrentPage(p);
-                            }
-                        }}
-                        className="w-12 bg-transparent text-center font-bold text-xs text-indigo-600 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <span className="text-xs font-bold text-slate-400">/ {Math.ceil(totalCount / ITEMS_PER_PAGE) || 1}</span>
-                </div>
-
-                <button 
-                  className="btn btn-sm btn-ghost text-slate-500 disabled:text-slate-300" 
-                  onClick={handleNext} 
-                  disabled={(currentPage * ITEMS_PER_PAGE) >= totalCount || loading}
-                >
-                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                  </svg>
-                </button>
-             </div>
-           </div>
-        </div>
+        <Pagination 
+            totalCount={totalCount}
+            itemsPerPage={ITEMS_PER_PAGE}
+            currentPage={currentPage}
+            onPageChange={(p) => setCurrentPage(p)}
+            loading={loading}
+        />
+        
         {/* EDIT MODAL (Pop-up) */}
       {editingProduct && (
         <div className="modal modal-open">
