@@ -16,7 +16,7 @@ export default function TransactionsManager() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [jumpPage, setJumpPage] = useState(1); // For the manual input
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 20;
   
   // Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -79,9 +79,24 @@ export default function TransactionsManager() {
       const { data: txData, count, error } = await query;
       if (error) throw error;
 
+      // --- LOGIC FIX: PREVENT DOUBLE ENTRY ON PAGINATION ---
+      // Only apply this cleaning if viewing "ALL" types. If filtering by specific type (e.g. Issuance),
+      // the VOID row is filtered out by SQL, so we must show the original row regardless of page.
+      let cleanedData = txData || [];
+      
+      if (typeFilter === 'ALL') {
+         cleanedData = cleanedData.filter(row => {
+            if (!row.is_voided) return true; 
+            if (row.type === 'VOID') return true; 
+            // If it's a voided original, keep ONLY if the VOID marker is also in this batch
+            const hasVoidMarkerInBatch = txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
+            return hasVoidMarkerInBatch;
+         });
+      }
+
       // --- ORPHAN VOID FIX START ---
       // If we have a VOID row but pagination/filters hid the original, fetch it now.
-      let combinedData = [...(txData || [])];
+      let combinedData = [...cleanedData];
       
       const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
       const orphanRefs = [];
@@ -493,7 +508,7 @@ export default function TransactionsManager() {
         <div className="flex flex-col sm:flex-row justify-between items-center mt-4 border-t pt-4 gap-4">
             <div className="text-xs text-gray-500">
                 {totalCount > 0 
-                  ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                  ? `Page ${page} of ${Math.ceil(totalCount / ITEMS_PER_PAGE)}`
                   : "No records found"}
             </div>
 

@@ -12,7 +12,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     fetchTransactions();
@@ -38,9 +38,21 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
 
       if (error) throw error;
 
+      // --- LOGIC FIX: PREVENT DOUBLE ENTRY ON PAGINATION ---
+      // If a row is 'is_voided' but the actual 'VOID' line item (which has the latest timestamp)
+      // is NOT in this batch, it means the Void happened recently (Page 1), so we hide 
+      // these stale original rows from Page 2+.
+      const cleanedData = (txData || []).filter(row => {
+        if (!row.is_voided) return true; // Keep active transactions
+        if (row.type === 'VOID') return true; // Keep the VOID marker itself
+        // If it's a voided original, keep ONLY if the VOID marker is also in this current page batch
+        const hasVoidMarkerInBatch = txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
+        return hasVoidMarkerInBatch;
+      });
+
       // --- ORPHAN VOID FIX START ---
       // Check if we fetched a VOID row but lack the original row to show context (Type/Date)
-      let combinedData = [...(txData || [])];
+      let combinedData = [...cleanedData];
       
       const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
       const orphanRefs = [];
@@ -144,7 +156,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                 <div className="flex items-center gap-3">
                     <span className="text-[10px] text-gray-400">
                         {totalCount > 0 
-                            ? `Showing ${(page - 1) * ITEMS_PER_PAGE + 1} - ${Math.min(page * ITEMS_PER_PAGE, totalCount)} of ${totalCount} records`
+                            ? `Page ${page} of ${Math.ceil(totalCount / ITEMS_PER_PAGE)}`
                             : "No records found"}
                     </span>
                     <div className="flex gap-2">
