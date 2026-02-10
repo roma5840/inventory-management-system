@@ -12,6 +12,8 @@ import { supabase } from "./lib/supabase";
 import ForgotPassword from "./components/ForgotPassword";
 import UpdatePassword from "./components/UpdatePassword";
 import SupplierPage from "./pages/SupplierPage";
+import InventoryPage from "./pages/InventoryPage";
+
 
 // Helper for Protected Routes with Real-time Status Check
 const ProtectedRoute = ({ children }) => {
@@ -142,6 +144,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Product Inventory Route */}
+      <Route 
+        path="/inventory" 
+        element={
+          <ProtectedRoute>
+            <InventoryPage />
           </ProtectedRoute>
         } 
       />

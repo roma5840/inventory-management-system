@@ -69,114 +69,50 @@ export default function StatsComprehensive({ lastUpdated }) {
   const fmt = (num) => Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="w-full mb-8 space-y-6">
-      
-      {/* 1. DATE RANGE CONTROLS (Compact & Professional) */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center gap-3">
-            <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Start Date</span>
-                <input 
-                    type="date" 
-                    className="input input-sm input-bordered w-36 text-gray-600 font-mono text-xs focus:outline-none focus:border-gray-400 transition-colors"
-                    value={dateRange.start}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                />
-            </div>
-            
-            <div className="pt-5 text-gray-300">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" />
-                </svg>
-            </div>
-
-            <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">End Date</span>
-                <input 
-                    type="date" 
-                    className="input input-sm input-bordered w-36 text-gray-600 font-mono text-xs focus:outline-none focus:border-gray-400 transition-colors"
-                    value={dateRange.end}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                />
-            </div>
-        </div>
-
-        <div className="mt-4 md:mt-0">
-             {loading ? <span className="loading loading-dots loading-md text-gray-400"></span> : <span className="text-gray-300 text-xs uppercase font-bold tracking-widest">Live Metrics</span>}
+    <div className="w-full space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-slate-800">Operational Metrics</h2>
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 px-3">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Period:</span>
+            <input 
+                type="date" 
+                className="bg-transparent text-xs font-bold text-slate-600 outline-none border-none p-0 w-28"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+            />
+            <span className="text-slate-300 mx-1">—</span>
+            <input 
+                type="date" 
+                className="bg-transparent text-xs font-bold text-slate-600 outline-none border-none p-0 w-28"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+            />
         </div>
       </div>
 
-      {/* 2. KPI CARDS (Sales, Cost, Asset Value) */}
-      <div className={`grid grid-cols-1 ${SHOW_SENSITIVE_METRICS ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
-        {/* Total Sales */}
-        {SHOW_SENSITIVE_METRICS && (
-          <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Gross Sales - Customer Returns">
-            <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Net Sales Revenue</div>
-            <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.outflow.revenue)}</div>
-            <div className="stat-desc text-xs mt-1 text-gray-400">Actual money kept (after refunds)</div>
-          </div>
-        )}
-        
-        {/* Total Cost */}
-        {SHOW_SENSITIVE_METRICS && (
-          <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Sum of (Qty Sold × Unit Cost at moment of sale)">
-            <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Net Cost of Outflows</div>
-            <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.outflow.val)}</div>
-            <div className="stat-desc text-xs mt-1 text-gray-400">Cost of Goods Sold minus Cost of Returns</div>
-          </div>
-        )}
-        
-        {/* Total Inventory Value (HIDDEN BY DEFAULT) */}
-        {SHOW_SENSITIVE_METRICS && (
-          <div className="stat bg-white shadow-sm border border-gray-200 rounded-lg" title="Current Stock × Current Supplier Cost">
-              <div className="stat-title font-bold text-gray-500 uppercase text-xs tracking-wider">Period Ending Value</div>
-              <div className="stat-value text-gray-800 text-2xl">₱{fmt(data.ending.val)}</div>
-              <div className="stat-desc text-xs mt-1 text-gray-400">Total Inventory Value as of Period End</div>
-          </div>
-        )}
-      </div>
-
-      {/* 3. BOSS'S FORMULA FLOW (The 4 Boxes) */}
-      <div>
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Inventory Reconciliation</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            
-            {/* Box 1: Beginning */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Ending - Inflow + Outflow">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Beginning Inv</div>
-                <div className="text-xl font-bold text-gray-700">{data.beginning.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Est: ₱{fmt(data.beginning.val)}</div>}
-            </div>
-
-            {/* Box 2: Inflow */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Receiving">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Total Inflow</div>
-                <div className="text-xl font-bold text-gray-700">{data.inflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                <div className="text-[9px] text-green-600 mt-1 font-medium bg-green-50 inline-block px-1 rounded">
-                   Purchases / Receiving Only (Returns excluded)
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[
+            { label: "Beginning Inv", qty: data.beginning.qty, val: data.beginning.val, desc: "Stock at start of period" },
+            { label: "Total Inflow", qty: data.inflow.qty, val: data.inflow.val, desc: "Purchases & Receiving" },
+            { label: "Net Outflow", qty: data.outflow.qty, val: data.outflow.val, desc: "Sales & Pull-outs" },
+            { label: "Ending Inv", qty: data.ending.qty, val: data.ending.val, desc: "Current Physical Record", active: true },
+          ].map((box, i) => (
+            <div key={i} className={`p-5 rounded-xl border ${box.active ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:border-slate-300'} transition-all`}>
+                <div className={`text-[10px] font-black uppercase tracking-widest mb-3 ${box.active ? 'text-slate-400' : 'text-slate-400'}`}>
+                    {box.label}
                 </div>
-                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.inflow.val)}</div>}
-            </div>
-
-            {/* Box 3: Outflow */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm" title="Issuance + Pull Outs">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Net Outflow</div>
-                <div className="text-xl font-bold text-gray-700">{data.outflow.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                <div className="text-[9px] text-gray-400 mt-1 italic">
-                    Sales + Pull Outs - Returns
+                <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold tracking-tighter">{box.qty.toLocaleString()}</span>
+                    <span className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Units</span>
                 </div>
-                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-500 border-t border-gray-100 pt-1">Cost: ₱{fmt(data.outflow.val)}</div>}
+                {SHOW_SENSITIVE_METRICS && (
+                    <div className={`mt-4 pt-3 border-t font-mono text-xs ${box.active ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                       ₱ {fmt(box.val)}
+                    </div>
+                )}
             </div>
-
-            {/* Box 4: Ending */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm" title="Current Physical Count in System">
-                <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wider">Ending Inv</div>
-                <div className="text-xl font-bold text-gray-900">{data.ending.qty.toLocaleString()} <span className="text-xs font-normal text-gray-400">units</span></div>
-                {SHOW_SENSITIVE_METRICS && <div className="text-xs font-mono mt-1 text-gray-600 border-t border-gray-200 pt-1">Val: ₱{fmt(data.ending.val)}</div>}
-            </div>
-        </div>
+          ))}
       </div>
-
     </div>
   );
 }

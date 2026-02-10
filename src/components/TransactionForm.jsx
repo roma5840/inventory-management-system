@@ -795,31 +795,28 @@ export default function TransactionForm({ onSuccess }) {
   return (
     <div className="card w-full max-w-3xl bg-base-100 shadow-xl m-4 border border-gray-200 p-0 overflow-hidden">
       
-      {/* TRANSACTION TYPE SELECTOR */}
-      <div className="flex w-full bg-slate-100 p-1.5 gap-1 border-b border-gray-200">
+      {/* TRANSACTION TYPE SELECTOR - REDESIGN */}
+        <div className="p-1.5 bg-slate-100/50 flex border-b border-slate-200">
         {[
-          { id: 'RECEIVING', label: 'Receiving', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3' },
-          { id: 'ISSUANCE', label: 'Issuance', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', icon: 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5', mode: 'CHARGED' },
-          { id: 'ISSUANCE_RETURN', label: 'Return', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200', icon: 'M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3' },
-          { id: 'PULL_OUT', label: 'Pull Out', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', icon: 'M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z' },
+            { id: 'RECEIVING', label: 'Receiving' },
+            { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED' },
+            { id: 'ISSUANCE_RETURN', label: 'Return' },
+            { id: 'PULL_OUT', label: 'Pull Out' },
         ].map((btn) => (
-          <button
+            <button
             key={btn.id}
             type="button"
             onClick={() => handleSwitchType(btn.id, btn.mode || "")}
-            className={`flex-1 py-2.5 px-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 group
-              ${headerData.type === btn.id 
-                ? `${btn.bg} ${btn.color} shadow-sm border ${btn.border} font-bold ring-1 ring-black/5` 
-                : "hover:bg-white text-slate-500 font-medium"}
+            className={`flex-1 py-3 px-2 rounded text-[11px] font-bold uppercase tracking-widest transition-all
+                ${headerData.type === btn.id 
+                ? "bg-white text-slate-900 shadow-sm border border-slate-300/50" 
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"}
             `}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-4 h-4 transition-transform group-hover:scale-110`}>
-              <path strokeLinecap="round" strokeLinejoin="round" d={btn.icon} />
-            </svg>
-            <span className="text-[11px] uppercase tracking-wider">{btn.label}</span>
-          </button>
+            >
+            {btn.label}
+            </button>
         ))}
-      </div>
+        </div>
 
       {/* CONDITIONAL FORM AREA */}
       <div className="p-6 bg-slate-50 min-h-[400px] flex flex-col">

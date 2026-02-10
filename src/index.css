@@ -2,21 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-slate-100 text-slate-800;
+@layer base {
+  body {
+    @apply bg-slate-100 text-slate-800 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  input, select, textarea {
+    @apply bg-white border-slate-300 rounded-lg text-sm transition-all focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 outline-none;
+  }
 }
 
-input,
-textarea,
-select {
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  padding: 8px;
-  outline: none;
+/* Custom Scrollbar for Finance density */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
 }
-
-input:focus,
-textarea:focus,
-select:focus {
-  border-color: #4a90e2;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full;
 }

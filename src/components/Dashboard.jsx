@@ -489,11 +489,11 @@ const handleNext = () => {
       <div className="card-body p-0">
         {/* Header with REGISTER BUTTON */}
         <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">Inventory Management</h2>
-                <p className="text-xs text-slate-500 font-medium">Manage and track your product stock levels</p>
-              </div>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div>
+                <h2 className="text-xl font-bold text-slate-800">Inventory Catalog</h2>
+                <p className="text-xs text-slate-500 font-medium">Detailed list of all registered bookstore products</p>
+            </div>
               {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                   <div className="flex gap-2">
                     <button 
@@ -608,23 +608,21 @@ const handleNext = () => {
                         {p.currentStock}
                       </span>
                     </td>
+                    {/* TABLE STATUS CELL - REDESIGN */}
                     <td className="text-center">
-                      {p.currentStock <= 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-100">
-                          <span className="w-1 h-1 rounded-full bg-rose-600 mr-1.5"></span>
-                          Out
+                    {p.currentStock <= 0 ? (
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">
+                        Out of Stock
                         </span>
-                      ) : p.currentStock <= p.minStockLevel ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-100">
-                          <span className="w-1 h-1 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
-                          Low
+                    ) : p.currentStock <= p.minStockLevel ? (
+                        <span className="text-[10px] font-black uppercase text-slate-900 tracking-tighter">
+                        Critical Level
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
-                          <span className="w-1 h-1 rounded-full bg-emerald-500 mr-1.5"></span>
-                          OK
+                    ) : (
+                        <span className="text-[10px] font-black uppercase text-slate-300 tracking-tighter">
+                        Stock Stable
                         </span>
-                      )}
+                    )}
                     </td>
                     
                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
