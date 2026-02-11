@@ -357,192 +357,175 @@ export default function TransactionsManager() {
         </div>
 
         {/* DETAILED TABLE */}
-        <div className="overflow-x-auto min-h-[400px]">
-          <table className="table w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="w-24">Type</th>
-                <th className="w-24">Date</th>
-                <th className="w-32">Ref #</th>
-                <th className="w-24">Student No.</th>
-                <th className="w-48">Name / Supplier</th>
-                <th>Items Breakdown</th>
-                <th className="text-right w-24">Value</th>
-                <th className="w-32 text-right">Staff</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                  <tr><td colSpan="8" className="text-center py-10">Loading records...</td></tr>
-              ) : Object.keys(groupedTransactions).length === 0 ? (
-                  <tr><td colSpan="8" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
-              ) : (
-                  Object.entries(groupedTransactions).map(([refNo, items]) => {
-                      // 1. Determine "Original" vs "Void" rows
-                      const nonVoidItems = items.filter(i => i.type !== 'VOID');
-                      const voidRow = items.find(i => i.type === 'VOID'); 
-                      
-                      // 2. Select data to display (Handle orphans where original is on another page)
-                      const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
-                      const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
-                      
-                      const isVoided = items.some(i => i.is_voided) || !!voidRow;
-                      const isOrphanVoid = items.every(i => i.type === 'VOID');
+        <div className="overflow-x-auto">
+            <table className="table w-full table-fixed text-sm">
+                <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                    <th className="w-20">Type</th>
+                    <th className="w-24">Date</th>
+                    <th className="w-28">Ref #</th>
+                    <th className="w-24">Student No.</th>
+                    <th className="w-40">Name / Supplier</th>
+                    <th className="w-auto">Items Breakdown</th>
+                    <th className="text-right w-28">Value</th>
+                    <th className="w-28 text-right">Staff</th>
+                </tr>
+                </thead>
+                <tbody>
+                {loading ? (
+                    <tr><td colSpan="8" className="text-center py-10">Loading records...</td></tr>
+                ) : Object.keys(groupedTransactions).length === 0 ? (
+                    <tr><td colSpan="8" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
+                ) : (
+                    Object.entries(groupedTransactions).map(([refNo, items]) => {
+                        const nonVoidItems = items.filter(i => i.type !== 'VOID');
+                        const voidRow = items.find(i => i.type === 'VOID'); 
+                        const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
+                        const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
+                        const isVoided = items.some(i => i.is_voided) || !!voidRow;
+                        const isOrphanVoid = items.every(i => i.type === 'VOID');
+                        const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
 
-                      // --- LOGIC CHANGE: Detect Cost vs Price ---
-                      const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
+                        const totalValue = displayItems.reduce((sum, item) => {
+                            const val = isCostType 
+                                ? (item.unit_cost_snapshot ?? 0)
+                                : (item.price_snapshot ?? item.price);
+                            return sum + (val * item.qty);
+                        }, 0);
 
-                      // 3. Calculate Total Value (Dynamic based on Type)
-                      const totalValue = displayItems.reduce((sum, item) => {
-                          const val = isCostType 
-                            ? (item.unit_cost_snapshot ?? 0)
-                            : (item.price_snapshot ?? item.price);
-                          return sum + (val * item.qty);
-                      }, 0);
+                        const voidSource = voidRow || (isOrphanVoid ? first : null);
 
-                      // 4. Void Metadata source
-                      const voidSource = voidRow || (isOrphanVoid ? first : null);
-
-                      return (
-                          <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
-                              
-                              {/* 1. Type */}
-                                <td className="py-2">
-                                {isOrphanVoid ? (
-                                    <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800">
-                                        TRANSACTION
-                                    </div>
-                                ) : (
-                                    <div className={`badge badge-sm font-bold border-0 
-                                        ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
-                                        first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
-                                        first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
-                                        first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
-                                        'bg-gray-200 text-gray-800'}`}>
-                                        {first.type.replace('_', ' ')}
-                                    </div>
-                                )}
+                        return (
+                            <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
                                 
-                                {first.transaction_mode && (
-                                    <div className="mt-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                        {first.transaction_mode}
-                                    </div>
-                                )}
+                                {/* 1. Type */}
+                                <td className="py-2 whitespace-normal overflow-hidden">
+                                    {isOrphanVoid ? (
+                                        <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800">TX</div>
+                                    ) : (
+                                        <div className={`badge badge-sm font-bold border-0 
+                                            ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
+                                            first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
+                                            first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
+                                            first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
+                                            'bg-gray-200 text-gray-800'}`}>
+                                            {first.type.replace('_', ' ').split(' ')[0]}
+                                        </div>
+                                    )}
+                                    {first.transaction_mode && (
+                                        <div className="mt-1 text-[9px] font-bold text-gray-500 uppercase leading-tight">
+                                            {first.transaction_mode}
+                                        </div>
+                                    )}
                                 </td>
 
-                              {/* 2. Date */}
-                              <td className="py-2">
-                                  <div className="text-xs text-gray-700">{new Date(first.timestamp).toLocaleDateString()}</div>
-                                  <div className="text-[10px] text-gray-400">{new Date(first.timestamp).toLocaleTimeString()}</div>
-                              </td>
+                                {/* 2. Date */}
+                                <td className="py-2">
+                                    <div className="text-xs text-gray-700">{new Date(first.timestamp).toLocaleDateString()}</div>
+                                    <div className="text-[10px] text-gray-400">{new Date(first.timestamp).toLocaleTimeString()}</div>
+                                </td>
 
-                              {/* 3. Ref */}
-                              <td className="py-2">
-                                  <div className="font-mono font-bold text-xs">{refNo}</div>
-                                  {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
-                              </td>
+                                {/* 3. Ref */}
+                                <td className="py-2 font-mono text-xs font-bold break-all whitespace-normal">
+                                    {refNo}
+                                    {isVoided && <div className="badge badge-xs badge-error mt-1 block w-fit">VOIDED</div>}
+                                </td>
 
-                              {/* 4. Student No. */}
-                              <td className="py-2 font-mono text-xs text-gray-600">
-                                  {first.student_id || "-"}
-                              </td>
+                                {/* 4. Student No. */}
+                                <td className="py-2 font-mono text-xs text-gray-600 break-all whitespace-normal">
+                                    {first.student_id || "-"}
+                                </td>
 
-                              {/* 5. Name / Supplier */}
-                              <td className="py-2">
-                                  {first.student_name ? (
-                                      <div>
-                                          <div className="font-bold text-xs">{first.student_name}</div>
-                                          <div className="text-[10px] text-gray-500">
-                                              {first.course} {first.year_level}
-                                          </div>
-                                      </div>
-                                  ) : first.supplier ? (
-                                      <div>
-                                          <span className="text-[10px] text-gray-400 uppercase">Supplier</span>
-                                          <div className="font-bold text-xs">{first.supplier}</div>
-                                      </div>
-                                  ) : (
-                                      <span className="text-gray-400 italic text-xs">N/A</span>
-                                  )}
-                                  {first.remarks && (
-                                      <div className="mt-2 text-[10px] bg-yellow-50 text-yellow-800 p-1 rounded border border-yellow-100">
-                                          {first.remarks}
-                                      </div>
-                                  )}
-                              </td>
+                                {/* 5. Name / Supplier */}
+                                <td className="py-2 overflow-hidden">
+                                    {first.student_name ? (
+                                        <div className="whitespace-normal break-words">
+                                            <div className="font-bold text-xs leading-tight">{first.student_name}</div>
+                                            <div className="text-[10px] text-gray-500 leading-tight mt-0.5">
+                                                {first.course} {first.year_level}
+                                            </div>
+                                        </div>
+                                    ) : first.supplier ? (
+                                        <div className="whitespace-normal break-words">
+                                            <span className="text-[9px] text-gray-400 uppercase font-bold">Supplier</span>
+                                            <div className="font-bold text-xs leading-tight">{first.supplier}</div>
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400 italic text-xs">N/A</span>
+                                    )}
+                                    {first.remarks && (
+                                        <div className="mt-2 text-[10px] bg-yellow-50 text-yellow-800 p-1 rounded border border-yellow-100 whitespace-normal break-words leading-tight">
+                                            {first.remarks}
+                                        </div>
+                                    )}
+                                </td>
 
-                              {/* 6. Items Breakdown */}
-                              <td className="py-2">
-                                  <div className="space-y-1">
-                                      {displayItems.map(item => {
-                                          // Determine individual item value based on transaction type
-                                          const itemVal = isCostType 
-                                            ? (item.unit_cost_snapshot ?? 0)
-                                            : (item.price_snapshot ?? item.price);
+                                {/* 6. Items Breakdown (Fills remaining space) */}
+                                <td className="py-2">
+                                    <div className="space-y-1.5">
+                                        {displayItems.map(item => {
+                                            const itemVal = isCostType 
+                                                ? (item.unit_cost_snapshot ?? 0)
+                                                : (item.price_snapshot ?? item.price);
 
-                                          return (
-                                              <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0">
-                                                  <div className="flex flex-col pr-2">
-                                                      <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
-                                                          {item.product_name_snapshot || "Item"}
-                                                      </span>
-                                                      <span className="text-[9px] text-gray-400 font-mono tracking-tighter mt-0.5">
-                                                        {item.barcode_snapshot || item.product_id}
-                                                      </span>
-                                                  </div>
-                                                  <div className="text-right shrink-0">
-                                                      <span className="font-mono text-gray-600 block">
-                                                          {item.qty} x {Number(itemVal).toFixed(2)}
-                                                      </span>
-                                                      {/* Subtle indicator of Cost vs Price */}
-                                                      <span className="text-[9px] text-gray-400 uppercase">
-                                                          {isCostType ? 'Cost' : 'Price'}
-                                                      </span>
-                                                  </div>
-                                              </div>
-                                          );
-                                      })}
-                                  </div>
-                              </td>
+                                            return (
+                                                <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1.5 last:border-0 gap-4">
+                                                    <div className="flex flex-col flex-grow min-w-0">
+                                                        <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
+                                                            {item.product_name_snapshot || "Item"}
+                                                        </span>
+                                                        <span className="text-[9px] text-gray-400 font-mono mt-0.5 break-all">
+                                                            {item.barcode_snapshot || item.product_id}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <span className="font-mono text-gray-600 block leading-none">
+                                                            {item.qty} x {Number(itemVal).toFixed(2)}
+                                                        </span>
+                                                        <span className="text-[9px] text-gray-400 uppercase">
+                                                            {isCostType ? 'Cost' : 'Price'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </td>
 
-                              {/* 7. Total Value */}
-                              <td className="py-2 text-right">
-                                  <div className="font-mono font-bold text-sm">
-                                    {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
-                                    {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </div>
-                                  <div className="text-[9px] text-gray-400 uppercase tracking-wide">
-                                    {isCostType ? 'Total Cost' : 'Total Price'}
-                                  </div>
-                              </td>
+                                {/* 7. Total Value */}
+                                <td className="py-2 text-right">
+                                    <div className="font-mono font-bold text-sm leading-none">
+                                        {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
+                                        {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                    <div className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">
+                                        {isCostType ? 'Total Cost' : 'Total Price'}
+                                    </div>
+                                </td>
 
-                              {/* 8. Staff */}
-                              <td className="py-2 text-right">
-                                  <div className="text-xs font-semibold">{first.staff_name}</div>
-                                  
-                                  {/* Enhanced Void Metadata */}
-                                  {isVoided && voidSource && (
-                                      <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
-                                          <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
-                                          <div className="text-[10px] text-red-700 font-medium">
-                                              {voidSource.staff_name || "Unknown"}
-                                          </div>
-                                          <div className="text-[9px] text-red-400">
-                                              {new Date(voidSource.timestamp).toLocaleString()}
-                                          </div>
-                                          <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1.5 rounded border border-red-100/50 max-w-[150px] text-right leading-tight break-words whitespace-normal">
-                                              "{voidSource.void_reason || first.void_reason || "N/A"}"
-                                          </div>
-                                      </div>
-                                  )}
-                              </td>
-                          </tr>
-                      );
-                  })
-              )}
-            </tbody>
-          </table>
-        </div>
+                                {/* 8. Staff */}
+                                <td className="py-2 text-right overflow-hidden">
+                                    <div className="text-xs font-semibold whitespace-normal break-words leading-tight">{first.staff_name}</div>
+                                    
+                                    {isVoided && voidSource && (
+                                        <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
+                                            <span className="text-[8px] text-red-500 font-bold uppercase">Voided By</span>
+                                            <div className="text-[10px] text-red-700 font-medium break-words w-full text-right">
+                                                {voidSource.staff_name || "Unknown"}
+                                            </div>
+                                            <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1 rounded border border-red-100/50 w-full text-right leading-tight break-words whitespace-normal">
+                                                "{voidSource.void_reason || first.void_reason || "N/A"}"
+                                            </div>
+                                        </div>
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    })
+                )}
+                </tbody>
+            </table>
+            </div>
         {/* Pagination Controls */}
         <Pagination 
             totalCount={totalCount}
