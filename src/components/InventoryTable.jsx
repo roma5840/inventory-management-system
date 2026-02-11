@@ -338,7 +338,7 @@ export default function InventoryTable({ lastUpdated }) {
             rawRows.forEach(r => uniqueMap.set(r.accpac, r));
             const cleanRows = Array.from(uniqueMap.values());
 
-            const BATCH_SIZE = 200;
+            const BATCH_SIZE = 300;
             let insertedCount = 0;
             let updatedCount = 0;
             let unchangedCount = 0;
@@ -948,7 +948,7 @@ export default function InventoryTable({ lastUpdated }) {
             </div>
         </div>
       )}
-      
+
       {/* DELETE CONFIRMATION MODAL */}
       {deletingProduct && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">

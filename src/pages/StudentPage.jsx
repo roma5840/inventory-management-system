@@ -172,6 +172,7 @@ export default function StudentPage() {
 
           if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV headers: STUDENT ID, NAME");
 
+          // Handle Courses First
           const uniqueCourses = [...new Set(cleanRows.map(d => d.course).filter(Boolean))];
           if (uniqueCourses.length > 0) {
              const courseInserts = uniqueCourses.map(c => ({ code: c }));
@@ -183,6 +184,7 @@ export default function StudentPage() {
           let insertedCount = 0;
           let updatedCount = 0;
           let unchangedCount = 0;
+          const insertErrors = []; // Collect errors instead of throwing
 
           for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
             const batch = cleanRows.slice(i, i + BATCH_SIZE);
@@ -193,7 +195,10 @@ export default function StudentPage() {
                 .select('student_id, name, course, year_level')
                 .in('student_id', batchIds);
                 
-            if (fetchError) throw fetchError;
+            if (fetchError) {
+                insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Fetch Failed: ${fetchError.message}`);
+                continue;
+            }
 
             const existingMap = new Map();
             existingStudents.forEach(s => existingMap.set(s.student_id, s));
@@ -218,18 +223,30 @@ export default function StudentPage() {
 
             if (toInsert.length > 0) {
                 const { error } = await supabase.from('students').insert(toInsert);
-                if (error) throw error;
-                insertedCount += toInsert.length;
+                if (error) {
+                    insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Insert Failed: ${error.message}`);
+                } else {
+                    insertedCount += toInsert.length;
+                }
             }
 
             if (toUpdate.length > 0) {
                 const { error } = await supabase.from('students').upsert(toUpdate, { onConflict: 'student_id' });
-                if (error) throw error;
-                updatedCount += toUpdate.length;
+                if (error) {
+                    insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Update Failed: ${error.message}`);
+                } else {
+                    updatedCount += toUpdate.length;
+                }
             }
           }
 
-          setImportResult({ inserted: insertedCount, updated: updatedCount, unchanged: unchangedCount });
+          setImportResult({ 
+            inserted: insertedCount, 
+            updated: updatedCount, 
+            unchanged: unchangedCount,
+            errors: insertErrors 
+          });
+          
           setIsImportModalOpen(false);
           
           await supabase.channel('app_updates').send({
@@ -643,15 +660,23 @@ export default function StudentPage() {
       {importResult && (
         <div className="modal modal-open">
             <div className="modal-box max-w-sm text-center p-8 border border-slate-200 shadow-2xl">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${importResult.errors?.length > 0 ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {importResult.errors?.length > 0 ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    )}
                 </div>
-                <h3 className="font-bold text-xl text-slate-800">Import Successful</h3>
+                <h3 className="font-bold text-xl text-slate-800">
+                    {importResult.errors?.length > 0 ? "Import Completed with Issues" : "Import Successful"}
+                </h3>
                 <p className="text-sm text-slate-500 mb-6">Database has been updated with CSV data.</p>
                 
-                <div className="grid grid-cols-3 gap-2 mb-8">
+                <div className="grid grid-cols-3 gap-2 mb-6">
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                         <div className="text-xl font-bold text-emerald-600">{importResult.inserted}</div>
                         <div className="text-[10px] uppercase font-bold text-slate-400">New</div>
@@ -665,6 +690,17 @@ export default function StudentPage() {
                         <div className="text-[10px] uppercase font-bold text-slate-400">Match</div>
                     </div>
                 </div>
+
+                {importResult.errors && importResult.errors.length > 0 && (
+                    <div className="mb-6 text-left bg-red-50 border border-red-100 rounded-lg p-3 max-h-32 overflow-y-auto">
+                        <h4 className="text-xs font-bold text-red-700 uppercase mb-2">Errors Encountered:</h4>
+                        <ul className="text-[10px] text-red-600 space-y-1 list-disc pl-4">
+                            {importResult.errors.map((err, idx) => (
+                                <li key={idx}>{err}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 <button onClick={() => setImportResult(null)} className="btn btn-primary w-full shadow-lg">Done</button>
             </div>
