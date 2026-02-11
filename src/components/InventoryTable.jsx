@@ -45,6 +45,9 @@ export default function InventoryTable({ lastUpdated }) {
   const showToast = (message, subMessage, type = "success") => setToast({ message, subMessage, type });
   const [importResult, setImportResult] = useState(null);
 
+  const [deletingProduct, setDeletingProduct] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const handleCreateProduct = async (e) => {
     e.preventDefault();
     setCreateLoading(true);
@@ -255,30 +258,37 @@ export default function InventoryTable({ lastUpdated }) {
     }
   };
 
-  const handleDelete = async (product) => {
-    if (product.currentStock > 0) return showToast("Delete Blocked", "Stock must be 0 to delete item.", "error");
-    
-    if(window.confirm(`Are you sure you want to delete "${product.name}" permanently?`)) {
-        try {
-            const { error } = await supabase
-                .from('products')
-                .delete()
-                .eq('internal_id', product.internal_id);
-            
-            if (error) throw error;
-
-            fetchInventory();
-            showToast("Item Deleted", `${product.name} removed from system.`, "delete");
-
-            await supabase.channel('app_updates').send({
-                type: 'broadcast', event: 'inventory_update', payload: {} 
-            });
-        } catch (error) {
-            const msg = error.code === '23503' ? "Item has existing transaction history." : error.message;
-            showToast("Delete Failed", msg, "error");
-        }
+  const handleDelete = (product) => {
+    if (product.currentStock > 0) {
+      return showToast("Delete Blocked", "Stock must be 0 to delete item.", "error");
     }
-  }
+    setDeletingProduct(product);
+  };
+
+  const confirmDelete = async () => {
+    setDeleteLoading(true);
+    try {
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('internal_id', deletingProduct.internal_id);
+        
+        if (error) throw error;
+
+        fetchInventory();
+        showToast("Item Deleted", `${deletingProduct.name} removed from system.`, "delete");
+        setDeletingProduct(null);
+
+        await supabase.channel('app_updates').send({
+            type: 'broadcast', event: 'inventory_update', payload: {} 
+        });
+    } catch (error) {
+        const msg = error.code === '23503' ? "Item has existing transaction history." : error.message;
+        showToast("Delete Failed", msg, "error");
+    } finally {
+        setDeleteLoading(false);
+    }
+  };
 
   // *Self-Correction for client-side purely:*
   const generateClientBarcode = () => {
@@ -332,6 +342,7 @@ export default function InventoryTable({ lastUpdated }) {
             let insertedCount = 0;
             let updatedCount = 0;
             let unchangedCount = 0;
+            const insertErrors = []; // Restore error collection
 
             for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
                 const batch = cleanRows.slice(i, i + BATCH_SIZE);
@@ -384,9 +395,14 @@ export default function InventoryTable({ lastUpdated }) {
                 });
 
                 if (toInsert.length > 0) {
-                    const { error } = await supabase.from('products').insert(toInsert);
-                    if (error) throw error;
-                    insertedCount += toInsert.length;
+                    // Capture error instead of throwing
+                    const { error: insError } = await supabase.from('products').insert(toInsert);
+                    if (insError) {
+                        console.error("Batch Insert Error:", insError);
+                        insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Failed: ${insError.message}`);
+                    } else {
+                        insertedCount += toInsert.length;
+                    }
                 }
 
                 if (toUpdate.length > 0) {
@@ -400,7 +416,12 @@ export default function InventoryTable({ lastUpdated }) {
                 }
             }
 
-            setImportResult({ inserted: insertedCount, updated: updatedCount, unchanged: unchangedCount });
+            setImportResult({ 
+                inserted: insertedCount, 
+                updated: updatedCount, 
+                unchanged: unchangedCount,
+                errors: insertErrors 
+            });
             setIsImportModalOpen(false);
             fetchInventory();
 
@@ -881,15 +902,23 @@ export default function InventoryTable({ lastUpdated }) {
       {importResult && (
         <div className="modal modal-open">
             <div className="modal-box max-w-sm text-center p-8 border border-slate-200 shadow-2xl">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${importResult.errors?.length > 0 ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {importResult.errors?.length > 0 ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    )}
                 </div>
-                <h3 className="font-bold text-xl text-slate-800">Import Successful</h3>
+                <h3 className="font-bold text-xl text-slate-800">
+                    {importResult.errors?.length > 0 ? "Import Completed with Issues" : "Import Successful"}
+                </h3>
                 <p className="text-sm text-slate-500 mb-6">Catalog updated with AccPac data.</p>
                 
-                <div className="grid grid-cols-3 gap-2 mb-8">
+                <div className="grid grid-cols-3 gap-2 mb-6">
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                         <div className="text-xl font-bold text-emerald-600">{importResult.inserted}</div>
                         <div className="text-[10px] uppercase font-bold text-slate-400">New</div>
@@ -904,8 +933,84 @@ export default function InventoryTable({ lastUpdated }) {
                     </div>
                 </div>
 
+                {importResult.errors && importResult.errors.length > 0 && (
+                    <div className="mb-6 text-left bg-red-50 border border-red-100 rounded-lg p-3 max-h-32 overflow-y-auto">
+                        <h4 className="text-xs font-bold text-red-700 uppercase mb-2">Errors Encountered:</h4>
+                        <ul className="text-[10px] text-red-600 space-y-1 list-disc pl-4">
+                            {importResult.errors.map((err, idx) => (
+                                <li key={idx}>{err}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
                 <button onClick={() => setImportResult(null)} className="btn btn-primary w-full shadow-lg">Done</button>
             </div>
+        </div>
+      )}
+      
+      {/* DELETE CONFIRMATION MODAL */}
+      {deletingProduct && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" 
+            onClick={() => !deleteLoading && setDeletingProduct(null)}
+          ></div>
+
+          <div className={`relative bg-white w-full max-w-md rounded-xl shadow-2xl border border-slate-200 overflow-hidden transition-all ${deleteLoading ? 'opacity-75 pointer-events-none' : 'scale-100'}`}>
+            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-rose-500/20 rounded text-rose-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5 0l.5 8.5a.75.75 0 101.5 0l-.5-8.5zm4.33.25a.75.75 0 00-1.5 0l.5 8.5a.75.75 0 001.5 0l-.5-8.5z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-white tracking-tight">Delete Product</h3>
+              </div>
+              <button 
+                onClick={() => setDeletingProduct(null)}
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-sm text-slate-600 mb-2 leading-relaxed">
+                Are you sure you want to permanently delete:
+              </p>
+              <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg mb-6">
+                <div className="font-bold text-slate-900 uppercase break-words">{deletingProduct.name}</div>
+                <div className="font-mono text-[10px] text-slate-400 mt-1">{deletingProduct.id}</div>
+              </div>
+              
+              <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg text-amber-800 text-xs mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 shrink-0">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <p>This action cannot be undone. You can only delete items with zero stock and no transaction history.</p>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button 
+                  className="btn btn-ghost btn-sm text-slate-500 normal-case" 
+                  onClick={() => setDeletingProduct(null)}
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn btn-sm bg-rose-600 hover:bg-rose-700 text-white border-none px-6 normal-case" 
+                  onClick={confirmDelete}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? <span className="loading loading-spinner loading-xs"></span> : 'Delete Permanently'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {/* Toast and Modal Endings */}
