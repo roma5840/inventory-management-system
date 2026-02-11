@@ -357,18 +357,18 @@ export default function TransactionsManager() {
         </div>
 
         {/* DETAILED TABLE */}
-        <div className="overflow-x-auto">
+        <div className="overflow-hidden">
             <table className="table w-full table-fixed text-sm">
                 <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                    <th className="w-28">Type</th>
-                    <th className="w-24">Date</th>
-                    <th className="w-32">Ref #</th>
-                    <th className="w-28">Student No.</th>
-                    <th className="w-44">Name / Supplier</th>
+                    <th className="w-[8%]">Type</th>
+                    <th className="w-[9%]">Date</th>
+                    <th className="w-[10%]">Ref #</th>
+                    <th className="w-[9%]">Student No.</th>
+                    <th className="w-[16%]">Name / Supplier</th>
                     <th className="w-auto">Items Breakdown</th>
-                    <th className="text-right w-28">Value</th>
-                    <th className="w-32 text-right">Staff</th>
+                    <th className="text-right w-[10%]">Value</th>
+                    <th className="w-[10%] text-right">Staff</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -398,12 +398,12 @@ export default function TransactionsManager() {
                         return (
                             <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
                                 
-                                {/* 1. Type - Modified specifically for ISSUANCE_RETURN to stack and prevent overlap */}
-                                <td className="py-2 pr-4">
+                                {/* 1. Type */}
+                                <td className="py-2 pr-1 align-top">
                                     {isOrphanVoid ? (
                                         <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800 whitespace-nowrap">TX</div>
                                     ) : (
-                                        <div className={`badge badge-sm font-bold border-0 h-auto py-1 whitespace-nowrap
+                                        <div className={`badge badge-sm font-bold border-0 h-auto py-1 whitespace-normal text-center w-full
                                             ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
                                             first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
                                             first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
@@ -420,31 +420,31 @@ export default function TransactionsManager() {
                                         </div>
                                     )}
                                     {first.transaction_mode && (
-                                        <div className="mt-1 text-[9px] font-bold text-gray-500 uppercase leading-tight">
+                                        <div className="mt-1 text-[9px] font-bold text-gray-500 uppercase leading-tight text-center">
                                             {first.transaction_mode}
                                         </div>
                                     )}
                                 </td>
 
                                 {/* 2. Date */}
-                                <td className="py-2">
-                                    <div className="text-xs text-gray-700">{new Date(first.timestamp).toLocaleDateString()}</div>
-                                    <div className="text-[10px] text-gray-400">{new Date(first.timestamp).toLocaleTimeString()}</div>
+                                <td className="py-2 align-top">
+                                    <div className="text-xs text-gray-700 leading-tight">{new Date(first.timestamp).toLocaleDateString()}</div>
+                                    <div className="text-[10px] text-gray-400 leading-tight">{new Date(first.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                                 </td>
 
                                 {/* 3. Ref */}
-                                <td className="py-2 font-mono text-xs font-bold break-all whitespace-normal pr-2">
+                                <td className="py-2 font-mono text-xs font-bold break-all whitespace-normal pr-2 align-top">
                                     {refNo}
-                                    {isVoided && <div className="badge badge-xs badge-error mt-1 block w-fit">VOIDED</div>}
+                                    {isVoided && <div className="badge badge-xs badge-error mt-1 w-fit">VOIDED</div>}
                                 </td>
 
                                 {/* 4. Student No. */}
-                                <td className="py-2 font-mono text-xs text-gray-600 break-all whitespace-normal">
+                                <td className="py-2 font-mono text-xs text-gray-600 break-all whitespace-normal align-top">
                                     {first.student_id || "-"}
                                 </td>
 
                                 {/* 5. Name / Supplier */}
-                                <td className="py-2 overflow-hidden">
+                                <td className="py-2 align-top pr-2">
                                     {first.student_name ? (
                                         <div className="whitespace-normal break-words">
                                             <div className="font-bold text-xs leading-tight">{first.student_name}</div>
@@ -461,36 +461,33 @@ export default function TransactionsManager() {
                                         <span className="text-gray-400 italic text-xs">N/A</span>
                                     )}
                                     {first.remarks && (
-                                        <div className="mt-2 text-[10px] bg-yellow-50 text-yellow-800 p-1 rounded border border-yellow-100 whitespace-normal break-words leading-tight">
+                                        <div className="mt-1 text-[10px] bg-yellow-50 text-yellow-800 p-1 rounded border border-yellow-100 whitespace-normal break-words leading-tight">
                                             {first.remarks}
                                         </div>
                                     )}
                                 </td>
 
                                 {/* 6. Items Breakdown (Fills remaining space) */}
-                                <td className="py-2">
-                                    <div className="space-y-1.5">
+                                <td className="py-2 align-top pr-2">
+                                    <div className="space-y-1">
                                         {displayItems.map(item => {
                                             const itemVal = isCostType 
                                                 ? (item.unit_cost_snapshot ?? 0)
                                                 : (item.price_snapshot ?? item.price);
 
                                             return (
-                                                <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1.5 last:border-0 gap-8">
+                                                <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0 gap-2">
                                                     <div className="flex flex-col flex-grow min-w-0">
                                                         <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
                                                             {item.product_name_snapshot || "Item"}
                                                         </span>
-                                                        <span className="text-[9px] text-gray-400 font-mono mt-0.5 break-all">
+                                                        <span className="text-[9px] text-gray-400 font-mono leading-none mt-0.5 break-all">
                                                             {item.barcode_snapshot || item.product_id}
                                                         </span>
                                                     </div>
-                                                    <div className="text-right shrink-0">
+                                                    <div className="text-right shrink-0 whitespace-nowrap ml-1">
                                                         <span className="font-mono text-gray-600 block leading-none">
-                                                            {item.qty} x {Number(itemVal).toFixed(2)}
-                                                        </span>
-                                                        <span className="text-[9px] text-gray-400 uppercase">
-                                                            {isCostType ? 'Cost' : 'Price'}
+                                                            {item.qty} <span className="text-gray-400">x</span> {Number(itemVal).toFixed(2)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -500,18 +497,18 @@ export default function TransactionsManager() {
                                 </td>
 
                                 {/* 7. Total Value */}
-                                <td className="py-2 text-right">
+                                <td className="py-2 text-right align-top">
                                     <div className="font-mono font-bold text-sm leading-none">
                                         {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
                                         {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
                                     <div className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">
-                                        {isCostType ? 'Total Cost' : 'Total Price'}
+                                        {isCostType ? 'Cost' : 'Price'}
                                     </div>
                                 </td>
 
                                 {/* 8. Staff */}
-                                <td className="py-2 text-right overflow-hidden">
+                                <td className="py-2 text-right align-top">
                                     <div className="text-xs font-semibold whitespace-normal break-words leading-tight">
                                         {first.staff_name}
                                     </div>
@@ -523,7 +520,7 @@ export default function TransactionsManager() {
                                                 {voidSource.staff_name || "Unknown"}
                                             </div>
                                             {/* Restored Timestamp Details */}
-                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5">
+                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5 whitespace-nowrap">
                                                 {new Date(voidSource.timestamp).toLocaleDateString()}
                                             </div>
                                             <div className="text-[9px] text-red-400 leading-tight">
@@ -542,7 +539,7 @@ export default function TransactionsManager() {
                 )}
                 </tbody>
             </table>
-            </div>
+        </div>
         {/* Pagination Controls */}
         <Pagination 
             totalCount={totalCount}

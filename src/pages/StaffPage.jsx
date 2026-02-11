@@ -33,6 +33,8 @@ export default function StaffPage() {
   // Toast State
   const [toast, setToast] = useState(null);
   const showToast = (message, subMessage, type = "success") => setToast({ message, subMessage, type });
+  
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return <div className="p-10 text-center text-error">Access Denied</div>;
 
   // Logic: Super Admin can edit everyone. Admin can only edit Employees.
   const canToggleStatus = (targetUser) => {
@@ -268,7 +270,6 @@ export default function StaffPage() {
   };
 
 
-  if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return <div className="p-10 text-center text-error">Access Denied</div>;
 
 
   return (
