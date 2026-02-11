@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import Papa from "papaparse";
 import { useNavigate } from "react-router-dom";
 import Pagination from "./Pagination";
+import LimitedInput from "./LimitedInput";
 
 export default function InventoryTable({ lastUpdated }) {
   const { userRole } = useAuth();
@@ -325,7 +326,6 @@ export default function InventoryTable({ lastUpdated }) {
       skipEmptyLines: true,
       beforeFirstChunk: (chunk) => {
         const lines = chunk.split('\n');
-        // Scan for the line containing the specific header to handle offset headers
         const headerIndex = lines.findIndex(line => 
             line.toUpperCase().includes('ACCPAC ITEM CODE')
         );
@@ -336,20 +336,19 @@ export default function InventoryTable({ lastUpdated }) {
             const rows = results.data;
             if (rows.length === 0) throw new Error("No data found or invalid header.");
 
-            // 1. Clean, Normalize, and Map
-            // Force UpperCase on AccPac Code to ensure we catch duplicates like "Item1" vs "ITEM1"
             const rawRows = rows.map(r => {
                 const keys = Object.keys(r);
                 const accpacKey = keys.find(k => k.toUpperCase().includes('ACCPAC ITEM CODE'));
                 const descKey = keys.find(k => k.toUpperCase().includes('ITEM DESCRIPTION') || k.toUpperCase().includes('DESCRIPTION'));
                 
-                const code = r[accpacKey]?.trim().toUpperCase();
-                const name = r[descKey]?.trim().toUpperCase();
+                // Enforce limits: AccPac (50), Name (300)
+                const code = r[accpacKey]?.trim().toUpperCase().slice(0, 50);
+                const name = r[descKey]?.trim().toUpperCase().slice(0, 300);
 
                 if (!code || !name) return null;
 
                 return { accpac: code, name: name };
-            }).filter(Boolean); 
+            }).filter(Boolean);
 
             if (rawRows.length === 0) throw new Error("Could not parse columns. Ensure 'ACCPAC ITEM CODE' and 'ITEM DESCRIPTION' headers exist.");
 
@@ -649,8 +648,10 @@ export default function InventoryTable({ lastUpdated }) {
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Barcode / ISBN *</label>
                         <div className="flex gap-1">
-                            <input 
+                            <LimitedInput 
                                 type="text" 
+                                maxLength={50}
+                                showCounter={true}
                                 value={editingProduct.id} 
                                 onChange={(e) => setEditingProduct({...editingProduct, id: e.target.value})}
                                 className="input input-bordered input-sm font-mono font-bold text-blue-800 uppercase w-full" 
@@ -658,7 +659,7 @@ export default function InventoryTable({ lastUpdated }) {
                             />
                             <button type="button" 
                                 onClick={() => setEditingProduct({...editingProduct, id: generateClientBarcode()})}
-                                className="btn btn-square btn-outline btn-primary btn-sm" 
+                                className="btn btn-square btn-outline btn-primary btn-sm shrink-0" 
                                 title="Generate New ID"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -679,8 +680,10 @@ export default function InventoryTable({ lastUpdated }) {
                 {/* EDITABLE FIELDS */}
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">Item Name *</label>
-                    <input 
+                    <LimitedInput 
                         type="text" 
+                        maxLength={300}
+                        showCounter={true}
                         className="input input-bordered w-full uppercase" 
                         value={editForm.name}
                         onChange={e => setEditForm({...editForm, name: e.target.value})}
@@ -691,8 +694,10 @@ export default function InventoryTable({ lastUpdated }) {
                 {/* AccPac Field in Edit Mode */}
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">AccPac Code</label>
-                    <input 
+                    <LimitedInput 
                         type="text" 
+                        maxLength={50}
+                        showCounter={true}
                         className="input input-bordered w-full font-mono text-blue-900 uppercase" 
                         placeholder="Optional"
                         value={editForm.accpacCode}
@@ -702,8 +707,10 @@ export default function InventoryTable({ lastUpdated }) {
 
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">Location / Rack</label>
-                    <input 
+                    <LimitedInput 
                         type="text" 
+                        maxLength={150}
+                        showCounter={true}
                         className="input input-bordered w-full uppercase" 
                         value={editForm.location}
                         onChange={e => setEditForm({...editForm, location: e.target.value})}
@@ -713,10 +720,11 @@ export default function InventoryTable({ lastUpdated }) {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Price (₱) *</label>
-                        <input 
+                        <LimitedInput 
                             type="number" 
                             step="0.01"
                             min="0"
+                            maxLength={10}
                             className="input input-bordered w-full" 
                             value={editForm.price}
                             onChange={e => setEditForm({...editForm, price: e.target.value})}
@@ -726,10 +734,11 @@ export default function InventoryTable({ lastUpdated }) {
                     </div>
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert Level *</label>
-                        <input 
+                        <LimitedInput 
                             type="number" 
                             min="0"
                             step="1"
+                            maxLength={10}
                             className="input input-bordered w-full" 
                             value={editForm.minStockLevel}
                             onChange={e => setEditForm({...editForm, minStockLevel: e.target.value})}
@@ -765,8 +774,10 @@ export default function InventoryTable({ lastUpdated }) {
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Barcode *</label>
                         <div className="flex gap-1">
-                            <input 
+                            <LimitedInput 
                                 type="text" 
+                                maxLength={50}
+                                showCounter={true}
                                 className="input input-bordered w-full font-mono font-bold text-blue-800 uppercase" 
                                 placeholder="Scan/Type"
                                 value={newItemForm.id}
@@ -775,7 +786,7 @@ export default function InventoryTable({ lastUpdated }) {
                             />
                             <button type="button" 
                                 onClick={() => setNewItemForm({...newItemForm, id: generateClientBarcode()})}
-                                className="btn btn-square btn-outline btn-primary btn-sm" 
+                                className="btn btn-square btn-outline btn-primary btn-sm shrink-0" 
                                 title="Generate ID"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -786,8 +797,10 @@ export default function InventoryTable({ lastUpdated }) {
                     </div>
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">AccPac Code</label>
-                        <input 
+                        <LimitedInput 
                             type="text" 
+                            maxLength={50}
+                            showCounter={true}
                             className="input input-bordered w-full font-mono text-gray-700 uppercase" 
                             placeholder="Optional"
                             value={newItemForm.accpacCode}
@@ -798,8 +811,10 @@ export default function InventoryTable({ lastUpdated }) {
 
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">Item Name *</label>
-                    <input 
+                    <LimitedInput 
                         type="text" 
+                        maxLength={300}
+                        showCounter={true}
                         className="input input-bordered w-full uppercase" 
                         placeholder="Product Title"
                         value={newItemForm.name}
@@ -811,8 +826,8 @@ export default function InventoryTable({ lastUpdated }) {
                 <div className="grid grid-cols-2 gap-3">
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Price (₱) *</label>
-                        <input 
-                            type="number" step="0.01" min="0"
+                        <LimitedInput 
+                            type="number" step="0.01" min="0" maxLength={10}
                             className="input input-bordered w-full" 
                             value={newItemForm.price}
                             onChange={e => setNewItemForm({...newItemForm, price: e.target.value})}
@@ -822,8 +837,10 @@ export default function InventoryTable({ lastUpdated }) {
                     </div>
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Location</label>
-                        <input 
+                        <LimitedInput 
                             type="text" 
+                            maxLength={150}
+                            showCounter={true}
                             className="input input-bordered w-full uppercase" 
                             placeholder="Rack/Shelf"
                             value={newItemForm.location}
@@ -835,8 +852,8 @@ export default function InventoryTable({ lastUpdated }) {
                 <div className="grid grid-cols-2 gap-3">
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Initial Stock</label>
-                        <input 
-                            type="number" min="0" step="1"
+                        <LimitedInput 
+                            type="number" min="0" step="1" maxLength={10}
                             className="input input-bordered w-full" 
                             value={newItemForm.initialStock}
                             onChange={e => setNewItemForm({...newItemForm, initialStock: e.target.value})}
@@ -845,10 +862,11 @@ export default function InventoryTable({ lastUpdated }) {
                     </div>
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert Level *</label>
-                        <input 
+                        <LimitedInput 
                             type="number" 
                             min="0"
                             step="1"
+                            maxLength={10}
                             className="input input-bordered w-full" 
                             value={newItemForm.minStockLevel}
                             onChange={e => setNewItemForm({...newItemForm, minStockLevel: e.target.value})}

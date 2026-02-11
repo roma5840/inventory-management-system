@@ -4,6 +4,7 @@ import { useInventory } from "../hooks/useInventory";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import PrintLayout from "./PrintLayout";
+import LimitedInput from "./LimitedInput";
 
 export default function TransactionForm({ onSuccess }) {
   const { currentUser } = useAuth();
@@ -851,8 +852,9 @@ export default function TransactionForm({ onSuccess }) {
                                     {isNewStudent === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
                                     {isNewStudent === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
                                 </label>
-                                <input 
-                                    id="studentIdInput" type="text" 
+                                <LimitedInput 
+                                    id="studentIdInput" 
+                                    maxLength={50}
                                     className={`w-full h-9 px-3 rounded-lg border text-sm font-mono transition-all outline-none
                                         ${isNewStudent === true ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 focus:border-blue-500'}
                                         ${isNewStudent === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
@@ -916,8 +918,10 @@ export default function TransactionForm({ onSuccess }) {
                     ) : (
                         <div className="md:col-span-4 relative">
                             <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block tracking-tight">Supplier / Source</label>
-                            <input 
-                                id="supplierInput" type="text" autoComplete="off"
+                            <LimitedInput 
+                                id="supplierInput" 
+                                maxLength={150}
+                                autoComplete="off"
                                 className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase font-semibold focus:border-blue-500 outline-none" 
                                 placeholder="Start typing supplier..."
                                 value={headerData.supplier} onChange={handleSupplierChange} onKeyDown={handleSupplierKeyDown}
@@ -940,8 +944,11 @@ export default function TransactionForm({ onSuccess }) {
                     )}
                     
                     <div className="md:col-span-6 mt-1">
-                        <input type="text" 
-                            className="w-full h-8 px-3 rounded-lg border border-slate-200 bg-slate-50/50 text-xs italic text-slate-500 focus:bg-white transition-all outline-none"
+                        <LimitedInput 
+                            as="textarea"
+                            maxLength={500}
+                            showCounter={true}
+                            className="w-full h-12 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 text-xs italic text-slate-500 focus:bg-white transition-all outline-none resize-none"
                             placeholder="Internal remarks or notes..."
                             value={headerData.remarks} onChange={e => setHeaderData({...headerData, remarks: e.target.value})} 
                         />
@@ -959,15 +966,16 @@ export default function TransactionForm({ onSuccess }) {
                              <span className="text-[10px] font-bold uppercase tracking-wider">Lookup Receipt to enable returns</span>
                         </div>
                         <div className="flex gap-2">
-                            <input 
-                                type="text" autoFocus
-                                className="flex-1 h-10 px-4 rounded-lg border border-slate-300 font-mono uppercase text-sm shadow-inner focus:ring-2 focus:ring-blue-500 outline-none" 
+                            <LimitedInput 
+                                maxLength={50}
+                                autoFocus
+                                className="flex-1 h-10 px-4 rounded-lg border border-slate-300 font-mono uppercase text-sm shadow-inner focus:ring-2 focus:ring-blue-500 outline-none w-full" 
                                 placeholder="ENTER REFERENCE #..."
                                 value={returnLookupRef}
                                 onChange={handleReturnRefChange}
                                 onKeyDown={(e) => e.key === 'Enter' && handleLookupReceipt(e)}
                             />
-                            <button onClick={handleLookupReceipt} className="h-10 px-6 rounded-lg bg-slate-800 text-white text-xs font-bold shadow-lg" disabled={lookupLoading}>
+                            <button onClick={handleLookupReceipt} className="h-10 px-6 rounded-lg bg-slate-800 text-white text-xs font-bold shadow-lg shrink-0" disabled={lookupLoading}>
                                 {lookupLoading ? "SEARCHING..." : "FIND ITEMS"}
                             </button>
                         </div>
@@ -1024,11 +1032,15 @@ export default function TransactionForm({ onSuccess }) {
                     /* --- STANDARD SCANNER UI (Receiving/Issuance) --- */
                     <>
                         <div className="grid grid-cols-12 gap-3 mb-3">
-                            {/* 1. Stretched Barcode Field */}
-                            <div className="col-span-7">
+                            {/* 1. Barcode Field (Slightly Reduced for Qty) */}
+                            <div className="col-span-6">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Barcode</label>
-                                <input 
-                                    name="barcodeField" ref={barcodeRef} type="text" 
+                                <LimitedInput 
+                                    maxLength={50}
+                                    name="barcodeField" 
+                                    as="input" 
+                                    ref={barcodeRef} 
+                                    type="text" 
                                     className={`w-full h-10 px-3 rounded-lg border-2 font-mono font-bold uppercase outline-none
                                         ${isNewItem === true ? 'border-rose-400 bg-rose-50 text-rose-600' : 
                                         isNewItem === false ? 'border-emerald-400 text-emerald-800' : 'border-slate-200 text-blue-700 focus:border-blue-500'}`}
@@ -1041,8 +1053,8 @@ export default function TransactionForm({ onSuccess }) {
                                 {['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? (
                                     <>
                                         <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1 block">Unit Cost</label>
-                                        <input 
-                                            id="unitCostInput" type="number" min="0" step="0.01"
+                                        <LimitedInput 
+                                            id="unitCostInput" type="number" min="0" step="0.01" maxLength={10}
                                             readOnly={headerData.type !== 'RECEIVING'} 
                                             className="w-full h-10 px-3 rounded-lg border-2 border-orange-100 bg-orange-50 font-mono font-bold text-orange-800 focus:border-orange-400 outline-none"
                                             value={currentScan.unitCost}
@@ -1060,11 +1072,11 @@ export default function TransactionForm({ onSuccess }) {
                                 )}
                             </div>
 
-                            {/* 3. Qty Field (Fixed Font/Width) */}
-                            <div className="col-span-2">
+                            {/* 3. Qty Field (10 Digits) */}
+                            <div className="col-span-3">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block text-center">Qty</label>
-                                <input 
-                                    id="qtyInput" type="number" min="1"
+                                <LimitedInput 
+                                    id="qtyInput" type="number" min="1" maxLength={10}
                                     className={`w-full h-10 px-1 rounded-lg border-2 text-center font-bold text-base outline-none
                                         ${!currentScan.qty || parseInt(currentScan.qty) <= 0 ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-slate-200 bg-white focus:border-blue-500'}`} 
                                     value={currentScan.qty}
@@ -1114,9 +1126,11 @@ export default function TransactionForm({ onSuccess }) {
                                     <td className="font-mono text-slate-600 text-[11px] font-bold">{item.barcode}</td>
                                     <td>
                                         <div className="flex items-center gap-1">
-                                            <input 
-                                                type="number" className="w-12 h-6 text-center text-xs font-black border border-slate-200 rounded bg-white group-hover:border-blue-300"
-                                                value={item.qty} min="1" max={item.maxQty || 9999}
+                                            <LimitedInput 
+                                                type="number" 
+                                                maxLength={10}
+                                                className="w-28 h-6 text-center text-xs font-black border border-slate-200 rounded bg-white group-hover:border-blue-300"
+                                                value={item.qty} min="1" max={item.maxQty || 9999999999}
                                                 onChange={(e) => handleQueueQtyChange(item.id, e.target.value)}
                                                 onBlur={() => handleQueueBlur(item.id)}
                                                 onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}

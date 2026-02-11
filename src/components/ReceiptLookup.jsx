@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
 import PrintLayout from "./PrintLayout";
+import LimitedInput from "./LimitedInput";
 
 export default function ReceiptLookup() {
   const [searchRef, setSearchRef] = useState("");
@@ -129,8 +130,9 @@ export default function ReceiptLookup() {
             Receipt Lookup
          </h3>
          <form onSubmit={handleSearch} className="flex flex-col gap-2">
-            <input 
+            <LimitedInput 
               type="text" 
+              maxLength={50}
               className="input input-sm input-bordered w-full font-mono uppercase" 
               placeholder="Enter REF-..." 
               value={searchRef}

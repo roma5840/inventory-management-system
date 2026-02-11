@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import Papa from "papaparse"; // Import CSV Parser
+import Papa from "papaparse"; 
 import Sidebar from "../components/Sidebar";
 import Pagination from "../components/Pagination";
+import LimitedInput from "../components/LimitedInput";
 
 export default function StudentPage() {
   const { userRole } = useAuth();
@@ -152,10 +153,10 @@ export default function StudentPage() {
           const cleanRows = results.data
             .filter(row => row['STUDENT ID'] && row['NAME'])
             .map(row => ({
-              student_id: row['STUDENT ID'].trim(),
-              name: row['NAME'].trim().toUpperCase(),
-              course: row['COURSE'] ? row['COURSE'].trim().toUpperCase() : '',
-              year_level: row['SEMESTER'] ? row['SEMESTER'].trim().toUpperCase() : ''
+              student_id: row['STUDENT ID'].trim().slice(0, 50),
+              name: row['NAME'].trim().toUpperCase().slice(0, 150),
+              course: row['COURSE'] ? row['COURSE'].trim().toUpperCase().slice(0, 200) : '',
+              year_level: row['SEMESTER'] ? row['SEMESTER'].trim().toUpperCase().slice(0, 20) : ''
             }));
 
           if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV headers: STUDENT ID, NAME");
@@ -473,9 +474,10 @@ export default function StudentPage() {
                         <label className="label">
                             <span className="label-text text-xs uppercase font-bold text-gray-500">Full Name</span>
                         </label>
-                        <input 
+                        <LimitedInput 
                             type="text" 
                             required
+                            maxLength={150}
                             className="input input-bordered w-full font-semibold text-gray-700 uppercase" 
                             value={editForm.name}
                             onChange={(e) => setEditForm({...editForm, name: e.target.value})}
@@ -505,8 +507,9 @@ export default function StudentPage() {
                             <label className="label">
                                 <span className="label-text text-xs uppercase font-bold text-gray-500">Year / Sem</span>
                             </label>
-                            <input 
+                            <LimitedInput 
                                 type="text" 
+                                maxLength={20}
                                 className="input input-bordered w-full uppercase" 
                                 value={editForm.year_level}
                                 onChange={(e) => setEditForm({...editForm, year_level: e.target.value})}
@@ -535,8 +538,9 @@ export default function StudentPage() {
 
                 {/* Add New Course Form */}
                 <form onSubmit={handleAddCourse} className="flex gap-2 mb-6">
-                    <input 
+                    <LimitedInput 
                         type="text" 
+                        maxLength={200}
                         placeholder="Enter Course" 
                         className="input input-bordered w-full uppercase"
                         value={newCourseCode}

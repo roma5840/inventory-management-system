@@ -259,7 +259,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           
                           {/* Supplier */}
                           {first.supplier && (
-                             <div className="text-xs mb-1">
+                             <div className="text-xs mb-1 break-all">
                                 <span className="font-semibold text-gray-500">Supp:</span> {first.supplier}
                              </div>
                           )}

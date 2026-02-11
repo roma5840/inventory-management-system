@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import AdminInvite from "../components/AdminInvite";
 import Sidebar from "../components/Sidebar";
+import LimitedInput from "../components/LimitedInput";
 
 export default function StaffPage() {
   const { userRole, currentUser } = useAuth();
@@ -303,8 +304,9 @@ export default function StaffPage() {
                                         {/* INLINE NAME EDITING LOGIC */}
                                         {editingNameId === user.id ? (
                                             <div className="flex flex-col gap-2">
-                                                <input 
+                                                <LimitedInput 
                                                     type="text" 
+                                                    maxLength={150}
                                                     className="input input-sm input-bordered w-full bg-white"
                                                     value={tempName}
                                                     onChange={(e) => setTempName(e.target.value)}

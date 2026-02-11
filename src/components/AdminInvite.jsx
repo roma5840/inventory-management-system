@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import emailjs from '@emailjs/browser';
+import LimitedInput from "./LimitedInput";
 
 export default function AdminInvite({ onSuccess }) {
   const { currentUser, userRole } = useAuth();
@@ -112,14 +113,22 @@ export default function AdminInvite({ onSuccess }) {
       <h3 className="card-title mb-4 text-gray-700">Invite Staff</h3>
       <form onSubmit={handleInvite} className="flex flex-col gap-3">
         <div className="form-control">
-          <input 
-            type="email" placeholder="Staff Email Address" className="input input-bordered w-full" 
+          <LimitedInput 
+            type="email" 
+            maxLength={300}
+            showCounter={false}
+            placeholder="Staff Email Address" 
+            className="input input-bordered w-full" 
             value={email} onChange={e => setEmail(e.target.value)} required 
           />
         </div>
         <div className="form-control">
-          <input 
-            type="text" placeholder="Full Name" className="input input-bordered w-full" 
+          <LimitedInput 
+            type="text" 
+            maxLength={150}
+            showCounter={false}
+            placeholder="Full Name" 
+            className="input input-bordered w-full" 
             value={name} onChange={e => setName(e.target.value)} required 
           />
         </div>

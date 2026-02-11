@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import Sidebar from "../components/Sidebar";
 import Pagination from "../components/Pagination";
+import LimitedInput from "../components/LimitedInput";
 
 export default function SupplierPage() {
   const [suppliers, setSuppliers] = useState([]);
@@ -161,8 +162,10 @@ export default function SupplierPage() {
                         <label className="label">
                             <span className="label-text text-xs font-bold text-gray-500 uppercase">Supplier Name</span>
                         </label>
-                        <input 
+                        <LimitedInput 
                             type="text" required 
+                            maxLength={150}
+                            showCounter={true}
                             className="input input-bordered w-full uppercase focus:ring-2 focus:ring-primary/20" 
                             placeholder="SUPPLIER NAME"
                             value={newName} onChange={e => setNewName(e.target.value)}
@@ -172,8 +175,10 @@ export default function SupplierPage() {
                         <label className="label">
                             <span className="label-text text-xs font-bold text-gray-500 uppercase">Contact Info (Optional)</span>
                         </label>
-                        <input 
+                        <LimitedInput 
                             type="text" 
+                            maxLength={300}
+                            showCounter={true}
                             className="input input-bordered w-full focus:ring-2 focus:ring-primary/20" 
                             placeholder="Phone, Email, or Address"
                             value={newContact} onChange={e => setNewContact(e.target.value)}
@@ -269,8 +274,10 @@ export default function SupplierPage() {
                         <label className="label">
                             <span className="label-text text-xs font-bold text-gray-500 uppercase">Supplier Name</span>
                         </label>
-                        <input 
+                        <LimitedInput 
                             type="text" required 
+                            maxLength={150}
+                            showCounter={true}
                             className="input input-bordered w-full uppercase font-semibold text-lg py-6 focus:ring-2 focus:ring-primary/20" 
                             value={editName} onChange={e => setEditName(e.target.value)}
                         />
@@ -279,7 +286,10 @@ export default function SupplierPage() {
                         <label className="label">
                             <span className="label-text text-xs font-bold text-gray-500 uppercase">Contact Info</span>
                         </label>
-                        <textarea 
+                        <LimitedInput 
+                            as="textarea"
+                            maxLength={300}
+                            showCounter={true}
                             className="textarea textarea-bordered w-full min-h-[100px] text-base focus:ring-2 focus:ring-primary/20" 
                             placeholder="Enter contact details..."
                             value={editContact} onChange={e => setEditContact(e.target.value)}
