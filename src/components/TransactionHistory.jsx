@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useInventory } from "../hooks/useInventory";
 import { Link } from "react-router-dom";
 import LimitedInput from "./LimitedInput";
+import Toast from "./Toast";
 
 export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const { userRole } = useAuth();
@@ -20,6 +21,8 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const [voidReason, setVoidReason] = useState("");
   const [voidError, setVoidError] = useState("");
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  // Replace old toast states with unified object
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -124,7 +127,6 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   };
 
   const confirmVoid = async (e) => {
-    // Prevent form submission/refresh if wrapped in a form
     if (e) e.preventDefault();
     
     if (!voidReason.trim()) {
@@ -136,22 +138,15 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
     const result = await voidTransaction(voidModalRef, voidReason);
     
     if (result.success) {
-      // 1. Close modal immediately for responsiveness
       setVoidModalRef(null);
+      setToast({ message: "Transaction Voided", subMessage: `Receipt ${voidModalRef} has been reversed.` });
       
-      // 2. Show Success Toast
-      setShowSuccessToast(true);
-      
-      // 3. Refresh Data
       fetchTransactions();
       if (onUpdate) onUpdate(); 
       
       await supabase.channel('app_updates').send({
           type: 'broadcast', event: 'inventory_update', payload: {} 
       });
-
-      // 4. Auto-hide toast after 4 seconds
-      setTimeout(() => setShowSuccessToast(false), 4000);
     } else {
       setVoidError(result.error || "An unexpected error occurred.");
     }
@@ -468,23 +463,13 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
           </div>
         )}
 
-        {/* Global Success Toast */}
-        {showSuccessToast && (
-          <div className="toast toast-end toast-bottom z-[100] p-4">
-            <div className="alert alert-success shadow-2xl border-none bg-emerald-600 text-white min-w-[300px] flex justify-between group">
-              <div className="flex items-center gap-3">
-                <div className="bg-white/20 p-1.5 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-sm">Action Successful</span>
-                  <span className="text-xs opacity-90">Transaction has been voided.</span>
-                </div>
-              </div>
-              <button onClick={() => setShowSuccessToast(false)} className="btn btn-ghost btn-xs btn-circle text-white opacity-50 hover:opacity-100 text-lg">×</button>
-            </div>
-          </div>
-        )}
+        {toast && (
+        <Toast 
+          message={toast.message} 
+          subMessage={toast.subMessage} 
+          onClose={() => setToast(null)} 
+        />
+      )}
     </div>
   );
 }

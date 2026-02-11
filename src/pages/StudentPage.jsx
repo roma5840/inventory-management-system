@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import Sidebar from "../components/Sidebar";
 import Pagination from "../components/Pagination";
 import LimitedInput from "../components/LimitedInput";
+import Toast from "../components/Toast";
 
 export default function StudentPage() {
   const { userRole } = useAuth();
@@ -32,6 +33,9 @@ export default function StudentPage() {
   // Bulk Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+
+  const [toast, setToast] = useState(null);
+  const [importResult, setImportResult] = useState(null);
 
   // Fetch Courses Logic
   useEffect(() => {
@@ -127,14 +131,19 @@ export default function StudentPage() {
                 : s
         ));
         
-        // Broadcast
+        setToast({ 
+            message: "Student Updated", 
+            subMessage: `${editForm.name}'s records have been saved.`, 
+            type: "success" 
+        });
+
         await supabase.channel('app_updates').send({
             type: 'broadcast', event: 'inventory_update', payload: {} 
         });
 
         setEditingStudent(null);
     } catch (err) {
-        alert("Update failed: " + err.message);
+        setToast({ message: "Update Failed", subMessage: err.message, type: "error" });
     } finally {
         setSaving(false);
     }
@@ -152,7 +161,6 @@ export default function StudentPage() {
       skipEmptyLines: true,
       complete: async (results) => {
         try {
-          // 1. Map CSV Headers to DB Columns & Clean Data
           const cleanRows = results.data
             .filter(row => row['STUDENT ID'] && row['NAME'])
             .map(row => ({
@@ -164,7 +172,6 @@ export default function StudentPage() {
 
           if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV headers: STUDENT ID, NAME");
 
-          // 2. Handle Courses (Upsert unique courses first)
           const uniqueCourses = [...new Set(cleanRows.map(d => d.course).filter(Boolean))];
           if (uniqueCourses.length > 0) {
              const courseInserts = uniqueCourses.map(c => ({ code: c }));
@@ -172,18 +179,15 @@ export default function StudentPage() {
              setAvailableCourses(prev => [...new Set([...prev, ...uniqueCourses])].sort());
           }
 
-          // 3. BATCH PROCESSING to avoid URL/Payload limits
           const BATCH_SIZE = 500;
           let insertedCount = 0;
           let updatedCount = 0;
           let unchangedCount = 0;
 
-          // Loop through data in chunks
           for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
             const batch = cleanRows.slice(i, i + BATCH_SIZE);
             const batchIds = batch.map(r => r.student_id);
 
-            // Fetch existing only for this batch
             const { data: existingStudents, error: fetchError } = await supabase
                 .from('students')
                 .select('student_id, name, course, year_level')
@@ -199,24 +203,19 @@ export default function StudentPage() {
 
             batch.forEach(row => {
                 const existing = existingMap.get(row.student_id);
-
                 if (existing) {
                     const hasChanged = 
                         existing.name !== row.name || 
                         existing.course !== row.course || 
                         existing.year_level !== row.year_level;
 
-                    if (hasChanged) {
-                        toUpdate.push({ ...row, last_updated: new Date() });
-                    } else {
-                        unchangedCount++;
-                    }
+                    if (hasChanged) toUpdate.push({ ...row, last_updated: new Date() });
+                    else unchangedCount++;
                 } else {
                     toInsert.push({ ...row, last_updated: new Date() });
                 }
             });
 
-            // Execute DB operations for this batch
             if (toInsert.length > 0) {
                 const { error } = await supabase.from('students').insert(toInsert);
                 if (error) throw error;
@@ -230,14 +229,7 @@ export default function StudentPage() {
             }
           }
 
-          // 4. Final Summary
-          let processedMsg = "";
-          if (insertedCount > 0) processedMsg += `Added ${insertedCount} new students.\n`;
-          if (updatedCount > 0) processedMsg += `Updated details for ${updatedCount} students.\n`;
-          if (unchangedCount > 0) processedMsg += `${unchangedCount} records were already up to date.`;
-          if (insertedCount === 0 && updatedCount === 0) processedMsg = "No changes needed. All records match.";
-
-          alert("Import Successful!\n\n" + processedMsg);
+          setImportResult({ inserted: insertedCount, updated: updatedCount, unchanged: unchangedCount });
           setIsImportModalOpen(false);
           
           await supabase.channel('app_updates').send({
@@ -245,14 +237,13 @@ export default function StudentPage() {
           });
 
         } catch (err) {
-          alert("Import Failed: " + err.message);
-          console.error(err);
+          setToast({ message: "Import Failed", subMessage: err.message, type: "error" });
         } finally {
           setImportLoading(false);
         }
       },
       error: (error) => {
-        alert("CSV Parsing Error: " + error.message);
+        setToast({ message: "Parsing Error", subMessage: error.message, type: "error" });
         setImportLoading(false);
       }
     });
@@ -268,14 +259,15 @@ export default function StudentPage() {
         const { error } = await supabase.from('courses').insert([{ code }]);
         
         if (error) {
-            if (error.code === '23505') alert("Course already exists.");
+            if (error.code === '23505') setToast({ message: "Error", subMessage: "Course already exists.", type: "error" });
             else throw error;
         } else {
             setAvailableCourses(prev => [...prev, code].sort());
             setNewCourseCode("");
+            setToast({ message: "Course Added", subMessage: `${code} has been added.`, type: "success" });
         }
     } catch (err) {
-        alert("Error adding course: " + err.message);
+        setToast({ message: "Error adding course", subMessage: err.message, type: "error" });
     } finally {
         setCourseLoading(false);
     }
@@ -288,8 +280,9 @@ export default function StudentPage() {
         const { error } = await supabase.from('courses').delete().eq('code', codeToDelete);
         if (error) throw error;
         setAvailableCourses(prev => prev.filter(c => c !== codeToDelete));
+        setToast({ message: "Course Deleted", type: "delete" });
     } catch (err) {
-        alert("Failed to delete course. It might be in use.");
+        setToast({ message: "Action Failed", subMessage: "Course might be in use by students.", type: "error" });
     }
   };
 
@@ -545,55 +538,62 @@ export default function StudentPage() {
       {/* Course Management Modal */}
       {showCourseModal && (
         <div className="modal modal-open">
-            <div className="modal-box">
-                <div className="flex justify-between items-center border-b pb-2 mb-4">
-                    <h3 className="font-bold text-lg text-gray-700">Manage Courses</h3>
+            <div className="modal-box border border-slate-200 shadow-2xl p-0 overflow-hidden">
+                <div className="p-6 border-b bg-slate-50 flex justify-between items-center">
+                    <div>
+                        <h3 className="font-bold text-lg text-slate-800">Manage Courses</h3>
+                        <p className="text-xs text-slate-500 font-medium">Add or remove valid courses</p>
+                    </div>
                     <button onClick={() => setShowCourseModal(false)} className="btn btn-sm btn-circle btn-ghost">✕</button>
                 </div>
 
-                {/* Add New Course Form */}
-                <form onSubmit={handleAddCourse} className="flex gap-2 mb-6">
-                    <LimitedInput 
-                        type="text" 
-                        maxLength={200}
-                        placeholder="Enter Course" 
-                        className="input input-bordered w-full uppercase"
-                        value={newCourseCode}
-                        onChange={(e) => setNewCourseCode(e.target.value)}
-                    />
-                    <button type="submit" disabled={courseLoading} className="btn btn-primary">
-                        {courseLoading ? "..." : "Add"}
-                    </button>
-                </form>
+                <div className="p-6 space-y-6">
+                    <form onSubmit={handleAddCourse} className="flex gap-2">
+                        <LimitedInput 
+                            type="text" 
+                            maxLength={200}
+                            showCounter={true}
+                            placeholder="Enter Course" 
+                            className="input input-bordered w-full uppercase font-semibold h-11"
+                            value={newCourseCode}
+                            onChange={(e) => setNewCourseCode(e.target.value)}
+                        />
+                        <button type="submit" disabled={courseLoading || !newCourseCode.trim()} className="btn btn-primary h-11 px-6">
+                            {courseLoading ? "..." : "Add"}
+                        </button>
+                    </form>
 
-                {/* List of Courses */}
-                <div className="h-64 overflow-y-auto border rounded-lg">
-                    <table className="table table-pin-rows w-full">
-                        <thead>
-                            <tr className="bg-gray-100">
-                                <th>Course</th>
-                                <th className="text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {availableCourses.map(code => (
-                                <tr key={code} className="hover">
-                                    <td className="font-bold text-gray-600">{code}</td>
-                                    <td className="text-right">
-                                        <button 
-                                            onClick={() => handleDeleteCourse(code)}
-                                            className="btn btn-xs btn-ghost text-red-500"
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
+                    <div className="max-h-80 overflow-y-auto border border-slate-100 rounded-xl bg-white shadow-inner">
+                        <table className="table table-pin-rows w-full">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="text-[10px] uppercase text-slate-400 py-3">Course Code</th>
+                                    <th className="text-right text-[10px] uppercase text-slate-400 py-3">Action</th>
                                 </tr>
-                            ))}
-                            {availableCourses.length === 0 && (
-                                <tr><td colSpan="2" className="text-center text-gray-400 py-4">No courses found.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {availableCourses.map(code => (
+                                    <tr key={code} className="hover:bg-slate-50/50 group transition-colors">
+                                        <td className="font-bold text-slate-700 text-sm py-3">{code}</td>
+                                        <td className="text-right py-3">
+                                            <button 
+                                                onClick={() => handleDeleteCourse(code)}
+                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors tooltip tooltip-left"
+                                                data-tip="Delete Course"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {availableCourses.length === 0 && (
+                                    <tr><td colSpan="2" className="text-center text-gray-400 py-8">No courses found.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -637,6 +637,48 @@ export default function StudentPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Import Success Summary Modal */}
+      {importResult && (
+        <div className="modal modal-open">
+            <div className="modal-box max-w-sm text-center p-8 border border-slate-200 shadow-2xl">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 className="font-bold text-xl text-slate-800">Import Successful</h3>
+                <p className="text-sm text-slate-500 mb-6">Database has been updated with CSV data.</p>
+                
+                <div className="grid grid-cols-3 gap-2 mb-8">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-emerald-600">{importResult.inserted}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">New</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-blue-600">{importResult.updated}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Updated</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-slate-400">{importResult.unchanged}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Match</div>
+                    </div>
+                </div>
+
+                <button onClick={() => setImportResult(null)} className="btn btn-primary w-full shadow-lg">Done</button>
+            </div>
+        </div>
+      )}
+
+      {/* Notifications */}
+      {toast && (
+        <Toast 
+            message={toast.message} 
+            subMessage={toast.subMessage} 
+            type={toast.type} 
+            onClose={() => setToast(null)} 
+        />
       )}
     </div>
   );

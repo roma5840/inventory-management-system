@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { useNavigate } from "react-router-dom";
 import Pagination from "./Pagination";
 import LimitedInput from "./LimitedInput";
+import Toast from "./Toast";
 
 export default function InventoryTable({ lastUpdated }) {
   const { userRole } = useAuth();
@@ -39,12 +40,17 @@ export default function InventoryTable({ lastUpdated }) {
   });
   const [createLoading, setCreateLoading] = useState(false);
 
+  // Add Toast State
+  const [toast, setToast] = useState(null);
+  const showToast = (message, subMessage, type = "success") => setToast({ message, subMessage, type });
+  const [importResult, setImportResult] = useState(null);
+
   const handleCreateProduct = async (e) => {
     e.preventDefault();
     setCreateLoading(true);
 
     if (!newItemForm.id || !newItemForm.name) {
-        alert("Barcode and Name are required.");
+        showToast("Validation Error", "Barcode and Name are required.", "error");
         setCreateLoading(false); return;
     }
 
@@ -61,8 +67,7 @@ export default function InventoryTable({ lastUpdated }) {
             .maybeSingle();
             
         if (existing) {
-            if (existing.barcode === sanitizedId) alert("Error: Barcode already exists.");
-            else alert("Error: AccPac Code already exists.");
+            showToast("Duplicate Error", existing.barcode === sanitizedId ? "Barcode already exists." : "AccPac Code already exists.", "error");
             setCreateLoading(false); return;
         }
 
@@ -80,7 +85,7 @@ export default function InventoryTable({ lastUpdated }) {
 
         if (error) throw error;
 
-        alert("Success: New product registered.");
+        showToast("Registration Success", `${sanitizedName} added to catalog.`);
         setIsAddModalOpen(false);
         setNewItemForm({ id: "", accpacCode: "", name: "", price: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
         fetchInventory();
@@ -90,8 +95,7 @@ export default function InventoryTable({ lastUpdated }) {
         });
 
     } catch (err) {
-        console.error(err);
-        alert("Failed to register: " + err.message);
+        showToast("Failed to register", err.message, "error");
     } finally {
         setCreateLoading(false);
     }
@@ -207,21 +211,8 @@ export default function InventoryTable({ lastUpdated }) {
     const newPrice = Number(editForm.price);
     const newMinLevel = Number(editForm.minStockLevel);
 
-    // Validation
     if (!editingProduct.id || !editingProduct.id.trim()) {
-        alert("Error: Barcode is required.");
-        setUpdateLoading(false); return;
-    }
-    if (!editForm.name.trim()) {
-        alert("Error: Product Name is required.");
-        setUpdateLoading(false); return;
-    }
-    if (newPrice < 0) {
-        alert("Error: Price cannot be negative.");
-        setUpdateLoading(false); return;
-    }
-    if (newMinLevel < 0) {
-        alert("Error: Min Stock Level cannot be negative.");
+        showToast("Error", "Barcode is required.", "error");
         setUpdateLoading(false); return;
     }
 
@@ -248,8 +239,7 @@ export default function InventoryTable({ lastUpdated }) {
         if (error) throw error;
         
         setEditingProduct(null);
-        alert("Product Details Updated Successfully.");
-
+        showToast("Update Successful", "Product details have been saved.");
         fetchInventory();
 
         await supabase.channel('app_updates').send({
@@ -257,24 +247,16 @@ export default function InventoryTable({ lastUpdated }) {
         });
 
     } catch (err) {
-        console.error(err);
-        // specific error handling for Unique Constraints
-        if (err.message.includes("products_barcode_key")) {
-            alert("Error: This Barcode is already in use by another product.");
-        } else if (err.message.includes("products_accpac_code_key")) {
-            alert("Error: This AccPac Code is already in use by another product.");
-        } else {
-            alert("Update failed: " + err.message);
-        }
+        const msg = err.message.includes("products_barcode_key") ? "Barcode already in use." : 
+                    err.message.includes("products_accpac_code_key") ? "AccPac Code already in use." : err.message;
+        showToast("Update Failed", msg, "error");
     } finally {
         setUpdateLoading(false);
     }
   };
 
-
   const handleDelete = async (product) => {
-    // Audit Check: Prevent deleting items that still have stock
-    if (product.currentStock > 0) return alert("Error: Stock must be 0 to delete item.");
+    if (product.currentStock > 0) return showToast("Delete Blocked", "Stock must be 0 to delete item.", "error");
     
     if(window.confirm(`Are you sure you want to delete "${product.name}" permanently?`)) {
         try {
@@ -285,25 +267,15 @@ export default function InventoryTable({ lastUpdated }) {
             
             if (error) throw error;
 
-            // 1. Refresh Local UI immediately
             fetchInventory();
+            showToast("Item Deleted", `${product.name} removed from system.`, "delete");
 
-            // 2. Broadcast update to other tabs
             await supabase.channel('app_updates').send({
                 type: 'broadcast', event: 'inventory_update', payload: {} 
             });
-
-            alert("Item deleted successfully.");
-
         } catch (error) {
-            console.error("Delete failed:", error);
-            
-            // Handle Foreign Key Violation (Item is used in transactions)
-            if (error.code === '23503') {
-                alert("Action Blocked: This item cannot be deleted because it has existing Transaction History.\n\nThe database prevents deleting items that have been used in past transactions to preserve your audit trail.");
-            } else {
-                alert("Failed to delete item: " + error.message);
-            }
+            const msg = error.code === '23503' ? "Item has existing transaction history." : error.message;
+            showToast("Delete Failed", msg, "error");
         }
     }
   }
@@ -343,34 +315,28 @@ export default function InventoryTable({ lastUpdated }) {
                 const accpacKey = keys.find(k => k.toUpperCase().includes('ACCPAC ITEM CODE'));
                 const descKey = keys.find(k => k.toUpperCase().includes('ITEM DESCRIPTION') || k.toUpperCase().includes('DESCRIPTION'));
                 
-                // Enforce limits: AccPac (50), Name (300)
                 const code = r[accpacKey]?.trim().toUpperCase().slice(0, 50);
                 const name = r[descKey]?.trim().toUpperCase().slice(0, 300);
 
                 if (!code || !name) return null;
-
                 return { accpac: code, name: name };
             }).filter(Boolean);
 
             if (rawRows.length === 0) throw new Error("Could not parse columns. Ensure 'ACCPAC ITEM CODE' and 'ITEM DESCRIPTION' headers exist.");
 
-            // 2. DEDUPLICATE (Global CSV Level)
-            // Use a Map to keep only the LAST occurrence of a specific AccPac code
             const uniqueMap = new Map();
             rawRows.forEach(r => uniqueMap.set(r.accpac, r));
             const cleanRows = Array.from(uniqueMap.values());
 
-            // 3. BATCH PROCESSING
             const BATCH_SIZE = 200;
             let insertedCount = 0;
             let updatedCount = 0;
-            const insertErrors = [];
+            let unchangedCount = 0;
 
             for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
                 const batch = cleanRows.slice(i, i + BATCH_SIZE);
                 const batchAccPacs = batch.map(r => r.accpac);
 
-                // Fetch existing items for this batch
                 const { data: existingItems, error: fetchError } = await supabase
                     .from('products')
                     .select('internal_id, accpac_code, name')
@@ -378,7 +344,6 @@ export default function InventoryTable({ lastUpdated }) {
 
                 if (fetchError) throw fetchError;
 
-                // Map existing items by UpperCase key for reliable lookup
                 const existingMap = new Map();
                 existingItems.forEach(item => {
                     if(item.accpac_code) existingMap.set(item.accpac_code.toUpperCase(), item);
@@ -388,18 +353,18 @@ export default function InventoryTable({ lastUpdated }) {
                 const toUpdate = [];
 
                 batch.forEach((row, batchIndex) => {
-                    const existing = existingMap.get(row.accpac); // row.accpac is already Upper
+                    const existing = existingMap.get(row.accpac);
 
                     if (existing) {
-                        // UPDATE Logic: Only if name changed
                         if (existing.name !== row.name) {
                             toUpdate.push({
                                 internal_id: existing.internal_id,
                                 name: row.name
                             });
+                        } else {
+                            unchangedCount++;
                         }
                     } else {
-                        // INSERT Logic: New Item -> Generate Barcode
                         const globalIndex = i + batchIndex;
                         const seq = Date.now() + globalIndex; 
                         const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -418,19 +383,13 @@ export default function InventoryTable({ lastUpdated }) {
                     }
                 });
 
-                // Execute Batch Operations
                 if (toInsert.length > 0) {
-                    const { error: insError } = await supabase.from('products').insert(toInsert);
-                    if (insError) {
-                        console.error("Batch Insert Error:", insError);
-                        insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Insert Failed: ${insError.message}`);
-                    } else {
-                        insertedCount += toInsert.length;
-                    }
+                    const { error } = await supabase.from('products').insert(toInsert);
+                    if (error) throw error;
+                    insertedCount += toInsert.length;
                 }
 
                 if (toUpdate.length > 0) {
-                    // Parallelize updates for speed
                     await Promise.all(toUpdate.map(item => 
                         supabase
                             .from('products')
@@ -441,27 +400,18 @@ export default function InventoryTable({ lastUpdated }) {
                 }
             }
 
-            // 4. Final Summary
-            let processedMsg = "";
-            if (insertedCount > 0) processedMsg += `Added ${insertedCount} new items.\n`;
-            if (updatedCount > 0) processedMsg += `Updated descriptions for ${updatedCount} items.\n`;
-            if (insertErrors.length > 0) processedMsg += `\nErrors encountered:\n${insertErrors.join('\n')}`;
-            if (insertedCount === 0 && updatedCount === 0 && insertErrors.length === 0) processedMsg = "No changes needed. All items match database.";
-
-            alert("Import Finished.\n\n" + processedMsg);
+            setImportResult({ inserted: insertedCount, updated: updatedCount, unchanged: unchangedCount });
             setIsImportModalOpen(false);
-            
             fetchInventory();
 
         } catch (err) {
-            console.error("Import Critical Error:", err);
-            alert("Import Failed: " + err.message);
+            showToast("Import Failed", err.message, "error");
         } finally {
             setImportLoading(false);
         }
       },
       error: (error) => {
-        alert("CSV Parsing Error: " + error.message);
+        showToast("Parsing Error", error.message, "error");
         setImportLoading(false);
       }
     });
@@ -895,8 +845,6 @@ export default function InventoryTable({ lastUpdated }) {
       {isImportModalOpen && (
         <div className="modal modal-open">
           <div className="modal-box relative">
-            
-            {/* Loading Overlay */}
             {importLoading ? (
                <div className="flex flex-col items-center justify-center py-10 space-y-4">
                   <span className="loading loading-spinner loading-lg text-primary"></span>
@@ -906,12 +854,11 @@ export default function InventoryTable({ lastUpdated }) {
                   </div>
                </div>
             ) : (
-               /* Standard Form */
                <>
                 <h3 className="font-bold text-lg text-gray-700 mb-4">Import AccPac CSV</h3>
                 <p className="text-xs text-gray-500 mb-4">
-                    CSV Format must be: <strong>ACCPAC ITEM CODE, ITEM DESCRIPTION</strong><br/>
-                    System will auto-generate barcodes if the item is new.
+                    CSV Format must contain headers: <strong>ACCPAC ITEM CODE, ITEM DESCRIPTION</strong><br/>
+                    Existing codes will be updated. New items will receive generated barcodes.
                 </p>
                 
                 <input 
@@ -929,6 +876,46 @@ export default function InventoryTable({ lastUpdated }) {
             )}
           </div>
         </div>
+      )}
+
+      {importResult && (
+        <div className="modal modal-open">
+            <div className="modal-box max-w-sm text-center p-8 border border-slate-200 shadow-2xl">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 className="font-bold text-xl text-slate-800">Import Successful</h3>
+                <p className="text-sm text-slate-500 mb-6">Catalog updated with AccPac data.</p>
+                
+                <div className="grid grid-cols-3 gap-2 mb-8">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-emerald-600">{importResult.inserted}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">New</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-blue-600">{importResult.updated}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Updated</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-slate-400">{importResult.unchanged}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Match</div>
+                    </div>
+                </div>
+
+                <button onClick={() => setImportResult(null)} className="btn btn-primary w-full shadow-lg">Done</button>
+            </div>
+        </div>
+      )}
+      {/* Toast and Modal Endings */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          subMessage={toast.subMessage} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
       )}
       </div>
     </div>
