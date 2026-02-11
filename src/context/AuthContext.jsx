@@ -108,27 +108,20 @@ export function AuthProvider({ children }) {
   const handleSession = async (session) => {
     if (session?.user) {
       
-      // CHANGE 1: Destructure 'error' as well
       const { data, error } = await supabase
         .from('authorized_users')
         .select('*')
         .eq('email', session.user.email)
         .single();
       
-      // CHANGE 2: Handle Network/System Errors FIRST
       if (error) {
-        // Code PGRST116 means "Row not found" (The user was actually deleted from DB)
-        // Any other error means Network/Server issues.
         if (error.code !== 'PGRST116') {
             console.warn("Network/DB glitch during session check. Keeping session alive.", error);
-            // DO NOT LOG OUT. Just return. The user stays logged in with cached data.
             return; 
         }
       }
 
-      // CHANGE 3: Now strictly check for data or the specific "Not Found" scenario
       if (data) {
-        // Immediate Kick if Inactive
         if (data.status === 'INACTIVE') {
             await supabase.auth.signOut();
             setCurrentUser(null);
@@ -141,6 +134,11 @@ export function AuthProvider({ children }) {
              status: 'REGISTERED', 
              auth_uid: session.user.id 
            }).eq('email', session.user.email);
+
+           // --- FIX: Manually update local data so state is correct immediately ---
+           data.status = 'REGISTERED';
+           data.auth_uid = session.user.id;
+           // ---------------------------------------------------------------------
 
            await supabase.channel('app_updates').send({
              type: 'broadcast',
@@ -156,7 +154,6 @@ export function AuthProvider({ children }) {
         });
         setUserRole(data.role);
       } else {
-        // Only reach here if error.code === 'PGRST116' (User truly removed from whitelist)
         console.warn("User no longer in whitelist. Logging out.");
         await supabase.auth.signOut();
         setCurrentUser(null);
