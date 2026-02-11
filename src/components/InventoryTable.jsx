@@ -116,7 +116,9 @@ export default function InventoryTable({ lastUpdated }) {
         .select('internal_id, id:barcode, accpac_code, name, price, unit_cost, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
     if (debouncedTerm.trim()) {
-        query = query.or(`name.ilike.%${debouncedTerm}%,barcode.ilike.%${debouncedTerm}%,accpac_code.ilike.%${debouncedTerm}%`);
+        // FIX: Replace commas with '_' to prevent breaking Supabase .or() syntax
+        const safeTerm = debouncedTerm.replace(/,/g, '_');
+        query = query.or(`name.ilike.%${safeTerm}%,barcode.ilike.%${safeTerm}%,accpac_code.ilike.%${safeTerm}%`);
     } else {
         query = query.order('name', { ascending: true });
     }

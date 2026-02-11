@@ -72,8 +72,10 @@ export default function TransactionsManager() {
 
     // 4. Search Filter (Server-side for pagination efficiency)
     if (searchRef) {
+        // FIX: Replace commas with '_' to prevent breaking Supabase .or() syntax
+        const safeRef = searchRef.replace(/,/g, '_');
         // Includes Student Name, Student ID, and Supplier in search (Removed Reference Number)
-        query = query.or(`student_name.ilike.%${searchRef}%,student_id.ilike.%${searchRef}%,supplier.ilike.%${searchRef}%`);
+        query = query.or(`student_name.ilike.%${safeRef}%,student_id.ilike.%${safeRef}%,supplier.ilike.%${safeRef}%`);
     }
 
     return query;

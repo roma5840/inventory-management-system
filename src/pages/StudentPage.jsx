@@ -58,7 +58,10 @@ export default function StudentPage() {
         let query = supabase.from('students').select('*', { count: 'exact' });
 
         if (debouncedTerm.trim()) {
-            query = query.or(`name.ilike.%${debouncedTerm}%,student_id.ilike.%${debouncedTerm}%`);
+            // FIX: Replace commas with '_' to prevent breaking the Supabase .or() syntax delimiter
+            // '_' is a SQL wildcard for a single character, so "Doe, John" matches "Doe, John"
+            const safeTerm = debouncedTerm.replace(/,/g, '_');
+            query = query.or(`name.ilike.%${safeTerm}%,student_id.ilike.%${safeTerm}%`);
         } else {
             query = query.order('name', { ascending: true });
         }

@@ -483,7 +483,7 @@ export default function ProductDetailsPage() {
                     itemsPerPage={ITEMS_PER_PAGE}
                     currentPage={currentPage}
                     onPageChange={(p) => setCurrentPage(p)}
-                    loading={loading}
+                    loading={tableLoading} 
                 />
              </div>
          </div>
