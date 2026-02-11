@@ -3,6 +3,8 @@ import { supabase } from "../lib/supabase";
 import Sidebar from "../components/Sidebar";
 import Pagination from "../components/Pagination";
 import LimitedInput from "../components/LimitedInput";
+import Toast from "../components/Toast";
+import DeleteModal from "../components/DeleteModal";
 
 export default function SupplierPage() {
   const [suppliers, setSuppliers] = useState([]);
@@ -21,6 +23,12 @@ export default function SupplierPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 20;
+
+  const [toast, setToast] = useState(null);
+  const showToast = (message, subMessage, type = "success") => setToast({ message, subMessage, type });
+  
+  const [deletingSupplier, setDeletingSupplier] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchSuppliers = async () => {
     setLoading(true);
@@ -64,13 +72,13 @@ export default function SupplierPage() {
       }]);
 
       if (error) {
-        if (error.code === '23505') alert("Supplier already exists.");
+        if (error.code === '23505') showToast("Duplicate Error", "Supplier already exists.", "error");
         else throw error;
       } else {
         setNewName("");
         setNewContact("");
+        showToast("Supplier Registered", "New vendor added to the system.");
         
-        // Broadcast update to other users
         await supabase.channel('app_updates').send({
             type: 'broadcast', event: 'inventory_update', payload: {} 
         });
@@ -78,7 +86,7 @@ export default function SupplierPage() {
         fetchSuppliers();
       }
     } catch (err) {
-      alert("Error adding supplier: " + err.message);
+      showToast("Registration Failed", err.message, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -105,10 +113,10 @@ export default function SupplierPage() {
             .eq('id', editingSupplier.id);
 
         if (error) {
-            if (error.code === '23505') alert("Supplier name already exists.");
+            if (error.code === '23505') showToast("Update Error", "Supplier name already exists.", "error");
             else throw error;
         } else {
-            // Broadcast update to other users
+            showToast("Update Successful", "Supplier details updated.");
             await supabase.channel('app_updates').send({
                 type: 'broadcast', event: 'inventory_update', payload: {} 
             });
@@ -117,28 +125,34 @@ export default function SupplierPage() {
             fetchSuppliers();
         }
     } catch (err) {
-        alert("Error updating supplier: " + err.message);
+        showToast("Update Failed", err.message, "error");
     } finally {
         setIsSaving(false);
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!confirm(`Delete supplier "${name}"? This will not affect past transactions.`)) return;
+  const confirmDelete = async () => {
+    if (!deletingSupplier?.id) return;
+    setDeleteLoading(true);
     try {
-        const { error } = await supabase.from('suppliers').delete().eq('id', id);
+        const { error } = await supabase.from('suppliers').delete().eq('id', deletingSupplier.id);
         if (error) throw error;
         
-        // Broadcast update to other users
+        showToast("Supplier Removed", `${deletingSupplier.name} deleted successfully.`, "delete");
         await supabase.channel('app_updates').send({
             type: 'broadcast', event: 'inventory_update', payload: {} 
         });
         
+        setDeletingSupplier(null);
         fetchSuppliers();
     } catch (err) {
-        alert("Error deleting supplier: " + err.message);
+        const msg = err.code === '23503' ? "Cannot delete supplier with active transaction history." : err.message;
+        showToast("Delete Failed", msg, "error");
+    } finally {
+        setDeleteLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">
@@ -232,7 +246,7 @@ export default function SupplierPage() {
                                                 </svg>
                                             </button>
                                             <button 
-                                                onClick={() => handleDelete(s.id, s.name)} 
+                                                onClick={() => setDeletingSupplier(s)} 
                                                 className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors tooltip tooltip-left"
                                                 data-tip="Delete Supplier"
                                             >
@@ -307,6 +321,25 @@ export default function SupplierPage() {
                 </form>
             </div>
         </div>
+      )}
+      <DeleteModal 
+          isOpen={!!deletingSupplier}
+          onClose={() => setDeletingSupplier(null)}
+          onConfirm={confirmDelete}
+          title="Delete Supplier"
+          itemName={deletingSupplier?.name}
+          itemIdentifier={deletingSupplier?.contact_info}
+          isLoading={deleteLoading}
+          warningText="This action cannot be undone. Ensure this supplier has no critical pending records."
+      />
+
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          subMessage={toast.subMessage} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
       )}
     </div>
   );
