@@ -361,14 +361,14 @@ export default function TransactionsManager() {
             <table className="table w-full table-fixed text-sm">
                 <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                    <th className="w-20">Type</th>
+                    <th className="w-28">Type</th>
                     <th className="w-24">Date</th>
-                    <th className="w-28">Ref #</th>
-                    <th className="w-24">Student No.</th>
-                    <th className="w-40">Name / Supplier</th>
+                    <th className="w-32">Ref #</th>
+                    <th className="w-28">Student No.</th>
+                    <th className="w-44">Name / Supplier</th>
                     <th className="w-auto">Items Breakdown</th>
                     <th className="text-right w-28">Value</th>
-                    <th className="w-28 text-right">Staff</th>
+                    <th className="w-32 text-right">Staff</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -398,18 +398,25 @@ export default function TransactionsManager() {
                         return (
                             <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
                                 
-                                {/* 1. Type */}
-                                <td className="py-2 whitespace-normal overflow-hidden">
+                                {/* 1. Type - Modified specifically for ISSUANCE_RETURN to stack and prevent overlap */}
+                                <td className="py-2 pr-4">
                                     {isOrphanVoid ? (
-                                        <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800">TX</div>
+                                        <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800 whitespace-nowrap">TX</div>
                                     ) : (
-                                        <div className={`badge badge-sm font-bold border-0 
+                                        <div className={`badge badge-sm font-bold border-0 h-auto py-1 whitespace-nowrap
                                             ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
                                             first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
                                             first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
                                             first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
                                             'bg-gray-200 text-gray-800'}`}>
-                                            {first.type.replace('_', ' ').split(' ')[0]}
+                                            {first.type === 'ISSUANCE_RETURN' ? (
+                                                <div className="flex flex-col items-center leading-[1.1]">
+                                                    <span>ISSUANCE</span>
+                                                    <span>RETURN</span>
+                                                </div>
+                                            ) : (
+                                                first.type.replace('_', ' ')
+                                            )}
                                         </div>
                                     )}
                                     {first.transaction_mode && (
@@ -426,7 +433,7 @@ export default function TransactionsManager() {
                                 </td>
 
                                 {/* 3. Ref */}
-                                <td className="py-2 font-mono text-xs font-bold break-all whitespace-normal">
+                                <td className="py-2 font-mono text-xs font-bold break-all whitespace-normal pr-2">
                                     {refNo}
                                     {isVoided && <div className="badge badge-xs badge-error mt-1 block w-fit">VOIDED</div>}
                                 </td>
@@ -469,7 +476,7 @@ export default function TransactionsManager() {
                                                 : (item.price_snapshot ?? item.price);
 
                                             return (
-                                                <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1.5 last:border-0 gap-4">
+                                                <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1.5 last:border-0 gap-8">
                                                     <div className="flex flex-col flex-grow min-w-0">
                                                         <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
                                                             {item.product_name_snapshot || "Item"}
@@ -505,14 +512,24 @@ export default function TransactionsManager() {
 
                                 {/* 8. Staff */}
                                 <td className="py-2 text-right overflow-hidden">
-                                    <div className="text-xs font-semibold whitespace-normal break-words leading-tight">{first.staff_name}</div>
+                                    <div className="text-xs font-semibold whitespace-normal break-words leading-tight">
+                                        {first.staff_name}
+                                    </div>
                                     
                                     {isVoided && voidSource && (
                                         <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
-                                            <span className="text-[8px] text-red-500 font-bold uppercase">Voided By</span>
+                                            <span className="text-[8px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
                                             <div className="text-[10px] text-red-700 font-medium break-words w-full text-right">
                                                 {voidSource.staff_name || "Unknown"}
                                             </div>
+                                            {/* Restored Timestamp Details */}
+                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5">
+                                                {new Date(voidSource.timestamp).toLocaleDateString()}
+                                            </div>
+                                            <div className="text-[9px] text-red-400 leading-tight">
+                                                {new Date(voidSource.timestamp).toLocaleTimeString()}
+                                            </div>
+                                            {/* Void Reason */}
                                             <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1 rounded border border-red-100/50 w-full text-right leading-tight break-words whitespace-normal">
                                                 "{voidSource.void_reason || first.void_reason || "N/A"}"
                                             </div>
