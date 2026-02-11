@@ -206,7 +206,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                 <th>Type</th>
                 <th>Details</th>
                 <th className="text-center">Items</th>
-                <th className="text-right">Action</th>
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right">Action</th>}
               </tr>
             </thead>
             <tbody>
@@ -352,17 +352,19 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                        </td>
 
                        {/* Column 5: Actions */}
-                       <td className="align-top text-right py-3">
-                          {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && !isVoided && !isOrphanVoid && (
-                              <button 
-                                onClick={() => handleVoidClick(refNo)}
-                                className="btn btn-xs btn-outline btn-error hover:shadow-md transition-all"
-                                title="Void this entire receipt"
-                              >
-                                VOID
-                              </button>
-                          )}
-                       </td>
+                        {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                          <td className="align-top text-right py-3">
+                              {!isVoided && !isOrphanVoid && (
+                                  <button 
+                                    onClick={() => handleVoidClick(refNo)}
+                                    className="btn btn-xs btn-outline btn-error hover:shadow-md transition-all"
+                                    title="Void this entire receipt"
+                                  >
+                                    VOID
+                                  </button>
+                              )}
+                          </td>
+                        )}
                      </tr>
                    );
                 })
