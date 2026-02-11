@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useInventory } from "../hooks/useInventory";
 import { Link } from "react-router-dom";
+import LimitedInput from "./LimitedInput";
 
 export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const { userRole } = useAuth();
@@ -13,6 +14,12 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 20;
+
+  // UI State for Voiding Process
+  const [voidModalRef, setVoidModalRef] = useState(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidError, setVoidError] = useState("");
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -110,25 +117,46 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
     }
   };
 
-  const handleVoidClick = async (refNo) => {
-    if (!window.confirm(`Are you sure you want to VOID transaction ${refNo}? This cannot be undone.`)) return;
-    
-    const reason = prompt("Please enter a reason for voiding:");
-    if (!reason) return;
+  const handleVoidClick = (refNo) => {
+    setVoidModalRef(refNo);
+    setVoidReason("");
+    setVoidError("");
+  };
 
-    const result = await voidTransaction(refNo, reason);
+  const confirmVoid = async (e) => {
+    // Prevent form submission/refresh if wrapped in a form
+    if (e) e.preventDefault();
+    
+    if (!voidReason.trim()) {
+      setVoidError("A reason is required to void this transaction.");
+      return;
+    }
+
+    setVoidError("");
+    const result = await voidTransaction(voidModalRef, voidReason);
+    
     if (result.success) {
-      alert("Transaction Voided Successfully.");
+      // 1. Close modal immediately for responsiveness
+      setVoidModalRef(null);
+      
+      // 2. Show Success Toast
+      setShowSuccessToast(true);
+      
+      // 3. Refresh Data
       fetchTransactions();
       if (onUpdate) onUpdate(); 
+      
       await supabase.channel('app_updates').send({
           type: 'broadcast', event: 'inventory_update', payload: {} 
       });
-      
+
+      // 4. Auto-hide toast after 4 seconds
+      setTimeout(() => setShowSuccessToast(false), 4000);
     } else {
-      alert("Error: " + result.error);
+      setVoidError(result.error || "An unexpected error occurred.");
     }
   };
+
   // Helper: Group flat rows by Reference Number for cleaner display
   const groupedTransactions = transactions.reduce((acc, curr) => {
     const key = curr.reference_number || "NO_REF";
@@ -333,8 +361,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && !isVoided && !isOrphanVoid && (
                               <button 
                                 onClick={() => handleVoidClick(refNo)}
-                                disabled={voidLoading}
-                                className="btn btn-xs btn-outline btn-error"
+                                className="btn btn-xs btn-outline btn-error hover:shadow-md transition-all"
                                 title="Void this entire receipt"
                               >
                                 VOID
@@ -349,6 +376,102 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
           </table>
         </div>
       </div>
+      {/* Void Confirmation Modal */}
+        {voidModalRef && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+            {/* Full-screen Backdrop: Fixed and high Z-index to cover sidebar */}
+            <div 
+              className="fixed inset-0 bg-slate-900/60 transition-opacity" 
+              onClick={() => !voidLoading && setVoidModalRef(null)}
+            ></div>
+
+            {/* Modal Content: Removed 'modal-box' to avoid visibility bugs, used standard classes */}
+            <div className={`relative bg-base-100 w-full max-w-md rounded-xl shadow-2xl border-t-4 border-error p-6 transition-all ${voidLoading ? 'opacity-75 pointer-events-none' : 'scale-100'}`}>
+              <div className="flex items-start gap-4">
+                <div className="bg-red-100 p-2 rounded-full text-error shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-slate-800">Void Transaction?</h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    This will reverse inventory changes for <span className="font-mono font-bold text-slate-700">{voidModalRef}</span>. This action is permanent.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6 space-y-3">
+                <div className="form-control">
+                  <label className="label py-1">
+                    <span className="label-text font-bold text-xs uppercase text-slate-400 tracking-wider">Reason for Voiding</span>
+                  </label>
+                  
+                  <LimitedInput 
+                    as="textarea"
+                    maxLength={500}
+                    showCounter={true}
+                    className={`textarea textarea-bordered h-28 w-full transition-all focus:border-error focus:ring-1 focus:ring-error ${voidError ? 'textarea-error border-red-500 bg-red-50' : 'bg-slate-50'}`}
+                    placeholder="Describe why this transaction is being voided..."
+                    value={voidReason}
+                    onChange={(e) => setVoidReason(e.target.value)}
+                    disabled={voidLoading}
+                    autoFocus
+                  />
+
+                  {voidError && (
+                    <div className="flex items-center gap-1 mt-2 text-error animate-pulse">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs font-bold">{voidError}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8">
+                <button 
+                  className="btn btn-ghost btn-sm" 
+                  onClick={() => setVoidModalRef(null)}
+                  disabled={voidLoading}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn btn-error btn-sm px-6 shadow-lg shadow-red-200" 
+                  onClick={confirmVoid}
+                  disabled={voidLoading}
+                >
+                  {voidLoading ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs"></span>
+                      Processing...
+                    </>
+                  ) : 'Confirm Void'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Global Success Toast */}
+        {showSuccessToast && (
+          <div className="toast toast-end toast-bottom z-[100] p-4">
+            <div className="alert alert-success shadow-2xl border-none bg-emerald-600 text-white min-w-[300px] flex justify-between group">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-1.5 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm">Action Successful</span>
+                  <span className="text-xs opacity-90">Transaction has been voided.</span>
+                </div>
+              </div>
+              <button onClick={() => setShowSuccessToast(false)} className="btn btn-ghost btn-xs btn-circle text-white opacity-50 hover:opacity-100 text-lg">×</button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
