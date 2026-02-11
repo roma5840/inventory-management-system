@@ -114,7 +114,9 @@ export default function StaffPage() {
             .select('*, fullName:full_name', { count: 'exact' });
 
         if (debouncedTerm.trim()) {
-            query = query.or(`full_name.ilike.%${debouncedTerm}%,email.ilike.%${debouncedTerm}%`);
+            // FIX: Replace commas with '_' to prevent breaking the Supabase .or() syntax delimiter
+            const safeTerm = debouncedTerm.replace(/,/g, '_');
+            query = query.or(`full_name.ilike.%${safeTerm}%,email.ilike.%${safeTerm}%`);
         } else {
             query = query.order('created_at', { ascending: false });
         }
