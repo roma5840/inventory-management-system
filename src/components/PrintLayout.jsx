@@ -49,27 +49,27 @@ export default function PrintLayout({ data, elementId }) {
         
         {/* LEFT COLUMN */}
         <div className="flex-1 flex flex-col gap-1">
-            <div className="flex items-end">
+            <div className="flex items-start">
                 <span className="w-32 shrink-0 font-bold text-right pr-2">FULL NAME:</span>
-                <div className="border-b border-black flex-1 pl-2 font-bold whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="border-b border-black flex-1 pl-2 font-bold break-words min-h-[1.2em]">
                     {data.studentName || data.supplier || ""}
                 </div>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-start">
                 <span className="w-32 shrink-0 font-bold text-right pr-2">STUDENT #:</span>
                 <div className="border-b border-black flex-1 pl-2 font-mono">
                     {data.studentId || ""}
                 </div>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-start">
                 <span className="w-32 shrink-0 font-bold text-right pr-2">COURSE/STRAND:</span>
-                <div className="border-b border-black flex-1 pl-2">
+                <div className="border-b border-black flex-1 pl-2 break-words min-h-[1.2em]">
                     {data.course || ""}
                 </div>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-start">
                 <span className="w-32 shrink-0 font-bold text-right pr-2">PARENTS NAME:</span>
-                <div className="border-b border-black flex-1">
+                <div className="border-b border-black flex-1 min-h-[1.2em]">
                     {/* Intentionally Blank */}
                 </div>
             </div>
@@ -77,21 +77,21 @@ export default function PrintLayout({ data, elementId }) {
 
         {/* RIGHT COLUMN */}
         <div className="w-[35%] flex flex-col gap-1">
-            <div className="flex items-end">
+            <div className="flex items-start">
                 <span className="w-20 shrink-0 text-right pr-2 font-bold">DATE:</span>
                 <div className="border-b border-black flex-1 pl-2">
                     {data.date ? new Date(data.date).toLocaleDateString() : new Date().toLocaleDateString()}
                 </div>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-start">
                 <span className="w-20 shrink-0 text-right pr-2 font-bold">YEAR LEVEL:</span>
-                <div className="border-b border-black flex-1 pl-2">
+                <div className="border-b border-black flex-1 pl-2 break-words min-h-[1.2em]">
                      {data.yearLevel || ""}
                 </div>
             </div>
-            <div className="flex items-end">
+            <div className="flex items-start">
                 <span className="w-20 shrink-0 text-right pr-2 font-bold">BIS NO.:</span>
-                <div className="border-b border-black flex-1 pl-2">
+                <div className="border-b border-black flex-1 pl-2 min-h-[1.2em]">
                     {/* Intentionally Blank */}
                 </div>
             </div>

@@ -213,18 +213,27 @@ export default function ProductDetailsPage() {
             <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
                 <div className="card-body p-6">
                     <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                        <div>
-                            <div className="flex items-center gap-3 mb-1">
-                                <h2 className="text-2xl font-bold text-slate-800">{product.name}</h2>
-                                {product.accpac_code && <span className="badge badge-primary badge-outline">{product.accpac_code}</span>}
+                        {/* Text Container: min-w-0 + flex-1 prevents pushing the stats card out of view */}
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                                {/* break-all ensures even long single-word strings wrap instead of overflowing */}
+                                <h2 className="text-2xl font-bold text-slate-800 leading-tight break-all">
+                                    {product.name}
+                                </h2>
+                                {product.accpac_code && <span className="badge badge-primary badge-outline flex-shrink-0">{product.accpac_code}</span>}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-slate-500 font-mono">
-                                <span className="bg-slate-100 px-2 py-1 rounded">BARCODE: {product.barcode}</span>
-                                <span>LOC: {product.location || "N/A"}</span>
+                            <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-sm text-slate-500 font-mono">
+                                <span className="bg-slate-100 px-2 py-1 rounded break-all">
+                                    BARCODE: {product.barcode}
+                                </span>
+                                <span className="break-all">
+                                    LOC: {product.location || "N/A"}
+                                </span>
                             </div>
                         </div>
 
-                        <div className="stats shadow-none bg-slate-50 border border-slate-200 rounded-xl">
+                        {/* Stats Container: flex-shrink-0 prevents this block from narrowing or disappearing */}
+                        <div className="stats shadow-none bg-slate-50 border border-slate-200 rounded-xl flex-shrink-0">
                             <div className="stat place-items-center">
                                 <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Current Stock</div>
                                 <div className={`stat-value text-2xl ${product.current_stock <= product.min_stock_level ? 'text-rose-600' : 'text-slate-700'}`}>
@@ -386,37 +395,44 @@ export default function ProductDetailsPage() {
                                             </td>
 
                                             {/* 3. Entity / Details */}
-                                            <td>
-                                                {isVoidRow ? (
-                                                    <div className="max-w-[150px]">
-                                                        <span className="text-[9px] text-amber-600 font-bold uppercase tracking-widest block">Void Reason</span>
-                                                        <div className="text-xs italic text-slate-600 leading-tight">"{tx.void_reason}"</div>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        {tx.student_name ? (
-                                                            <div>
-                                                                <div className="font-bold text-xs text-slate-700">{tx.student_name}</div>
-                                                                <div className="text-[10px] text-slate-400">
-                                                                    {tx.student_id && <span className="font-mono mr-1">{tx.student_id} •</span>}
-                                                                    {tx.course} {tx.year_level}
+                                            <td className="py-4 align-top">
+                                                {/* max-w-xs (20rem) gives it a boundary; break-words ensures natural wrapping for normal sentences but forces a break for long continuous strings */}
+                                                <div className="max-w-xs break-words whitespace-normal space-y-1">
+                                                    {isVoidRow ? (
+                                                        <div>
+                                                            <span className="text-[9px] text-amber-600 font-bold uppercase tracking-widest block">Void Reason</span>
+                                                            <div className="text-xs italic text-slate-600 leading-snug">"{tx.void_reason}"</div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            {tx.student_name ? (
+                                                                <div>
+                                                                    <div className="font-bold text-xs text-slate-700 leading-snug mb-0.5">
+                                                                        {tx.student_name}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-slate-400 leading-tight">
+                                                                        {tx.student_id && <span className="font-mono mr-1">{tx.student_id} •</span>}
+                                                                        {tx.course} {tx.year_level}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ) : tx.supplier ? (
-                                                            <div>
-                                                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Supplier</span>
-                                                                <div className="font-bold text-slate-700 text-xs">{tx.supplier}</div>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-slate-300 italic text-[10px]">N/A</span>
-                                                        )}
-                                                    </>
-                                                )}
-                                                {tx.remarks && !isVoidRow && (
-                                                    <div className="mt-1 text-[10px] text-amber-600 font-medium whitespace-normal break-words max-w-[150px]">
-                                                        Note: {tx.remarks}
-                                                    </div>
-                                                )}
+                                                            ) : tx.supplier ? (
+                                                                <div>
+                                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Supplier</span>
+                                                                    <div className="font-bold text-slate-700 text-xs leading-snug">
+                                                                        {tx.supplier}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-slate-300 italic text-[10px]">N/A</span>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {tx.remarks && !isVoidRow && (
+                                                        <div className="text-[10px] text-amber-600 font-medium leading-snug">
+                                                            Note: {tx.remarks}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
 
                                             {/* 4. Cost */}

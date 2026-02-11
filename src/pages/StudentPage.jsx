@@ -404,15 +404,25 @@ export default function StudentPage() {
                         ) : (
                             students.map(s => (
                                 <tr key={s.id || s.student_id} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="font-mono font-bold text-[11px] text-slate-500">{s.student_id}</td>
-                                    <td className="font-semibold text-slate-700">{s.name}</td>
+                                    <td className="font-mono font-bold text-[11px] text-slate-500 whitespace-normal break-all min-w-[120px]">
+                                        {s.student_id}
+                                    </td>
+                                    <td className="font-semibold text-slate-700 whitespace-normal break-all min-w-[150px]">
+                                        {s.name}
+                                    </td>
                                     <td>
                                         <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-slate-500 whitespace-normal break-all leading-tight">
                                             {s.course || "N/A"}
                                         </span>
                                     </td>
                                     <td>
-                                        {s.year_level ? <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter border border-slate-200 px-1.5 py-0.5 rounded">{s.year_level}</span> : <span className="text-slate-300">—</span>}
+                                        {s.year_level ? (
+                                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter border border-slate-200 px-1.5 py-0.5 rounded whitespace-normal break-all inline-block">
+                                                {s.year_level}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
                                     </td>
                                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                                         <td className="text-right">
@@ -491,13 +501,15 @@ export default function StudentPage() {
                                 <span className="label-text text-xs uppercase font-bold text-gray-500">Course</span>
                             </label>
                             <select 
-                                className="select select-bordered w-full"
+                                className="select select-bordered w-full h-auto min-h-[3rem] py-2 leading-tight whitespace-normal break-all max-w-full"
                                 value={editForm.course}
                                 onChange={(e) => setEditForm({...editForm, course: e.target.value})}
                             >
                                 <option value="" disabled>Select Course</option>
                                 {availableCourses.map(c => (
-                                    <option key={c} value={c}>{c}</option>
+                                    <option key={c} value={c}>
+                                        {c}
+                                    </option>
                                 ))}
                             </select>
                         </div>
