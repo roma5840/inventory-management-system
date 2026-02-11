@@ -330,7 +330,7 @@ export default function SupplierPage() {
           itemName={deletingSupplier?.name}
           itemIdentifier={deletingSupplier?.contact_info}
           isLoading={deleteLoading}
-          warningText="This action cannot be undone. Ensure this supplier has no critical pending records."
+          warningText="This will not affect past transactions."
       />
 
       {toast && (
