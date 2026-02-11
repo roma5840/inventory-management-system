@@ -348,7 +348,7 @@ export default function TransactionsManager() {
              </div>
              <input 
               type="text" 
-              placeholder="Search Name, ID or Supplier..." 
+              placeholder="Search Student Name, No., or Supplier..." 
               className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
               value={localSearch}
               onChange={e => setLocalSearch(e.target.value)}
@@ -428,8 +428,12 @@ export default function TransactionsManager() {
 
                                 {/* 2. Date */}
                                 <td className="py-2 align-top">
-                                    <div className="text-xs text-gray-700 leading-tight">{new Date(first.timestamp).toLocaleDateString()}</div>
-                                    <div className="text-[10px] text-gray-400 leading-tight">{new Date(first.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                    <div className="text-xs text-gray-700 leading-tight">
+                                        {new Date(first.timestamp).toLocaleDateString()}
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 leading-tight">
+                                        {new Date(first.timestamp).toLocaleTimeString()}
+                                    </div>
                                 </td>
 
                                 {/* 3. Ref */}
