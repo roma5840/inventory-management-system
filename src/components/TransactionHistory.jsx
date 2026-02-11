@@ -379,77 +379,89 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
       {/* Void Confirmation Modal */}
         {voidModalRef && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
-            {/* Full-screen Backdrop: Fixed and high Z-index to cover sidebar */}
+            {/* Professional Dark Backdrop */}
             <div 
-              className="fixed inset-0 bg-slate-900/60 transition-opacity" 
+              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" 
               onClick={() => !voidLoading && setVoidModalRef(null)}
             ></div>
 
-            {/* Modal Content: Removed 'modal-box' to avoid visibility bugs, used standard classes */}
-            <div className={`relative bg-base-100 w-full max-w-md rounded-xl shadow-2xl border-t-4 border-error p-6 transition-all ${voidLoading ? 'opacity-75 pointer-events-none' : 'scale-100'}`}>
-              <div className="flex items-start gap-4">
-                <div className="bg-red-100 p-2 rounded-full text-error shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            {/* Professional Slate Modal */}
+            <div className={`relative bg-white w-full max-w-md rounded-xl shadow-2xl border border-slate-200 overflow-hidden transition-all ${voidLoading ? 'opacity-75 pointer-events-none' : 'scale-100'}`}>
+              <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 bg-red-500/10 rounded text-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-bold text-white tracking-tight">Void Transaction</h3>
+                </div>
+                <button 
+                  onClick={() => setVoidModalRef(null)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-slate-800">Void Transaction?</h3>
-                  <p className="text-sm text-slate-500 mt-1">
-                    This will reverse inventory changes for <span className="font-mono font-bold text-slate-700">{voidModalRef}</span>. This action is permanent.
-                  </p>
-                </div>
+                </button>
               </div>
               
-              <div className="mt-6 space-y-3">
-                <div className="form-control">
-                  <label className="label py-1">
-                    <span className="label-text font-bold text-xs uppercase text-slate-400 tracking-wider">Reason for Voiding</span>
-                  </label>
-                  
-                  <LimitedInput 
-                    as="textarea"
-                    maxLength={500}
-                    showCounter={true}
-                    className={`textarea textarea-bordered h-28 w-full transition-all focus:border-error focus:ring-1 focus:ring-error ${voidError ? 'textarea-error border-red-500 bg-red-50' : 'bg-slate-50'}`}
-                    placeholder="Describe why this transaction is being voided..."
-                    value={voidReason}
-                    onChange={(e) => setVoidReason(e.target.value)}
-                    disabled={voidLoading}
-                    autoFocus
-                  />
+              <div className="p-6">
+                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                  You are about to void receipt <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">{voidModalRef}</span>. 
+                  This will permanently reverse all associated inventory movements.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="form-control">
+                    <label className="label py-0 mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Required Reason</span>
+                    </label>
+                    
+                    <LimitedInput 
+                      as="textarea"
+                      maxLength={500}
+                      showCounter={true}
+                      className={`textarea textarea-bordered h-32 w-full resize-none text-sm focus:border-slate-900 focus:ring-0 ${voidError ? 'border-red-500 bg-red-50' : 'bg-slate-50'}`}
+                      placeholder="Provide a detailed explanation for this reversal..."
+                      value={voidReason}
+                      onChange={(e) => setVoidReason(e.target.value)}
+                      disabled={voidLoading}
+                      autoFocus
+                    />
 
-                  {voidError && (
-                    <div className="flex items-center gap-1 mt-2 text-error animate-pulse">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-xs font-bold">{voidError}</span>
-                    </div>
-                  )}
+                    {voidError && (
+                      <div className="flex items-center gap-1.5 mt-2 text-red-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-xs font-semibold">{voidError}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-3 mt-8">
-                <button 
-                  className="btn btn-ghost btn-sm" 
-                  onClick={() => setVoidModalRef(null)}
-                  disabled={voidLoading}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="btn btn-error btn-sm px-6 shadow-lg shadow-red-200" 
-                  onClick={confirmVoid}
-                  disabled={voidLoading}
-                >
-                  {voidLoading ? (
-                    <>
-                      <span className="loading loading-spinner loading-xs"></span>
-                      Processing...
-                    </>
-                  ) : 'Confirm Void'}
-                </button>
+                <div className="flex justify-end gap-3 mt-8">
+                  <button 
+                    className="btn btn-ghost btn-sm text-slate-500 normal-case" 
+                    onClick={() => setVoidModalRef(null)}
+                    disabled={voidLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    className="btn btn-sm bg-slate-900 hover:bg-slate-800 text-white border-none px-6 normal-case" 
+                    onClick={confirmVoid}
+                    disabled={voidLoading}
+                  >
+                    {voidLoading ? (
+                      <>
+                        <span className="loading loading-spinner loading-xs"></span>
+                        Processing
+                      </>
+                    ) : 'Confirm'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
