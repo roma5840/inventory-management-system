@@ -231,14 +231,16 @@ export default function StatsComprehensive({ lastUpdated }) {
                                         <span className="text-sm font-black text-rose-600 tabular-nums">{item.current_stock}</span>
                                     </td>
                                     <td className="py-4 pr-6 text-center">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-tight shadow-sm ${
-                                            item.current_stock <= 0 
-                                            ? 'bg-slate-900 text-white' 
-                                            : 'bg-rose-100 text-rose-700'
-                                        }`}>
-                                            {item.current_stock <= 0 ? 'Out of Stock' : 'Low Stock'}
-                                        </span>
-                                    </td>
+                                      {item.current_stock <= 0 ? (
+                                          <span className="text-[10px] font-bold uppercase text-slate-300 tracking-tight">
+                                              Out of Stock
+                                          </span>
+                                      ) : (
+                                          <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-tight">
+                                              Critical Level
+                                          </span>
+                                      )}
+                                  </td>
                                 </tr>
                             ))
                         )}

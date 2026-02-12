@@ -567,15 +567,15 @@ export default function InventoryTable({ lastUpdated }) {
                     {/* TABLE STATUS CELL */}
                     <td className="text-center">
                     {p.currentStock <= 0 ? (
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">
+                        <span className="text-[10px] font-bold uppercase text-slate-300 tracking-tight">
                         Out of Stock
                         </span>
                     ) : p.currentStock <= p.minStockLevel ? (
-                        <span className="text-[10px] font-black uppercase text-slate-900 tracking-tighter">
+                        <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-tight">
                         Critical Level
                         </span>
                     ) : (
-                        <span className="text-[10px] font-black uppercase text-slate-300 tracking-tighter">
+                        <span className="text-[10px] font-black uppercase text-slate-900 tracking-tight">
                         Stock Stable
                         </span>
                     )}
