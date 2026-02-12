@@ -160,43 +160,82 @@ export default function StatsComprehensive({ lastUpdated }) {
       </div>
 
       {showLowStockModal && (
-        <div className="modal modal-open">
-          <div className="modal-box w-11/12 max-w-5xl bg-white p-0 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b flex justify-between items-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop - Fixed to cover entire screen regardless of parent positioning */}
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setShowLowStockModal(false)} 
+          />
+          
+          {/* Modal Container */}
+          <div className="relative bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                 <div>
-                    <h3 className="font-bold text-lg text-slate-800">Critical Stock Report</h3>
-                    <p className="text-xs text-slate-500">Inventory items at or below minimum alert levels</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-xl text-slate-900">Critical Stock Report</h3>
+                    </div>
+                    <p className="text-sm text-slate-500 font-medium">Inventory items at or below minimum alert levels</p>
                 </div>
-                <button onClick={() => setShowLowStockModal(false)} className="btn btn-sm btn-circle btn-ghost">✕</button>
+                <button 
+                    onClick={() => setShowLowStockModal(false)} 
+                    className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
             
-            <div className="flex-1 overflow-auto">
-                <table className="table table-sm w-full">
-                    <thead className="sticky top-0 bg-slate-50 text-slate-500 z-10">
-                        <tr className="text-[10px] uppercase">
-                            <th>Barcode</th>
-                            <th>Product Name</th>
-                            <th>Location</th>
-                            <th className="text-center">Min</th>
-                            <th className="text-center">Current</th>
-                            <th className="text-center">Status</th>
+            {/* Table Area */}
+            <div className="flex-1 overflow-auto custom-scrollbar">
+                <table className="table table-md w-full border-separate border-spacing-0">
+                    <thead className="sticky top-0 z-20">
+                        <tr className="bg-slate-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
+                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 pl-6">Barcode</th>
+                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4">Product Name</th>
+                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4">Location</th>
+                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 text-center">Min</th>
+                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 text-center">Current</th>
+                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 text-center pr-6">Status</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-50">
                         {modalLoading ? (
-                            <tr><td colSpan="6" className="text-center py-10"><span className="loading loading-spinner text-primary"></span></td></tr>
+                            <tr>
+                                <td colSpan="6" className="py-20">
+                                    <div className="flex flex-col items-center justify-center gap-3">
+                                        <span className="loading loading-spinner loading-lg text-slate-300"></span>
+                                    </div>
+                                </td>
+                            </tr>
                         ) : modalData.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center py-10 text-slate-400">No items found.</td></tr>
+                            <tr><td colSpan="6" className="text-center py-20 text-slate-400 font-medium">No critical items found.</td></tr>
                         ) : (
                             modalData.map(item => (
-                                <tr key={item.internal_id} className="hover:bg-slate-50 border-slate-100">
-                                    <td className="font-mono text-[11px] text-slate-500">{item.barcode}</td>
-                                    <td className="font-medium text-xs text-slate-700 truncate max-w-xs">{item.name}</td>
-                                    <td className="text-[11px] text-slate-500">{item.location || 'N/A'}</td>
-                                    <td className="text-center text-xs text-slate-400 font-bold">{item.min_stock_level}</td>
-                                    <td className="text-center font-bold text-rose-600">{item.current_stock}</td>
-                                    <td className="text-center">
-                                        <span className={`px-2 py-0.5 rounded-[4px] text-[9px] font-black uppercase ${item.current_stock <= 0 ? 'bg-slate-100 text-slate-500' : 'bg-rose-100 text-rose-700'}`}>
+                                <tr key={item.internal_id} className="hover:bg-blue-50/30 transition-colors group">
+                                    <td className="pl-6 py-4">
+                                        <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors uppercase tracking-tighter">
+                                            {item.barcode}
+                                        </code>
+                                    </td>
+                                    <td className="py-4">
+                                        <div className="font-bold text-sm text-slate-800 leading-tight">{item.name}</div>
+                                    </td>
+                                    <td className="py-4">
+                                        <span className="text-xs font-semibold text-slate-500">{item.location || '—'}</span>
+                                    </td>
+                                    <td className="py-4 text-center font-mono text-xs text-slate-400 font-bold">{item.min_stock_level}</td>
+                                    <td className="py-4 text-center">
+                                        <span className="text-sm font-black text-rose-600 tabular-nums">{item.current_stock}</span>
+                                    </td>
+                                    <td className="py-4 pr-6 text-center">
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-tight shadow-sm ${
+                                            item.current_stock <= 0 
+                                            ? 'bg-slate-900 text-white' 
+                                            : 'bg-rose-100 text-rose-700'
+                                        }`}>
                                             {item.current_stock <= 0 ? 'Out of Stock' : 'Low Stock'}
                                         </span>
                                     </td>
@@ -207,7 +246,8 @@ export default function StatsComprehensive({ lastUpdated }) {
                 </table>
             </div>
 
-            <div className="bg-slate-50">
+            {/* Footer / Pagination */}
+            <div className="bg-slate-50 border-t border-slate-100 p-4">
                 <Pagination 
                     totalCount={lowStockCount}
                     itemsPerPage={LOW_STOCK_PER_PAGE}
@@ -217,7 +257,6 @@ export default function StatsComprehensive({ lastUpdated }) {
                 />
             </div>
           </div>
-          <div className="modal-backdrop bg-slate-900/40" onClick={() => setShowLowStockModal(false)}></div>
         </div>
       )}
     </div>
