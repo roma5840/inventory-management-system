@@ -32,7 +32,7 @@ export default function DashboardPage() {
             {/* Cleaner Page Title Replacement for Header */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-                <p className="text-sm text-slate-500">Manage bookstore transactions and view real-time operations.</p>
+                <p className="text-sm text-slate-500">Manage bookstore transactions and view realtime operations.</p>
             </div>
 
             <StatsComprehensive key={refreshTrigger} lastUpdated={refreshTrigger} />

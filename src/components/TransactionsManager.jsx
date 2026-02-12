@@ -94,25 +94,18 @@ export default function TransactionsManager() {
       const { data: txData, count, error } = await query;
       if (error) throw error;
 
-      // --- LOGIC FIX: PREVENT DOUBLE ENTRY ON PAGINATION ---
-      // Only apply this cleaning if viewing "ALL" types. If filtering by specific type (e.g. Issuance),
-      // the VOID row is filtered out by SQL, so we must show the original row regardless of page.
       let cleanedData = txData || [];
       
       if (typeFilter === 'ALL') {
          cleanedData = cleanedData.filter(row => {
             if (!row.is_voided) return true; 
             if (row.type === 'VOID') return true; 
-            // If it's a voided original, keep ONLY if the VOID marker is also in this batch
             const hasVoidMarkerInBatch = txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
             return hasVoidMarkerInBatch;
          });
       }
 
-      // --- ORPHAN VOID FIX START ---
-      // If we have a VOID row but pagination/filters hid the original, fetch it now.
       let combinedData = [...cleanedData];
-      
       const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
       const orphanRefs = [];
 
@@ -127,18 +120,34 @@ export default function TransactionsManager() {
               .from('transactions')
               .select('*')
               .in('reference_number', orphanRefs)
-              .neq('type', 'VOID'); // Fetch the original context
+              .neq('type', 'VOID');
           
           if (originals?.length > 0) {
               combinedData = [...combinedData, ...originals];
           }
       }
-      // --- ORPHAN VOID FIX END ---
+
+      // --- NEW: Resolve Original Reference Numbers for Returns ---
+      const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
+      let originMap = {};
+      if (originIds.length > 0) {
+        const { data: origins } = await supabase
+          .from('transactions')
+          .select('id, reference_number')
+          .in('id', originIds);
+        origins?.forEach(o => { originMap[o.id] = o.reference_number; });
+      }
 
       // Fetch Staff Names
       const enriched = await enrichWithStaffNames(combinedData);
+      
+      // Map the linked reference numbers
+      const finalData = enriched.map(t => ({
+        ...t,
+        original_ref: originMap[t.original_transaction_id]
+      }));
 
-      setTransactions(enriched);
+      setTransactions(finalData);
       setTotalCount(count || 0);
 
     } catch (err) {
@@ -464,6 +473,19 @@ export default function TransactionsManager() {
                                     ) : (
                                         <span className="text-gray-400 italic text-xs">N/A</span>
                                     )}
+
+                                    {/* LINKED ISSUANCE (For Returns) */}
+                                    {first.type === 'ISSUANCE_RETURN' && first.original_ref && (
+                                        <div className="mt-1.5 flex items-center gap-1.5 p-1.5 bg-sky-50 rounded border border-sky-100 w-fit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-sky-500">
+                                                <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
+                                            </svg>
+                                            <div className="text-[9px] font-bold text-sky-700 uppercase tracking-tight">
+                                                From Ref: <span className="font-mono text-[10px] text-sky-900">{first.original_ref}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {first.remarks && (
                                         <div className="mt-1 text-[10px] bg-yellow-50 text-yellow-800 p-1 rounded border border-yellow-100 whitespace-normal break-words leading-tight">
                                             {first.remarks}

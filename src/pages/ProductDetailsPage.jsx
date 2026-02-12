@@ -138,8 +138,10 @@ export default function ProductDetailsPage() {
 
       let combinedData = [...(txs || [])];
 
-      // 1. Fetch void details FIRST so we can get the User IDs of the people who voided items
+      // 1. Fetch void details and linked returns
       const voidedRefs = combinedData.filter(t => t.is_voided).map(t => t.reference_number);
+      const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
+
       let voidRows = [];
       if (voidedRefs.length > 0) {
         const { data: vRows } = await supabase
@@ -150,13 +152,23 @@ export default function ProductDetailsPage() {
         voidRows = vRows || [];
       }
 
-      // 2. Collect ALL unique User IDs (from main rows AND void rows)
+      // 2. Fetch Original Reference Numbers for Returns
+      let originMap = {};
+      if (originIds.length > 0) {
+        const { data: origins } = await supabase
+          .from('transactions')
+          .select('id, reference_number')
+          .in('id', originIds);
+        origins?.forEach(o => { originMap[o.id] = o.reference_number; });
+      }
+
+      // 3. Collect ALL unique User IDs
       const allUserIds = new Set([
         ...combinedData.map(t => t.user_id),
         ...voidRows.map(v => v.user_id)
       ].filter(Boolean));
 
-      // 3. Fetch Staff Names for EVERYONE found
+      // 4. Fetch Staff Names
       let userMap = {};
       if (allUserIds.size > 0) {
         const { data: users } = await supabase
@@ -166,21 +178,22 @@ export default function ProductDetailsPage() {
         users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
       }
 
-      // 4. Map Void Details using the populated userMap
+      // 5. Map Void Details
       let voidDetailMap = {};
       voidRows.forEach(v => {
         voidDetailMap[v.reference_number] = {
           reason: v.void_reason,
-          who: userMap[v.user_id] || 'Unknown Staff', // Should now resolve correctly
+          who: userMap[v.user_id] || 'Unknown Staff',
           when: v.timestamp
         };
       });
 
-      // 5. Enrich the main data
+      // 6. Enrich the main data
       const enriched = combinedData.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown',
-        void_details: t.is_voided ? voidDetailMap[t.reference_number] : null
+        void_details: t.is_voided ? voidDetailMap[t.reference_number] : null,
+        original_ref: originMap[t.original_transaction_id] || null
       }));
 
       setHistory(enriched);
@@ -396,7 +409,6 @@ export default function ProductDetailsPage() {
 
                                             {/* 3. Entity / Details */}
                                             <td className="py-4 align-top">
-                                                {/* max-w-xs (20rem) gives it a boundary; break-words ensures natural wrapping for normal sentences but forces a break for long continuous strings */}
                                                 <div className="max-w-xs break-words whitespace-normal space-y-1">
                                                     {isVoidRow ? (
                                                         <div>
@@ -427,6 +439,19 @@ export default function ProductDetailsPage() {
                                                             )}
                                                         </>
                                                     )}
+
+                                                    {/* LINKED ISSUANCE (For Returns) */}
+                                                    {tx.type === 'ISSUANCE_RETURN' && tx.original_ref && (
+                                                        <div className="mt-2 flex items-center gap-1.5 p-1.5 bg-sky-50 rounded-md border border-sky-100 w-fit">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-sky-500">
+                                                                <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span className="text-[9px] font-bold text-sky-700 uppercase tracking-tight">
+                                                                From Ref: <span className="font-mono text-[10px] text-sky-900">{tx.original_ref}</span>
+                                                            </span>
+                                                        </div>
+                                                    )}
+
                                                     {tx.remarks && !isVoidRow && (
                                                         <div className="text-[10px] text-amber-600 font-medium leading-snug">
                                                             Note: {tx.remarks}

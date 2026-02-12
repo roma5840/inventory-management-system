@@ -34,11 +34,9 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
     const to = from + ITEMS_PER_PAGE - 1;
 
     try {
-      // DATE FILTER: Start of Today (00:00:00)
       const now = new Date();
       const startOfDay = new Date(now.setHours(0,0,0,0)).toISOString();
 
-      // 1. Fetch Transactions (Scoped to TODAY)
       const { data: txData, count, error } = await supabase
         .from('transactions')
         .select('*', { count: 'exact' })
@@ -48,35 +46,24 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
 
       if (error) throw error;
 
-      // --- LOGIC FIX: PREVENT DOUBLE ENTRY ON PAGINATION ---
-      // If a row is 'is_voided' but the actual 'VOID' line item (which has the latest timestamp)
-      // is NOT in this batch, it means the Void happened recently (Page 1), so we hide 
-      // these stale original rows from Page 2+.
       const cleanedData = (txData || []).filter(row => {
-        if (!row.is_voided) return true; // Keep active transactions
-        if (row.type === 'VOID') return true; // Keep the VOID marker itself
-        // If it's a voided original, keep ONLY if the VOID marker is also in this current page batch
+        if (!row.is_voided) return true;
+        if (row.type === 'VOID') return true;
         const hasVoidMarkerInBatch = txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
         return hasVoidMarkerInBatch;
       });
 
-      // --- ORPHAN VOID FIX START ---
-      // Check if we fetched a VOID row but lack the original row to show context (Type/Date)
       let combinedData = [...cleanedData];
-      
       const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
       const orphanRefs = [];
 
       distinctRefs.forEach(ref => {
           const items = combinedData.filter(t => t.reference_number === ref);
-          // If group contains ONLY void items, we need the original for display context
           const hasOriginal = items.some(t => t.type !== 'VOID');
           if (!hasOriginal) orphanRefs.push(ref);
       });
 
       if (orphanRefs.length > 0) {
-          // Fetch the original non-void transactions for these orphans
-          // We ignore the "Today" filter here because we just need metadata
           const { data: originals } = await supabase
               .from('transactions')
               .select('*')
@@ -87,31 +74,36 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
               combinedData = [...combinedData, ...originals];
           }
       }
-      // --- ORPHAN VOID FIX END ---
 
-      // 2. Fetch User Names (Manual Join)
+      // --- NEW: Resolve Original Reference Numbers for Returns ---
+      const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
+      let originMap = {};
+      if (originIds.length > 0) {
+        const { data: origins } = await supabase
+          .from('transactions')
+          .select('id, reference_number')
+          .in('id', originIds);
+        origins?.forEach(o => { originMap[o.id] = o.reference_number; });
+      }
+
       const userIds = [...new Set(combinedData.map(t => t.user_id).filter(Boolean))];
       let userMap = {};
-      
       if (userIds.length > 0) {
         const { data: users } = await supabase
           .from('authorized_users')
           .select('auth_uid, full_name, email')
           .in('auth_uid', userIds);
-          
-        users?.forEach(u => {
-            userMap[u.auth_uid] = u.full_name || u.email;
-        });
+        users?.forEach(u => { userMap[u.auth_uid] = u.full_name || u.email; });
       }
 
-      // 3. Merge Data
       const enrichedData = combinedData.map(t => ({
         ...t,
-        staff_name: userMap[t.user_id] || 'Unknown Staff'
+        staff_name: userMap[t.user_id] || 'Unknown Staff',
+        original_ref: originMap[t.original_transaction_id] // Map the link
       }));
 
       setTransactions(enrichedData || []);
-      setTotalCount(count || 0); // Keep original count for pagination
+      setTotalCount(count || 0);
 
     } catch (err) {
       console.error(err);
@@ -277,6 +269,20 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                   )}
                                   {first.course} {first.year_level}
                                </div>
+                             </div>
+                          )}
+
+                          {/* LINKED ISSUANCE (For Returns) */}
+                          {first.type === 'ISSUANCE_RETURN' && first.original_ref && (
+                             <div className="mb-2 flex items-center gap-1.5">
+                                <div className="p-1 bg-sky-50 rounded text-sky-600">
+                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                      <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
+                                   </svg>
+                                </div>
+                                <div className="text-[10px] font-medium text-sky-700">
+                                   Returned from Receipt: <span className="font-mono font-bold">{first.original_ref}</span>
+                                </div>
                              </div>
                           )}
                           
