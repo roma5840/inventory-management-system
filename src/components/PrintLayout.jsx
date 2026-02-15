@@ -6,7 +6,6 @@ export default function PrintLayout({ data, elementId }) {
   const isCostType = ['RECEIVING', 'PULL_OUT'].includes(data.type);
 
   // Helper to calculate line amount (Unit * Qty)
-  // Handles both TransactionForm (priceOverride/unitCost) and ReceiptLookup (price/cost snapshots)
   const calculateLineTotal = (item) => {
     const unitVal = isCostType 
         ? Number(item.unitCost || item.cost || 0) 
@@ -15,11 +14,8 @@ export default function PrintLayout({ data, elementId }) {
   };
 
   const grandTotal = data.items.reduce((acc, item) => acc + calculateLineTotal(item), 0);
-
-  // Formatting
   const formatCurrency = (val) => Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
-  // Dynamic Title
   const getTitle = () => {
       if (data.type === 'ISSUANCE_RETURN') return 'RETURN SLIP';
       if (data.type === 'PULL_OUT') return 'PULL OUT SLIP';
@@ -89,17 +85,11 @@ export default function PrintLayout({ data, elementId }) {
                      {data.yearLevel || ""}
                 </div>
             </div>
+            
             <div className="flex items-start">
                 <span className="w-20 shrink-0 text-right pr-2 font-bold">BIS NO.:</span>
-                <div className="border-b border-black flex-1 pl-2 min-h-[1.2em]">
-                    {/* Intentionally Blank */}
-                </div>
-            </div>
-            {/* REF # explicitly below BIS NO */}
-            <div className="flex items-start mt-0.5">
-                <span className="w-20 shrink-0"></span>
-                <div className="flex-1 text-[9px] text-gray-500 font-mono">
-                    REF: {data.refNumber}
+                <div className="border-b border-black flex-1 pl-2">
+                    {data.bisNumber || "---"}
                 </div>
             </div>
         </div>
@@ -132,7 +122,6 @@ export default function PrintLayout({ data, elementId }) {
                     </tr>
                 ))}
                 
-                {/* FILLER ROWS TO MAINTAIN VISUAL HEIGHT IF FEW ITEMS (Optional) */}
                 {data.items.length < 5 && Array.from({ length: 5 - data.items.length }).map((_, i) => (
                     <tr key={`filler-${i}`}>
                         <td className="py-2">&nbsp;</td>
@@ -141,7 +130,6 @@ export default function PrintLayout({ data, elementId }) {
                     </tr>
                 ))}
 
-                {/* TOTAL ROW */}
                 <tr className="border-t border-black font-bold text-sm">
                     <td className="pt-2 text-right"></td>
                     <td className="pt-2 text-right pr-2 border-l border-black">TOTAL:</td>
@@ -155,16 +143,12 @@ export default function PrintLayout({ data, elementId }) {
         </table>
       </div>
 
-      {/* FOOTER SIGNATURE SECTION */}
+      {/* FOOTER */}
       <div className="flex justify-between items-end mt-auto pt-4">
-          
-          {/* Released By */}
           <div className="w-[40%]">
               <div className="text-xs font-bold mb-8">RELEASED BY:</div>
               <div className="border-b border-black w-full"></div>
           </div>
-
-          {/* Received By */}
           <div className="w-[45%] flex flex-col justify-end">
               <p className="text-[10px] italic mb-8 text-left leading-tight">
                   Acknowledging that I have received all items indicated on this list.
@@ -173,11 +157,6 @@ export default function PrintLayout({ data, elementId }) {
               <p className="text-[10px] font-bold uppercase text-center">Signature over printed name</p>
           </div>
       </div>
-      
-      {/* TIMESTAMP FOOTER
-      <div className="mt-4 text-[8px] text-gray-400 text-right">
-        Gen: {new Date().toLocaleString()} | {data.staffName || "System"}
-      </div> */}
 
     </div>
   );

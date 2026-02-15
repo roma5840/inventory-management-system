@@ -138,11 +138,13 @@ export default function ProductDetailsPage() {
 
       let combinedData = [...(txs || [])];
 
-      // 1. Fetch void details and linked returns
-      const voidedRefs = combinedData.filter(t => t.is_voided).map(t => t.reference_number);
+      // 1. Fetch void details and cross-reference BIS numbers for VOID rows
+      const voidedRefs = combinedData.filter(t => t.is_voided || t.type === 'VOID').map(t => t.reference_number);
       const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
 
       let voidRows = [];
+      let voidRefToBisMap = {};
+
       if (voidedRefs.length > 0) {
         const { data: vRows } = await supabase
           .from('transactions')
@@ -150,25 +152,35 @@ export default function ProductDetailsPage() {
           .eq('type', 'VOID')
           .in('reference_number', voidedRefs);
         voidRows = vRows || [];
+
+        // Also fetch the original BIS numbers for the VOID entries to display in the BIS column
+        const { data: originals } = await supabase
+          .from('transactions')
+          .select('reference_number, bis_number')
+          .in('reference_number', voidedRefs)
+          .neq('type', 'VOID');
+        
+        originals?.forEach(o => {
+          voidRefToBisMap[o.reference_number] = o.bis_number;
+        });
       }
 
-      // 2. Fetch Original Reference Numbers for Returns
+      // 2. Fetch Original BIS Numbers for Returns
       let originMap = {};
       if (originIds.length > 0) {
         const { data: origins } = await supabase
           .from('transactions')
-          .select('id, reference_number')
+          .select('id, bis_number')
           .in('id', originIds);
-        origins?.forEach(o => { originMap[o.id] = o.reference_number; });
+        origins?.forEach(o => { originMap[o.id] = o.bis_number; });
       }
 
-      // 3. Collect ALL unique User IDs
+      // 3. Collect ALL unique User IDs for Staff mapping
       const allUserIds = new Set([
         ...combinedData.map(t => t.user_id),
         ...voidRows.map(v => v.user_id)
       ].filter(Boolean));
 
-      // 4. Fetch Staff Names
       let userMap = {};
       if (allUserIds.size > 0) {
         const { data: users } = await supabase
@@ -178,7 +190,7 @@ export default function ProductDetailsPage() {
         users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
       }
 
-      // 5. Map Void Details
+      // 4. Map Void details (Who voided it and why)
       let voidDetailMap = {};
       voidRows.forEach(v => {
         voidDetailMap[v.reference_number] = {
@@ -188,12 +200,14 @@ export default function ProductDetailsPage() {
         };
       });
 
-      // 6. Enrich the main data
+      // 5. Enrich the main data
       const enriched = combinedData.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown',
         void_details: t.is_voided ? voidDetailMap[t.reference_number] : null,
-        original_ref: originMap[t.original_transaction_id] || null
+        original_bis: originMap[t.original_transaction_id] || null,
+        // If it's a VOID row, use the resolved original BIS number
+        display_bis: t.type === 'VOID' ? (voidRefToBisMap[t.reference_number] || t.bis_number) : t.bis_number
       }));
 
       setHistory(enriched);
@@ -353,6 +367,7 @@ export default function ProductDetailsPage() {
                         <thead>
                             <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
                                 <th className="bg-slate-50/80">Date / Reference</th>
+                                <th className="bg-slate-50/80">BIS #</th>
                                 <th className="bg-slate-50/80">Activity Type</th>
                                 <th className="bg-slate-50/80">Entity / Details</th>
                                 <th className="text-right bg-slate-50/80">Cost</th>
@@ -364,12 +379,11 @@ export default function ProductDetailsPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {tableLoading ? (
-                                <tr><td colSpan="8" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
+                                <tr><td colSpan="9" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                             ) : history.length === 0 ? (
-                                <tr><td colSpan="8" className="text-center py-12 text-slate-400 font-medium">No transactions found for this item.</td></tr>
+                                <tr><td colSpan="9" className="text-center py-12 text-slate-400 font-medium">No transactions found for this item.</td></tr>
                             ) : (
                                 history.map((tx) => {
-                                    // A VOID row adds stock back if it was an issuance, or removes if it was receiving
                                     const isIncoming = (tx.new_stock > tx.previous_stock);
                                     const isVoidRow = tx.type === 'VOID';
                                     
@@ -380,7 +394,7 @@ export default function ProductDetailsPage() {
                                             
                                             {/* 1. Date & Ref */}
                                             <td className="py-4">
-                                                <div className={`font-mono font-bold text-[11px] ${isVoidRow ? 'text-amber-700' : 'text-indigo-600'}`}>
+                                                <div className={`font-mono text-[10px] text-slate-400 select-all break-all max-w-[100px]`}>
                                                     {tx.reference_number}
                                                 </div>
                                                 <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
@@ -390,7 +404,14 @@ export default function ProductDetailsPage() {
                                                 {isVoidRow && <span className="badge badge-warning badge-xs font-bold text-[8px] mt-1">REVERSAL</span>}
                                             </td>
 
-                                            {/* 2. Type */}
+                                            {/* 2. BIS # */}
+                                            <td>
+                                                <div className="font-black text-lg text-slate-700 leading-none">
+                                                    #{tx.display_bis || "---"}
+                                                </div>
+                                            </td>
+
+                                            {/* 3. Type */}
                                             <td>
                                                 <div className={`badge badge-sm border-0 font-bold text-[10px] px-2
                                                     ${isVoidRow ? 'bg-amber-600 text-white' : 
@@ -407,7 +428,7 @@ export default function ProductDetailsPage() {
                                                 )}
                                             </td>
 
-                                            {/* 3. Entity / Details */}
+                                            {/* 4. Entity / Details */}
                                             <td className="py-4 align-top">
                                                 <div className="max-w-xs break-words whitespace-normal space-y-1">
                                                     {isVoidRow ? (
@@ -440,15 +461,17 @@ export default function ProductDetailsPage() {
                                                         </>
                                                     )}
 
-                                                    {/* LINKED ISSUANCE (For Returns) */}
-                                                    {tx.type === 'ISSUANCE_RETURN' && tx.original_ref && (
-                                                        <div className="mt-2 flex items-center gap-1.5 p-1.5 bg-sky-50 rounded-md border border-sky-100 w-fit">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-sky-500">
-                                                                <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
-                                                            </svg>
-                                                            <span className="text-[9px] font-bold text-sky-700 uppercase tracking-tight">
-                                                                From Ref: <span className="font-mono text-[10px] text-sky-900">{tx.original_ref}</span>
-                                                            </span>
+                                                    {/* LINKED BIS # (For Returns) - Styled to match TransactionHistory */}
+                                                    {tx.type === 'ISSUANCE_RETURN' && tx.original_bis && (
+                                                        <div className="mt-2 flex items-center gap-1.5">
+                                                            <div className="p-1 bg-sky-50 rounded text-sky-600">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                                                    <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="text-[10px] font-medium text-sky-700">
+                                                                Issuance Link: <span className="font-black text-xs">#{tx.original_bis}</span>
+                                                            </div>
                                                         </div>
                                                     )}
 
@@ -460,24 +483,24 @@ export default function ProductDetailsPage() {
                                                 </div>
                                             </td>
 
-                                            {/* 4. Cost */}
+                                            {/* 5. Cost */}
                                             <td className="text-right font-mono text-xs text-slate-500">
                                                 {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
 
-                                            {/* 5. Price */}
+                                            {/* 6. Price */}
                                             <td className="text-right font-mono text-xs font-semibold text-slate-700">
                                                 {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
 
-                                            {/* 6. Qty Change */}
+                                            {/* 7. Qty Change */}
                                             <td className="text-center">
                                                 <span className={`font-black text-base tracking-tighter ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     {isIncoming ? '+' : '-'}{tx.qty}
                                                 </span>
                                             </td>
 
-                                            {/* 7. Balance */}
+                                            {/* 8. Balance */}
                                             <td className="text-center">
                                                 <div className="flex flex-col items-center">
                                                     <span className="font-bold text-slate-700 text-sm">{tx.new_stock}</span>
@@ -485,7 +508,7 @@ export default function ProductDetailsPage() {
                                                 </div>
                                             </td>
 
-                                            {/* 8. Encoder */}
+                                            {/* 9. Encoder */}
                                             <td className="text-right">
                                                 <div className="text-[11px] font-bold text-slate-600">{tx.staff_name}</div>
                                                 {!isVoidRow && tx.is_voided && tx.void_details && (

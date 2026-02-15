@@ -9,82 +9,114 @@ export default function ReceiptLookup() {
   const [loading, setLoading] = useState(false);
   const [receiptData, setReceiptData] = useState(null);
   const [error, setError] = useState("");
+  
+  // New State: Handles multiple matches (e.g., Issuance #1 and Receiving #1)
+  const [searchResults, setSearchResults] = useState([]); 
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchRef.trim()) return;
+    const term = searchRef.trim().toUpperCase();
+    if (!term) return;
     
     setLoading(true);
     setError("");
     setReceiptData(null);
+    setSearchResults([]); // Clear previous disambiguation list
     
-    // Force Uppercase
-    const term = searchRef.trim().toUpperCase();
-
     try {
-      // 1. Fetch Transaction Data
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('reference_number', term);
+      let query = supabase.from('transactions').select('*');
+      
+      // LOGIC: If input is numeric -> Search BIS. If alphanumeric -> Search Reference #
+      const isBisSearch = /^\d+$/.test(term);
 
+      if (isBisSearch) {
+          query = query.eq('bis_number', parseInt(term));
+      } else {
+          query = query.eq('reference_number', term);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        setError("Reference number not found.");
-      } else {
-        // Filter out 'VOID' entries (reversals) to avoid duplicates in the UI
-        // We prefer showing the original items (which are likely marked is_voided=true)
-        const displayItems = data.filter(item => item.type !== 'VOID');
-        const finalItems = displayItems.length > 0 ? displayItems : data;
-
-        const header = finalItems[0];
-        
-        // 2. Fetch Staff Name (Resolve User ID -> Full Name)
-        let resolvedStaffName = "Unknown Staff";
-        if (header.user_id) {
-            const { data: userData } = await supabase
-                .from('authorized_users')
-                .select('full_name')
-                .eq('auth_uid', header.user_id)
-                .maybeSingle();
-            
-            if (userData?.full_name) {
-                resolvedStaffName = userData.full_name;
-            }
-        }
-
-        const isVoided = data.some(d => d.is_voided);
-
-        const formattedReceipt = {
-          refNumber: header.reference_number,
-          type: header.type,
-          transactionMode: header.transaction_mode,
-          date: new Date(header.timestamp).toLocaleString(),
-          studentName: header.student_name,
-          studentId: header.student_id,
-          course: header.course,
-          yearLevel: header.year_level,
-          supplier: header.supplier,
-          staffName: resolvedStaffName,
-          remarks: header.remarks,
-          isVoided: isVoided,
-          voidReason: header.void_reason,
-          items: finalItems.map(item => ({
-             itemName: item.product_name_snapshot || item.product_name,
-             qty: item.qty,
-             price: item.price_snapshot !== null ? item.price_snapshot : 0,
-             cost: item.unit_cost_snapshot !== null ? item.unit_cost_snapshot : 0
-          }))
-        };
-        setReceiptData(formattedReceipt);
+        setError(`No records found for ${isBisSearch ? 'BIS #' : 'Ref'} ${term}.`);
+        return;
       }
+
+      // Filter out 'VOID' entries (reversals), but keep original lines (even if voided)
+      const cleanData = data.filter(item => item.type !== 'VOID');
+
+      // GROUP ITEMS BY REFERENCE NUMBER (To distinguish Issuance #1 from Receiving #1)
+      const grouped = {};
+      cleanData.forEach(row => {
+          if (!grouped[row.reference_number]) {
+              grouped[row.reference_number] = [];
+          }
+          grouped[row.reference_number].push(row);
+      });
+
+      const groups = Object.values(grouped);
+
+      if (groups.length === 0) {
+           setError("Transactions found but appear to be invalid or fully voided.");
+      } else if (groups.length === 1) {
+           // Only one receipt found
+           await loadReceipt(groups[0]);
+      } else {
+           // Multiple receipts found with same BIS (e.g. Issuance #1 and Receiving #1)
+           setSearchResults(groups);
+      }
+
     } catch (err) {
       console.error(err);
       setError("Error retrieving data.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadReceipt = async (items) => {
+    if (!items || items.length === 0) return;
+    
+    const header = items[0];
+
+    // Fetch Staff Name
+    let resolvedStaffName = "Unknown Staff";
+    if (header.user_id) {
+        const { data: userData } = await supabase
+            .from('authorized_users')
+            .select('full_name')
+            .eq('auth_uid', header.user_id)
+            .maybeSingle();
+        if (userData?.full_name) resolvedStaffName = userData.full_name;
+    }
+
+    const isVoided = items.some(d => d.is_voided);
+
+    const formattedReceipt = {
+        refNumber: header.reference_number,
+        bisNumber: header.bis_number || "---",
+        type: header.type,
+        transactionMode: header.transaction_mode,
+        date: new Date(header.timestamp).toLocaleString(),
+        studentName: header.student_name,
+        studentId: header.student_id,
+        course: header.course,
+        yearLevel: header.year_level,
+        supplier: header.supplier,
+        staffName: resolvedStaffName,
+        remarks: header.remarks,
+        isVoided: isVoided,
+        voidReason: header.void_reason,
+        items: items.map(item => ({
+            itemName: item.product_name_snapshot || item.product_name,
+            qty: item.qty,
+            price: item.price_snapshot !== null ? item.price_snapshot : 0,
+            cost: item.unit_cost_snapshot !== null ? item.unit_cost_snapshot : 0
+        }))
+    };
+    setReceiptData(formattedReceipt);
+    setSearchResults([]); // Clear selection list if any
   };
 
   const handlePrint = () => {
@@ -99,6 +131,7 @@ export default function ReceiptLookup() {
     win.document.write('</body></html>');
     win.document.close();
     setTimeout(() => {
+        win.focus();
         win.print();
     }, 500);
   };
@@ -110,31 +143,27 @@ export default function ReceiptLookup() {
     const val = input.value.toUpperCase();
     
     setSearchRef(val);
-
-    // Restore cursor position after React update
     window.requestAnimationFrame(() => {
-      if (input) {
-        input.setSelectionRange(start, end);
-      }
+      if (input) input.setSelectionRange(start, end);
     });
   };
 
   return (
     <>
-      {/* 1. THE SEARCH CARD */}
+      {/* SEARCH CARD */}
       <div className="card w-full bg-white shadow-xl mt-6 p-6 border border-blue-100">
          <h3 className="card-title text-gray-700 mb-2 text-sm uppercase tracking-wide flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-blue-600">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-            Receipt Lookup
+            Receipt / BIS Lookup
          </h3>
          <form onSubmit={handleSearch} className="flex flex-col gap-2">
             <LimitedInput 
               type="text" 
               maxLength={50}
               className="input input-sm input-bordered w-full font-mono uppercase" 
-              placeholder="Enter REF-..." 
+              placeholder="ENTER BIS NO. (e.g. 1) or REF-..." 
               value={searchRef}
               onChange={handleInputChange}
             />
@@ -145,7 +174,34 @@ export default function ReceiptLookup() {
          {error && <p className="text-xs text-red-500 mt-2 font-bold text-center">{error}</p>}
       </div>
 
-      {/* 2. THE MODAL */}
+      {/* DISAMBIGUATION LIST (If multiple found) */}
+      {searchResults.length > 0 && (
+         <div className="card w-full bg-white shadow-lg mt-2 p-2 border border-slate-200">
+             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-2">Select Transaction</div>
+             <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                 {searchResults.map((group, idx) => {
+                     const h = group[0];
+                     return (
+                         <button 
+                             key={idx} 
+                             onClick={() => loadReceipt(group)}
+                             className="text-left px-3 py-2 hover:bg-blue-50 rounded border border-transparent hover:border-blue-100 transition-all group"
+                         >
+                             <div className="flex justify-between items-center">
+                                 <span className="font-bold text-xs text-slate-700">BIS #{h.bis_number} - {h.type}</span>
+                                 <span className="text-[10px] text-slate-400">{new Date(h.timestamp).toLocaleDateString()}</span>
+                             </div>
+                             <div className="text-[10px] text-slate-500 truncate">
+                                 {h.student_name || h.supplier || "No Name"}
+                             </div>
+                         </button>
+                     )
+                 })}
+             </div>
+         </div>
+      )}
+
+      {/* MODAL */}
       {receiptData && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] backdrop-blur-sm">
           <div className="bg-white p-4 rounded-lg shadow-2xl max-w-2xl w-full relative max-h-[90vh] overflow-y-auto">
@@ -160,7 +216,6 @@ export default function ReceiptLookup() {
                 </div>
             )}
 
-            {/* PRINTABLE AREA */}
             <div className="border border-gray-200 shadow-inner p-2 bg-gray-50 overflow-auto">
                  <PrintLayout data={receiptData} elementId="lookup-receipt-print" />
             </div>

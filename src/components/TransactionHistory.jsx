@@ -16,12 +16,10 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 20;
 
-  // UI State for Voiding Process
   const [voidModalRef, setVoidModalRef] = useState(null);
   const [voidReason, setVoidReason] = useState("");
   const [voidError, setVoidError] = useState("");
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  // Replace old toast states with unified object
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -75,15 +73,15 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
           }
       }
 
-      // --- NEW: Resolve Original Reference Numbers for Returns ---
+      // --- RESOLVE BIS NUMBERS FOR RETURNS ---
       const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
       let originMap = {};
       if (originIds.length > 0) {
         const { data: origins } = await supabase
           .from('transactions')
-          .select('id, reference_number')
+          .select('id, bis_number') // Fetch the BIS number instead of/alongside ref
           .in('id', originIds);
-        origins?.forEach(o => { originMap[o.id] = o.reference_number; });
+        origins?.forEach(o => { originMap[o.id] = o.bis_number; });
       }
 
       const userIds = [...new Set(combinedData.map(t => t.user_id).filter(Boolean))];
@@ -99,7 +97,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
       const enrichedData = combinedData.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown Staff',
-        original_ref: originMap[t.original_transaction_id] // Map the link
+        original_bis: originMap[t.original_transaction_id] // Map the linked BIS number
       }));
 
       setTransactions(enrichedData || []);
@@ -112,8 +110,8 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
     }
   };
 
-  const handleVoidClick = (refNo) => {
-    setVoidModalRef(refNo);
+  const handleVoidClick = (refNo, bisNo) => {
+    setVoidModalRef({ ref: refNo, bis: bisNo });
     setVoidReason("");
     setVoidError("");
   };
@@ -127,11 +125,13 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
     }
 
     setVoidError("");
-    const result = await voidTransaction(voidModalRef, voidReason);
+    
+    // API Call uses the hidden REF string
+    const result = await voidTransaction(voidModalRef.ref, voidReason);
     
     if (result.success) {
+      setToast({ message: "Transaction Voided", subMessage: `BIS #${voidModalRef.bis} reversed.` });
       setVoidModalRef(null);
-      setToast({ message: "Transaction Voided", subMessage: `Receipt ${voidModalRef} has been reversed.` });
       
       fetchTransactions();
       if (onUpdate) onUpdate(); 
@@ -194,7 +194,8 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
           <table className="table table-xs w-full">
             <thead>
               <tr className="bg-base-200">
-                <th>Date / Ref #</th>
+                <th>Date / BIS #</th>
+                <th>Reference #</th>
                 <th>Type</th>
                 <th>Details</th>
                 <th className="text-center">Items</th>
@@ -203,41 +204,43 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
             </thead>
             <tbody>
               {loading ? (
-                 <tr><td colSpan="5" className="text-center py-4">Loading...</td></tr>
+                 <tr><td colSpan="6" className="text-center py-4">Loading...</td></tr>
               ) : Object.keys(groupedTransactions).length === 0 ? (
-                 <tr><td colSpan="5" className="text-center py-4">No history found.</td></tr>
+                 <tr><td colSpan="6" className="text-center py-4">No history found.</td></tr>
               ) : (
                 Object.entries(groupedTransactions).map(([refNo, items]) => {
-                   // 1. Identify specific rows
                    const voidEntry = items.find(i => i.type === 'VOID');
                    const nonVoidItems = items.filter(i => i.type !== 'VOID');
                    
-                   // 2. Determine Display Data
                    const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
                    const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
                    
-                   // 3. Status Flags
                    const isVoided = items.some(i => i.is_voided) || !!voidEntry;
                    const isOrphanVoid = items.every(i => i.type === 'VOID'); 
-
-                   // --- LOGIC CHANGE: Detect Cost vs Price ---
                    const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
-
-                   // 4. Styles
                    const rowClass = isVoided ? "opacity-50 grayscale bg-gray-50" : "";
 
                    return (
                      <tr key={refNo} className={`border-b border-gray-100 ${rowClass}`}>
-                       {/* Column 1: Date & Ref */}
+                       {/* Column 1: Date & BIS # */}
                        <td className="align-top py-3">
-                          <div className="font-mono font-bold text-xs">{refNo}</div>
-                          <div className="text-[10px] text-gray-500">
+                          <div className="text-[10px] text-gray-500 mb-1">
                             {new Date(first.timestamp).toLocaleString()}
+                          </div>
+                          <div className="font-black text-lg text-slate-700 leading-none">
+                              #{first.bis_number || "---"}
                           </div>
                           {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
                        </td>
 
-                       {/* Column 2: Type */}
+                       {/* Column 2: Ref # */}
+                       <td className="align-top py-3">
+                          <div className="font-mono text-[10px] text-gray-400 select-all break-all max-w-[100px]">
+                              {refNo}
+                          </div>
+                       </td>
+
+                       {/* Column 3: Type */}
                         <td className="align-top py-3">
                           {isOrphanVoid ? (
                             <span className="font-bold text-[10px] uppercase px-2 py-1 rounded-full bg-gray-200 text-gray-600">
@@ -255,7 +258,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           )}
                         </td>
 
-                       {/* Column 3: Context */}
+                       {/* Column 4: Context / Details */}
                        <td className="align-top py-3 max-w-[300px] md:max-w-[400px]">
                           {/* Student Info */}
                           {first.student_name && (
@@ -272,8 +275,8 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                              </div>
                           )}
 
-                          {/* LINKED ISSUANCE (For Returns) */}
-                          {first.type === 'ISSUANCE_RETURN' && first.original_ref && (
+                          {/* LINKED BIS # (For Returns) */}
+                          {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
                              <div className="mb-2 flex items-center gap-1.5">
                                 <div className="p-1 bg-sky-50 rounded text-sky-600">
                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
@@ -281,7 +284,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                    </svg>
                                 </div>
                                 <div className="text-[10px] font-medium text-sky-700">
-                                   Returned from Receipt: <span className="font-mono font-bold">{first.original_ref}</span>
+                                   Issuance Link: <span className="font-black text-xs">#{first.original_bis}</span>
                                 </div>
                              </div>
                           )}
@@ -327,17 +330,16 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           )}
                        </td>
 
-                      {/* Column 4: Item Summary (UPDATED WITH COST LOGIC) */}
+                      {/* Column 5: Item Summary */}
                        <td className="align-top py-3">
                           <ul className="space-y-2">
-                             {displayItems.map(i => {
-                               // Determine value to display
+                             {displayItems.map((i, idx) => {
                                const unitVal = isCostType 
                                  ? (i.unit_cost_snapshot ?? 0)
                                  : (i.price_snapshot ?? i.price);
 
                                return (
-                                 <li key={i.id} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
+                                 <li key={idx} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
                                     <div className="flex justify-between font-medium">
                                         <span className="truncate max-w-[150px]" title={i.product_name_snapshot}>
                                           {i.product_name_snapshot || "Item"}
@@ -357,12 +359,12 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           </ul>
                        </td>
 
-                       {/* Column 5: Actions */}
+                       {/* Column 6: Actions */}
                         {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                           <td className="align-top text-right py-3">
                               {!isVoided && !isOrphanVoid && (
                                   <button 
-                                    onClick={() => handleVoidClick(refNo)}
+                                    onClick={() => handleVoidClick(refNo, first.bis_number)}
                                     className="btn btn-xs btn-outline btn-error hover:shadow-md transition-all"
                                     title="Void this entire receipt"
                                   >
@@ -392,7 +394,6 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
             <div className={`relative bg-white w-full max-w-md rounded-xl shadow-2xl border border-slate-200 overflow-hidden transition-all ${voidLoading ? 'opacity-75 pointer-events-none' : 'scale-100'}`}>
               <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {/* Robust Solid Icon (Replaces broken stroke-based triangle) */}
                   <div className="p-1.5 bg-red-500/20 rounded text-red-400">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                       <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clipRule="evenodd" />
@@ -412,7 +413,10 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
               
               <div className="p-6">
                 <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                  You are about to void receipt <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">{voidModalRef}</span>. 
+                  You are about to void <span className="font-black text-slate-900">BIS #{voidModalRef.bis || "---"}</span>. 
+                  <br />
+                  <span className="text-xs text-slate-400 font-mono">System ID: {voidModalRef.ref}</span>
+                  <br /><br />
                   This will permanently reverse all associated inventory movements.
                 </p>
                 

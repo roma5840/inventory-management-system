@@ -338,7 +338,6 @@ export default function TransactionForm({ onSuccess }) {
             try {
                 const { error: supError } = await supabase.from('suppliers').insert([{ name: supName }]);
                 if (!supError) {
-                    // Update local list silently so it appears in future searches
                     setAvailableSuppliers(prev => [...prev, supName].sort());
                 }
             } catch (err) {
@@ -347,15 +346,15 @@ export default function TransactionForm({ onSuccess }) {
         }
     }
 
-    const resultRef = await processTransaction(finalHeaderData, queue);
+    const result = await processTransaction(finalHeaderData, queue);
     
-    // Use the variable from the top-level scope
     const currentStaffName = currentUser?.full_name || currentUser?.email || "Staff";
 
-    if (resultRef) {
+    if (result) {
       // 1. SAVE DATA FOR THE RECEIPT POPUP
       setReceiptData({
-          refNumber: resultRef,
+          bisNumber: result.bis, // Display BIS
+          refNumber: result.ref, // Keep internal REF hidden/small
           studentName: finalHeaderData.studentName,
           studentId: finalHeaderData.studentId,
           course: finalHeaderData.course,
@@ -368,7 +367,7 @@ export default function TransactionForm({ onSuccess }) {
           date: new Date().toLocaleString(),
           items: queue.map(q => ({
             ...q,
-            unitCost: q.unitCost // Ensure cost is captured for Receiving/Pull Out
+            unitCost: q.unitCost 
           }))
       });
 
@@ -376,7 +375,7 @@ export default function TransactionForm({ onSuccess }) {
       setQueue([]); 
       setPastTransactionItems([]);
       setReturnLookupRef("");
-      setSuccessMsg(`Transaction Saved: ${resultRef}`);
+      setSuccessMsg(`Transaction Saved. BIS NO: ${result.bis}`);
       
       // Reset Header but keep Type
       setHeaderData(prev => ({
@@ -458,20 +457,26 @@ export default function TransactionForm({ onSuccess }) {
     if (!returnLookupRef) return;
     setLookupLoading(true);
     
-    // Always clear "Available to Return" list on new search
+    // Clear list
     setPastTransactionItems([]);
     
-    // Force Uppercase for consistency
-    const refToSearch = returnLookupRef.trim().toUpperCase();
+    // We expect the user to type the BIS Number (Integer)
+    const bisToSearch = parseInt(returnLookupRef.trim());
+    if (isNaN(bisToSearch)) {
+        alert("Please enter a valid numeric BIS Number.");
+        setLookupLoading(false);
+        return;
+    }
 
     try {
-        // 1. Fetch Original Sales
+        // 1. Fetch Original Sales using BIS NUMBER
+        // We strictly look for 'ISSUANCE' because we are in the "Return" context
         const { data: salesData, error: salesError } = await supabase
             .from('transactions')
             .select('*')
-            .eq('reference_number', refToSearch)
-            .eq('is_voided', false)
-            .in('type', ['ISSUANCE', 'CHARGED', 'CASH']); 
+            .eq('bis_number', bisToSearch)
+            .eq('type', 'ISSUANCE') 
+            .eq('is_voided', false);
 
         if (salesError || !salesData || salesData.length === 0) {
             setHeaderData(prev => ({
@@ -484,23 +489,24 @@ export default function TransactionForm({ onSuccess }) {
             }));
             setQueue([]); 
             
-            alert("Receipt not found, valid items not found, or transaction was voided.");
+            alert(`Issuance BIS #${bisToSearch} not found, or transaction was voided.`);
             setLookupLoading(false);
             return;
         }
 
+        // Logic to prevent mixing receipts remains the same, checking ID integrity
         if (queue.length > 0) {
              const activeRef = queue[0].refNumber; 
              const newRef = salesData[0].reference_number;
 
              if (activeRef && activeRef !== newRef) {
-                 alert(`Restricted: You have pending items from Receipt #${activeRef}.\n\nPlease complete or clear the current return before switching to Receipt #${newRef}.`);
+                 alert(`Restricted: You have pending items from another receipt.\n\nPlease complete or clear the current return before switching.`);
                  setLookupLoading(false);
                  return;
              }
         }
 
-        // 2. Fetch existing returns
+        // 2. Fetch existing returns (Check against the internal IDs)
         const saleIds = salesData.map(item => item.id);
         const { data: returnsData } = await supabase
             .from('transactions')
@@ -508,7 +514,7 @@ export default function TransactionForm({ onSuccess }) {
             .eq('is_voided', false) 
             .in('original_transaction_id', saleIds);
 
-        // 3. Fetch Current Product Names (To show updated name instead of snapshot)
+        // 3. Fetch Current Product Names
         const internalIds = salesData.map(s => s.product_internal_id).filter(Boolean);
         let currentProductNames = {};
 
@@ -525,7 +531,7 @@ export default function TransactionForm({ onSuccess }) {
             }
         }
 
-        // 4. Calculate Remaining Qty & Prepare Display
+        // 4. Calculate Remaining Qty
         const validItems = salesData.map(saleItem => {
             const alreadyReturnedQty = returnsData
                 ?.filter(r => r.original_transaction_id === saleItem.id)
@@ -537,7 +543,6 @@ export default function TransactionForm({ onSuccess }) {
 
             const remainingQty = saleItem.qty - alreadyReturnedQty - currentlyInQueueQty;
 
-            // Name Logic: Prefer Current DB Name > Snapshot > Legacy Name
             const currentName = currentProductNames[saleItem.product_internal_id];
             const displayName = currentName || saleItem.product_name_snapshot || saleItem.product_name || "Unknown Item";
             
@@ -563,12 +568,10 @@ export default function TransactionForm({ onSuccess }) {
             if(validItems[0]) {
                 const originalId = validItems[0].student_id || "";
                 
-                // DEFAULT: Use Snapshot from Receipt
                 let displayStudentName = validItems[0].student_name || "";
                 let displayCourse = validItems[0].course || "";
                 let displayYear = validItems[0].year_level || "";
                 
-                // OVERRIDE: Try to fetch CURRENT Student Data to avoid outdated info
                 if (originalId) {
                     const { data: currentStudent } = await supabase
                         .from('students')
@@ -580,9 +583,9 @@ export default function TransactionForm({ onSuccess }) {
                         displayStudentName = currentStudent.name;
                         displayCourse = currentStudent.course;
                         displayYear = currentStudent.year_level;
-                        setIsNewStudent(false); // Mark as found in DB
+                        setIsNewStudent(false); 
                     } else {
-                        setIsNewStudent(true); // ID exists on receipt but not in DB anymore
+                        setIsNewStudent(true); 
                     }
                 }
 
@@ -970,7 +973,7 @@ export default function TransactionForm({ onSuccess }) {
                                 maxLength={50}
                                 autoFocus
                                 className="flex-1 h-10 px-4 rounded-lg border border-slate-300 font-mono uppercase text-sm shadow-inner focus:ring-2 focus:ring-blue-500 outline-none w-full" 
-                                placeholder="ENTER REFERENCE #..."
+                                placeholder="ENTER BIS NO. (e.g. 1)"
                                 value={returnLookupRef}
                                 onChange={handleReturnRefChange}
                                 onKeyDown={(e) => e.key === 'Enter' && handleLookupReceipt(e)}

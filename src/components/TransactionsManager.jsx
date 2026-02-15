@@ -127,24 +127,24 @@ export default function TransactionsManager() {
           }
       }
 
-      // --- NEW: Resolve Original Reference Numbers for Returns ---
+      // --- RESOLVE BIS NUMBERS FOR RETURNS ---
       const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
       let originMap = {};
       if (originIds.length > 0) {
         const { data: origins } = await supabase
           .from('transactions')
-          .select('id, reference_number')
+          .select('id, bis_number') // Fetch BIS number instead of Ref
           .in('id', originIds);
-        origins?.forEach(o => { originMap[o.id] = o.reference_number; });
+        origins?.forEach(o => { originMap[o.id] = o.bis_number; });
       }
 
       // Fetch Staff Names
       const enriched = await enrichWithStaffNames(combinedData);
       
-      // Map the linked reference numbers
+      // Map the linked BIS numbers
       const finalData = enriched.map(t => ({
         ...t,
-        original_ref: originMap[t.original_transaction_id]
+        original_bis: originMap[t.original_transaction_id]
       }));
 
       setTransactions(finalData);
@@ -198,76 +198,59 @@ export default function TransactionsManager() {
     
     setIsExporting(true);
     try {
-        // 1. Fetch ALL data matching filters (No pagination range)
         const { data: rawData, error } = await buildQuery(true);
         if (error) throw error;
 
-        // 2. Enrich with Staff Names
+        // Fetch linked BIS numbers for returns in export
+        const originIds = [...new Set(rawData.map(t => t.original_transaction_id).filter(Boolean))];
+        let originMap = {};
+        if (originIds.length > 0) {
+            const { data: origins } = await supabase.from('transactions').select('id, bis_number').in('id', originIds);
+            origins?.forEach(o => { originMap[o.id] = o.bis_number; });
+        }
+
         const fullData = await enrichWithStaffNames(rawData);
 
-        // 3. Map to Excel Structure
         const excelRows = fullData.map(item => {
             const dateObj = new Date(item.timestamp);
-            
-            // Determine if we show Cost or Price based on transaction type
             const isCostType = ['RECEIVING', 'PULL_OUT'].includes(item.type);
-            
-            // Get the appropriate value
-            const unitValue = isCostType 
-                ? (item.unit_cost_snapshot ?? 0) 
-                : (item.price_snapshot ?? item.price);
-
+            const unitValue = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
             const totalValue = unitValue * item.qty;
 
-            // Base Object (Common Fields)
-            const row = {
+            return {
                 "Type": item.type,
+                "BIS #": item.bis_number || "---",
                 "Transac Mode": item.transaction_mode || "N/A",
                 "Date Encoded": dateObj.toLocaleDateString(),
                 "Time Encoded": dateObj.toLocaleTimeString(),
                 "Month": dateObj.toLocaleString('default', { month: 'long' }),
                 "Encoder": item.staff_name,
                 "Ref #": item.reference_number,
-                
-                // Student Fields
+                "Linked BIS #": originMap[item.original_transaction_id] || "",
                 "Student ID": item.student_id || "",
                 "Student Name": item.student_name || "",
                 "Year Level": item.year_level || "",
                 "Course": item.course || "",
-                
-                // Supplier Fields (For Receiving/PullOut)
                 "Supplier": item.supplier || "",
-
-                // Item Fields
                 "Accpac Item Code": item.accpac_code_snapshot,
                 "Item Name": item.product_name_snapshot || item.product_name,
                 "Qty": item.qty,
-                
-                // Dynamic Value Columns
                 "Valuation Type": isCostType ? "UNIT COST" : "UNIT PRICE",
                 "Unit Value": unitValue,
                 "Total Amount": totalValue,
-                
-                // Use void_reason if type is VOID, otherwise default remarks
                 "Remarks": (item.type === 'VOID' && item.void_reason) ? item.void_reason : (item.remarks || ""),
                 "Void Status": item.is_voided ? "VOIDED" : "Active"
             };
-
-            return row;
         });
 
-        // 4. Generate Excel
         const worksheet = XLSX.utils.json_to_sheet(excelRows);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
-        
-        // Dynamic Filename
         const fname = `TransHistory_${typeFilter}_${dateFilter}_${new Date().toISOString().slice(0,10)}.xlsx`;
         XLSX.writeFile(workbook, fname);
-
     } catch (err) {
         console.error("Export failed:", err);
-        alert("Failed to export data. See console.");
+        alert("Failed to export data.");
     } finally {
         setIsExporting(false);
     }
@@ -371,6 +354,7 @@ export default function TransactionsManager() {
                 <thead className="bg-gray-50 text-gray-600">
                 <tr>
                     <th className="w-[8%]">Type</th>
+                    <th className="w-[7%]">BIS #</th>
                     <th className="w-[9%]">Date</th>
                     <th className="w-[10%]">Ref #</th>
                     <th className="w-[9%]">Student No.</th>
@@ -382,9 +366,9 @@ export default function TransactionsManager() {
                 </thead>
                 <tbody>
                 {loading ? (
-                    <tr><td colSpan="8" className="text-center py-10">Loading records...</td></tr>
+                    <tr><td colSpan="9" className="text-center py-10">Loading records...</td></tr>
                 ) : Object.keys(groupedTransactions).length === 0 ? (
-                    <tr><td colSpan="8" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
+                    <tr><td colSpan="9" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
                 ) : (
                     Object.entries(groupedTransactions).map(([refNo, items]) => {
                         const nonVoidItems = items.filter(i => i.type !== 'VOID');
@@ -396,9 +380,7 @@ export default function TransactionsManager() {
                         const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
 
                         const totalValue = displayItems.reduce((sum, item) => {
-                            const val = isCostType 
-                                ? (item.unit_cost_snapshot ?? 0)
-                                : (item.price_snapshot ?? item.price);
+                            const val = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
                             return sum + (val * item.qty);
                         }, 0);
 
@@ -406,8 +388,6 @@ export default function TransactionsManager() {
 
                         return (
                             <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
-                                
-                                {/* 1. Type */}
                                 <td className="py-2 pr-1 align-top">
                                     {isOrphanVoid ? (
                                         <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800 whitespace-nowrap">TX</div>
@@ -435,28 +415,34 @@ export default function TransactionsManager() {
                                     )}
                                 </td>
 
-                                {/* 2. Date */}
+                                {/* New BIS # Column */}
+                                <td className="py-2 align-top text-center">
+                                    <div className="font-black text-sm text-slate-700">
+                                        #{first.bis_number || "---"}
+                                    </div>
+                                </td>
+
                                 <td className="py-2 align-top">
-                                    <div className="text-xs text-gray-700 leading-tight">
-                                        {new Date(first.timestamp).toLocaleDateString()}
-                                    </div>
-                                    <div className="text-[10px] text-gray-400 leading-tight">
-                                        {new Date(first.timestamp).toLocaleTimeString()}
-                                    </div>
+                                    <div className="text-xs text-gray-700 leading-tight">{new Date(first.timestamp).toLocaleDateString()}</div>
+                                    <div className="text-[10px] text-gray-400 leading-tight">{new Date(first.timestamp).toLocaleTimeString()}</div>
                                 </td>
 
-                                {/* 3. Ref */}
-                                <td className="py-2 font-mono text-xs font-bold break-all whitespace-normal pr-2 align-top">
-                                    {refNo}
-                                    {isVoided && <div className="badge badge-xs badge-error mt-1 w-fit">VOIDED</div>}
+                                <td className="py-2 align-top pr-2">
+                                    <div className="font-mono text-[10px] text-gray-400 break-all leading-tight">
+                                        {refNo}
+                                    </div>
+                                    {isVoided && (
+                                        <div className="mt-1">
+                                            <span className="badge badge-xs badge-error uppercase font-bold tracking-tighter">VOIDED</span>
+                                        </div>
+                                    )}
                                 </td>
 
-                                {/* 4. Student No. */}
                                 <td className="py-2 font-mono text-xs text-gray-600 break-all whitespace-normal align-top">
                                     {first.student_id || "-"}
                                 </td>
 
-                                {/* 5. Name / Supplier */}
+                                {/* 5. Name / Supplier Column */}
                                 <td className="py-2 align-top pr-2">
                                     {first.student_name ? (
                                         <div className="whitespace-normal break-words">
@@ -474,14 +460,16 @@ export default function TransactionsManager() {
                                         <span className="text-gray-400 italic text-xs">N/A</span>
                                     )}
 
-                                    {/* LINKED ISSUANCE (For Returns) */}
-                                    {first.type === 'ISSUANCE_RETURN' && first.original_ref && (
-                                        <div className="mt-1.5 flex items-center gap-1.5 p-1.5 bg-sky-50 rounded border border-sky-100 w-fit">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-sky-500">
-                                                <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
-                                            </svg>
-                                            <div className="text-[9px] font-bold text-sky-700 uppercase tracking-tight">
-                                                From Ref: <span className="font-mono text-[10px] text-sky-900">{first.original_ref}</span>
+                                    {/* LINKED BIS # (For Returns) */}
+                                    {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
+                                        <div className="mt-2 flex items-center gap-1.5">
+                                            <div className="p-1 bg-sky-50 rounded text-sky-600">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                                    <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div className="text-[10px] font-medium text-sky-700">
+                                                Issuance Link: <span className="font-black text-xs">#{first.original_bis}</span>
                                             </div>
                                         </div>
                                     )}
@@ -493,28 +481,18 @@ export default function TransactionsManager() {
                                     )}
                                 </td>
 
-                                {/* 6. Items Breakdown (Fills remaining space) */}
                                 <td className="py-2 align-top pr-2">
                                     <div className="space-y-1">
                                         {displayItems.map(item => {
-                                            const itemVal = isCostType 
-                                                ? (item.unit_cost_snapshot ?? 0)
-                                                : (item.price_snapshot ?? item.price);
-
+                                            const itemVal = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
                                             return (
                                                 <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0 gap-2">
                                                     <div className="flex flex-col flex-grow min-w-0">
-                                                        <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">
-                                                            {item.product_name_snapshot || "Item"}
-                                                        </span>
-                                                        <span className="text-[9px] text-gray-400 font-mono leading-none mt-0.5 break-all">
-                                                            {item.barcode_snapshot || item.product_id}
-                                                        </span>
+                                                        <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">{item.product_name_snapshot || "Item"}</span>
+                                                        <span className="text-[9px] text-gray-400 font-mono leading-none mt-0.5 break-all">{item.barcode_snapshot || item.product_id}</span>
                                                     </div>
                                                     <div className="text-right shrink-0 whitespace-nowrap ml-1">
-                                                        <span className="font-mono text-gray-600 block leading-none">
-                                                            {item.qty} <span className="text-gray-400">x</span> {Number(itemVal).toFixed(2)}
-                                                        </span>
+                                                        <span className="font-mono text-gray-600 block leading-none">{item.qty} <span className="text-gray-400">x</span> {Number(itemVal).toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                             );
@@ -522,40 +500,19 @@ export default function TransactionsManager() {
                                     </div>
                                 </td>
 
-                                {/* 7. Total Value */}
                                 <td className="py-2 text-right align-top">
-                                    <div className="font-mono font-bold text-sm leading-none">
-                                        {first.type === 'ISSUANCE_RETURN' ? '-' : ''}
-                                        {totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </div>
-                                    <div className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">
-                                        {isCostType ? 'Cost' : 'Price'}
-                                    </div>
+                                    <div className="font-mono font-bold text-sm leading-none">{first.type === 'ISSUANCE_RETURN' ? '-' : ''}{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    <div className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">{isCostType ? 'Cost' : 'Price'}</div>
                                 </td>
 
-                                {/* 8. Staff */}
                                 <td className="py-2 text-right align-top">
-                                    <div className="text-xs font-semibold whitespace-normal break-words leading-tight">
-                                        {first.staff_name}
-                                    </div>
-                                    
+                                    <div className="text-xs font-semibold whitespace-normal break-words leading-tight">{first.staff_name}</div>
                                     {isVoided && voidSource && (
                                         <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
                                             <span className="text-[8px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
-                                            <div className="text-[10px] text-red-700 font-medium break-words w-full text-right">
-                                                {voidSource.staff_name || "Unknown"}
-                                            </div>
-                                            {/* Restored Timestamp Details */}
-                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5 whitespace-nowrap">
-                                                {new Date(voidSource.timestamp).toLocaleDateString()}
-                                            </div>
-                                            <div className="text-[9px] text-red-400 leading-tight">
-                                                {new Date(voidSource.timestamp).toLocaleTimeString()}
-                                            </div>
-                                            {/* Void Reason */}
-                                            <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1 rounded border border-red-100/50 w-full text-right leading-tight break-words whitespace-normal">
-                                                "{voidSource.void_reason || first.void_reason || "N/A"}"
-                                            </div>
+                                            <div className="text-[10px] text-red-700 font-medium break-words w-full text-right">{voidSource.staff_name || "Unknown"}</div>
+                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5 whitespace-nowrap">{new Date(voidSource.timestamp).toLocaleDateString()}</div>
+                                            <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1 rounded border border-red-100/50 w-full text-right leading-tight break-words whitespace-normal">"{voidSource.void_reason || first.void_reason || "N/A"}"</div>
                                         </div>
                                     )}
                                 </td>

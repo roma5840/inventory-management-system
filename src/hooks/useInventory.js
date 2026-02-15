@@ -20,20 +20,17 @@ export const useInventory = () => {
     setLoading(true);
     setError(null);
 
-    // ... imports
-
     try {
-      // Generate a Reference Number Client-Side (Timestamp + Random)
-      // Format: YYYYMMDD-HHMM-XXXX
+      // Generate a Reference Number Client-Side (System ID)
       const now = new Date();
-      const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 12); // YYYYMMDDHHMM
+      const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 12); 
       const random = Math.floor(1000 + Math.random() * 9000);
       const generatedRef = `REF-${timestamp}-${random}`;
 
       // Attach to headerData
       const finalHeader = { ...headerData, referenceNo: generatedRef };
 
-      const { error: rpcError } = await supabase.rpc('process_inventory_batch', {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('process_inventory_batch', {
         header_data: finalHeader,
         item_queue: queue,
         p_user_id: currentUser.auth_uid
@@ -41,8 +38,11 @@ export const useInventory = () => {
 
       if (rpcError) throw rpcError;
 
-      // Return the generated Ref Number so we can show it in the success message
-      return generatedRef; 
+      // Return both IDs: BIS (for User) and Ref (for System)
+      return { 
+        bis: rpcData?.bis_number || 0,
+        ref: generatedRef
+      }; 
 
     } catch (e) {
       console.error("Batch Failed:", e);
