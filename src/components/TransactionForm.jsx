@@ -351,14 +351,15 @@ export default function TransactionForm({ onSuccess }) {
     const currentStaffName = currentUser?.full_name || currentUser?.email || "Staff";
 
     if (result) {
-      // 1. SAVE DATA FOR THE RECEIPT POPUP
       setReceiptData({
-          bisNumber: result.bis, // Display BIS
-          refNumber: result.ref, // Keep internal REF hidden/small
-          studentName: finalHeaderData.studentName,
+          bisNumber: result.bis, 
+          refNumber: result.ref, 
+          
+          studentName: result.verifiedName || finalHeaderData.studentName,
+          course: result.verifiedCourse || finalHeaderData.course,
+          yearLevel: result.verifiedYear || finalHeaderData.yearLevel,
+
           studentId: finalHeaderData.studentId,
-          course: finalHeaderData.course,
-          yearLevel: finalHeaderData.yearLevel,
           type: finalHeaderData.type,
           transactionMode: finalHeaderData.transactionMode,
           supplier: finalHeaderData.supplier, 

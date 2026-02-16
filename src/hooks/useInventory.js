@@ -38,10 +38,13 @@ export const useInventory = () => {
 
       if (rpcError) throw rpcError;
 
-      // Return both IDs: BIS (for User) and Ref (for System)
+      // Return both IDs: BIS (for User), Ref (for System), and Verified Data (from DB)
       return { 
         bis: rpcData?.bis_number || 0,
-        ref: generatedRef
+        ref: generatedRef,
+        verifiedName: rpcData?.verified_name,
+        verifiedCourse: rpcData?.verified_course,
+        verifiedYear: rpcData?.verified_year
       }; 
 
     } catch (e) {
