@@ -60,10 +60,11 @@ export default function StaffPage() {
     
     setProcessingUsers(prev => [...prev, selectedUser.id]);
     try {
-        const { error } = await supabase
-            .from('authorized_users')
-            .update({ full_name: tempName.trim() })
-            .eq('id', selectedUser.id);
+        // SECURE UPDATE: Use RPC instead of direct table update
+        const { error } = await supabase.rpc('update_staff_name', {
+            target_id: selectedUser.id,
+            new_name: tempName.trim()
+        });
 
         if (error) throw error;
 
@@ -153,13 +154,18 @@ export default function StaffPage() {
   }, [refreshTrigger, debouncedTerm, currentPage]);
 
   const changeRole = async (user, newRole) => {
+    // Note: We keep client-side checks for UX, but the real security is now in the DB
     if (userRole !== 'SUPER_ADMIN') return showToast("Access Denied", "Only Super Admins can change roles.", "error");
     if (user.id === currentUser.id) return showToast("Action Blocked", "You cannot change your own role.", "error");
 
-    const { error } = await supabase.from('authorized_users').update({ role: newRole }).eq('id', user.id);
-    if (error) {
-        showToast("Update Failed", error.message, "error");
-    } else {
+    try {
+        const { error } = await supabase.rpc('update_staff_role', { 
+            target_id: user.id, 
+            new_role: newRole 
+        });
+
+        if (error) throw error;
+
         showToast("Role Updated", `${user.fullName}'s role is now ${newRole.replace('_', ' ')}.`);
         setRefreshTrigger(prev => prev + 1);
         await supabase.channel('app_updates').send({
@@ -167,6 +173,8 @@ export default function StaffPage() {
             event: 'staff_update',
             payload: {} 
         });
+    } catch (err) {
+        showToast("Update Failed", err.message, "error");
     }
   };
 
@@ -220,10 +228,11 @@ export default function StaffPage() {
 
     setProcessingUsers(prev => [...prev, user.id]);
     try {
-        const { error } = await supabase
-            .from('authorized_users')
-            .update({ status: newStatus })
-            .eq('id', user.id);
+        // SECURE UPDATE: Use RPC instead of direct table update
+        const { error } = await supabase.rpc('update_staff_status', {
+            target_id: user.id,
+            new_status: newStatus
+        });
 
         if (error) throw error;
 

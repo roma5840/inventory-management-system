@@ -30,41 +30,41 @@ export default function Register() {
     }
 
     try {
-      // 1. Check Invite Status
-      const { data: userEntry } = await supabase
-        .from('authorized_users')
-        .select('*')
-        .eq('email', email)
-        .single();
+      // 1. Check Invite Status via Secure RPC (Fixes 406 Error)
+      const { data: inviteData, error: rpcError } = await supabase
+        .rpc('verify_invite_for_registration', { email_input: email });
 
-      if (!userEntry) {
+      if (rpcError) throw rpcError;
+
+      // The RPC returns an array of rows. We check the first result.
+      const invite = inviteData?.[0];
+
+      if (!invite || !invite.invite_exists) {
         throw new Error("ACCESS DENIED: This email has not been invited by Admin.");
       }
-      if (userEntry.status === "REGISTERED") {
+      
+      if (invite.user_status === "REGISTERED") {
         throw new Error("This account is already registered. Please Login.");
       }
 
+      if (invite.user_status === "INACTIVE") {
+        throw new Error("This invite has been revoked.");
+      }
+
       // 2. Create Supabase Auth User
-      // Removed emailRedirectTo options as confirmation is disabled
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (signUpError) {
-        // ONLY show the "Already Registered" alert if the message specifically says so
         if (signUpError.message.includes("already registered")) {
              alert("Account exists!\n\nPlease go to Login and use your previous password.");
              navigate("/login");
              return;
         }
-        
         throw signUpError;
       }
-
-      // Success:
-      // Since email confirmation is disabled in Supabase, the user is automatically logged in.
-      // The existing useEffect(() => { if (currentUser) navigate("/"); ... }) will handle the redirect.
 
     } catch (err) {
       console.error(err);

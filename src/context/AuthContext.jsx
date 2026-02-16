@@ -128,31 +128,20 @@ export function AuthProvider({ children }) {
             return;
         }
 
-        // Update status if first time logging in
-        if (data.status === 'PENDING') {
-           await supabase.from('authorized_users').update({ 
-             status: 'REGISTERED', 
-             auth_uid: session.user.id 
-           }).eq('email', session.user.email);
-
-           // --- FIX: Manually update local data so state is correct immediately ---
-           data.status = 'REGISTERED';
-           data.auth_uid = session.user.id;
-           // ---------------------------------------------------------------------
-
-           await supabase.channel('app_updates').send({
-             type: 'broadcast',
-             event: 'staff_update',
-             payload: {} 
-           });
-        }
+        // --- UPDATED LOGIC START ---
+        // We removed the client-side UPDATE here.
+        // The SQL Trigger 'on_auth_user_created' now handles the 
+        // PENDING -> REGISTERED switch automatically upon sign-up.
         
+        // Just set the user state based on what the DB says
         setCurrentUser({ 
           ...session.user, 
           ...data,
           fullName: data.full_name 
         });
         setUserRole(data.role);
+        // --- UPDATED LOGIC END ---
+
       } else {
         console.warn("User no longer in whitelist. Logging out.");
         await supabase.auth.signOut();

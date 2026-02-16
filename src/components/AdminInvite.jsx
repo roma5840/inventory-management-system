@@ -44,30 +44,20 @@ export default function AdminInvite({ onSuccess }) {
     setMsg("");
 
     try {
-      const { data: existing } = await supabase
-        .from('authorized_users')
-        .select('status')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (existing) {
-        setMsg(`Error: This email is already ${existing.status}.`);
-        setLoading(false);
-        return; 
-      }
-
-      const { error } = await supabase.from('authorized_users').insert({
-        email: email,
-        full_name: name,
-        role: role, 
-        status: "PENDING"
+      // SECURE INVITE: Call the RPC instead of direct .insert()
+      // This enforces the Role Hierarchy (Admin cannot create Super Admin)
+      const { error } = await supabase.rpc('invite_new_user', {
+        new_email: email,
+        new_name: name,
+        new_role: role
       });
 
-      if(error) throw error;
+      if (error) throw error;
 
-      // --- UPDATED SECURE SYNC ---
+      // --- SYNC WITH CLOUDFLARE ---
+      // Note: We sync AFTER the DB transaction succeeds
       await callCloudflareSync(email, 'add');
-      // ---------------------------
+      // ----------------------------
 
       await supabase.channel('app_updates').send({
         type: 'broadcast',
@@ -97,11 +87,11 @@ export default function AdminInvite({ onSuccess }) {
       setRole("EMPLOYEE");
     } catch (error) {
       console.error(error);
-      // Determine if it was the DB or the Sync that failed
       if (error.message === "Cloudflare Sync Failed") {
           setMsg("User saved to DB, but Cloudflare Sync failed. Check logs.");
       } else {
-          setMsg("Error sending invite.");
+          // Display the custom error from the database (e.g., "Admins can only invite Employees")
+          setMsg(error.message || "Error sending invite.");
       }
     } finally {
       setLoading(false);
