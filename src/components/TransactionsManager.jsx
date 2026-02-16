@@ -217,16 +217,26 @@ export default function TransactionsManager() {
             const unitValue = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
             const totalValue = unitValue * item.qty;
 
+            // Resolve BIS display logic
+            const linkedBis = originMap[item.original_transaction_id];
+            const isVoid = item.type === 'VOID';
+
+            // If VOID, show original BIS in "BIS #" column. Otherwise use row's BIS #.
+            const bisColumnValue = isVoid ? (linkedBis || "---") : (item.bis_number || "---");
+            
+            // If VOID, clear "Linked BIS #" (since we moved it to main column). Otherwise show linked (for Returns).
+            const linkedColumnValue = isVoid ? "" : (linkedBis || "");
+
             return {
                 "Type": item.type,
-                "BIS #": item.bis_number || "---",
+                "BIS #": bisColumnValue,
                 "Transac Mode": item.transaction_mode || "N/A",
                 "Date Encoded": dateObj.toLocaleDateString(),
                 "Time Encoded": dateObj.toLocaleTimeString(),
                 "Month": dateObj.toLocaleString('default', { month: 'long' }),
                 "Encoder": item.staff_name,
                 "Ref #": item.reference_number,
-                "Linked BIS #": originMap[item.original_transaction_id] || "",
+                "Linked BIS #": linkedColumnValue,
                 "Student ID": item.student_id || "",
                 "Student Name": item.student_name || "",
                 "Year Level": item.year_level || "",
