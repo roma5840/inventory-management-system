@@ -30,7 +30,8 @@ const ProtectedRoute = ({ children }) => {
         .eq('id', currentUser.id)
         .single();
       
-      if (data?.status === 'INACTIVE') {
+      // If data is null (deleted) or inactive
+      if (!data || data.status === 'INACTIVE') {
         alert("Your access has been revoked by an administrator.");
         await supabase.auth.signOut();
       }
@@ -43,13 +44,13 @@ const ProtectedRoute = ({ children }) => {
       .on(
         'postgres_changes', 
         { 
-          event: 'UPDATE', 
+          event: '*', // CHANGED: Listen for DELETE as well
           schema: 'public', 
           table: 'authorized_users', 
           filter: `id=eq.${currentUser.id}` 
         }, 
         async (payload) => {
-          if (payload.new.status === 'INACTIVE') {
+          if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new.status === 'INACTIVE')) {
             alert("Your session has been terminated.");
             await supabase.auth.signOut();
           }

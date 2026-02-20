@@ -19,15 +19,15 @@ export default async function handler(req, res) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return res.status(401).json({ error: 'Invalid or expired token' });
 
-  // B. Verify Caller is Admin/Super Admin
+  // B. Verify Caller is Admin/Super Admin AND is Active
   const { data: callerProfile } = await supabase
     .from('authorized_users')
-    .select('role')
+    .select('role, status')
     .eq('email', user.email)
     .single();
 
-  if (!callerProfile || !['ADMIN', 'SUPER_ADMIN'].includes(callerProfile.role)) {
-    return res.status(403).json({ error: 'Forbidden: Insufficient privileges' });
+  if (!callerProfile || callerProfile.status !== 'REGISTERED' || !['ADMIN', 'SUPER_ADMIN'].includes(callerProfile.role)) {
+    return res.status(403).json({ error: 'Forbidden: Insufficient privileges or inactive account' });
   }
 
   // 2. Proceed with Cloudflare Logic

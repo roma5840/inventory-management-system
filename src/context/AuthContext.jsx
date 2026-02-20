@@ -83,17 +83,18 @@ export function AuthProvider({ children }) {
       .on(
         'postgres_changes',
         { 
-          event: 'UPDATE', 
+          event: '*', // CHANGED: Listen to ALL events (UPDATE and DELETE)
           schema: 'public', 
           table: 'authorized_users', 
-          filter: `id=eq.${currentUser.id}` // Monitoring own row
+          filter: `id=eq.${currentUser.id}` 
         },
         async (payload) => {
-          if (payload.new.status === 'INACTIVE') {
-            alert("Session Terminated: Your account has been deactivated.");
+          // Trigger logout if row is deleted OR status is changed to INACTIVE
+          if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new.status === 'INACTIVE')) {
+            alert("Session Terminated: Your access has been deactivated or revoked.");
             await supabase.auth.signOut();
             setCurrentUser(null);
-            window.location.href = '/login'; // Hard redirect to clear state
+            window.location.href = '/login'; 
           }
         }
       )
