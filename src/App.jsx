@@ -19,50 +19,6 @@ import InventoryPage from "./pages/InventoryPage";
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAuth();
 
-  useEffect(() => {
-    if (!currentUser) return;
-
-    // 1. Check status immediately on mount
-    const checkStatus = async () => {
-      const { data } = await supabase
-        .from('authorized_users')
-        .select('status')
-        .eq('id', currentUser.id)
-        .single();
-      
-      // If data is null (deleted) or inactive
-      if (!data || data.status === 'INACTIVE') {
-        alert("Your access has been revoked by an administrator.");
-        await supabase.auth.signOut();
-      }
-    };
-    checkStatus();
-
-    // 2. Listen for real-time changes to MY status
-    const channel = supabase
-      .channel(`status_check_${currentUser.id}`)
-      .on(
-        'postgres_changes', 
-        { 
-          event: '*', // CHANGED: Listen for DELETE as well
-          schema: 'public', 
-          table: 'authorized_users', 
-          filter: `id=eq.${currentUser.id}` 
-        }, 
-        async (payload) => {
-          if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new.status === 'INACTIVE')) {
-            alert("Your session has been terminated.");
-            await supabase.auth.signOut();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentUser]);
-
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }

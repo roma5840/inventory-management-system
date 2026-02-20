@@ -83,18 +83,25 @@ export function AuthProvider({ children }) {
       .on(
         'postgres_changes',
         { 
-          event: '*', // CHANGED: Listen to ALL events (UPDATE and DELETE)
+          event: '*', 
           schema: 'public', 
           table: 'authorized_users', 
           filter: `id=eq.${currentUser.id}` 
         },
         async (payload) => {
-          // Trigger logout if row is deleted OR status is changed to INACTIVE
+          // 1. Trigger logout if row is deleted OR status is changed to INACTIVE
           if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new.status === 'INACTIVE')) {
             alert("Session Terminated: Your access has been deactivated or revoked.");
             await supabase.auth.signOut();
             setCurrentUser(null);
+            setUserRole(null);
             window.location.href = '/login'; 
+          } 
+          // 2. Real-time Role Updates (Immediate Demotion/Promotion)
+          else if (payload.eventType === 'UPDATE' && payload.new.role !== userRole) {
+            setUserRole(payload.new.role);
+            setCurrentUser(prev => ({ ...prev, role: payload.new.role }));
+            alert(`Notice: Your system privileges have been updated to ${payload.new.role.replace('_', ' ')}.`);
           }
         }
       )
@@ -103,7 +110,7 @@ export function AuthProvider({ children }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser]);
+  }, [currentUser, userRole]);
 
   // Helper to sync Auth User with Whitelist Data
   const handleSession = async (session) => {
