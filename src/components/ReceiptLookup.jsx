@@ -174,31 +174,68 @@ export default function ReceiptLookup() {
          {error && <p className="text-xs text-red-500 mt-2 font-bold text-center">{error}</p>}
       </div>
 
-      {/* DISAMBIGUATION LIST (If multiple found) */}
-      {searchResults.length > 0 && (
-         <div className="card w-full bg-white shadow-lg mt-2 p-2 border border-slate-200">
-             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-2">Select Transaction</div>
-             <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-                 {searchResults.map((group, idx) => {
-                     const h = group[0];
-                     return (
-                         <button 
-                             key={idx} 
-                             onClick={() => loadReceipt(group)}
-                             className="text-left px-3 py-2 hover:bg-blue-50 rounded border border-transparent hover:border-blue-100 transition-all group"
-                         >
-                             <div className="flex justify-between items-center">
-                                 <span className="font-bold text-xs text-slate-700">BIS #{h.bis_number} - {h.type}</span>
-                                 <span className="text-[10px] text-slate-400">{new Date(h.timestamp).toLocaleDateString()}</span>
-                             </div>
-                             <div className="text-[10px] text-slate-500 truncate">
-                                 {h.student_name || h.supplier || "No Name"}
-                             </div>
-                         </button>
-                     )
-                 })}
-             </div>
-         </div>
+      {/* DISAMBIGUATION MODAL (If multiple found) */}
+      {searchResults.length > 0 && createPortal(
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[9999] backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-blue-500/20 rounded text-blue-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-white tracking-tight uppercase text-sm">Select Transaction</h3>
+              </div>
+              <button onClick={() => setSearchResults([])} className="text-slate-500 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-4">
+              <p className="text-[11px] text-slate-500 uppercase font-bold tracking-widest mb-3 px-1">Multiple records found for this BIS #</p>
+              <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+                {searchResults.map((group, idx) => {
+                  const h = group[0];
+                  return (
+                    <button 
+                      key={idx} 
+                      onClick={() => loadReceipt(group)}
+                      className="group flex flex-col w-full text-left p-4 rounded-lg border border-slate-100 bg-slate-50 hover:bg-blue-600 hover:border-blue-500 transition-all"
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-sm text-slate-800 group-hover:text-white">
+                          {h.type}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 group-hover:bg-blue-400 group-hover:text-white">
+                          {h.reference_number}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-slate-500 group-hover:text-blue-100 truncate max-w-[180px]">
+                          {h.student_name || h.supplier || "N/A"}
+                        </span>
+                        <span className="text-[10px] text-slate-400 group-hover:text-blue-200">
+                          {new Date(h.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <button 
+                onClick={() => setSearchResults([])} 
+                className="btn btn-ghost btn-sm w-full mt-4 text-slate-400 normal-case"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL */}
