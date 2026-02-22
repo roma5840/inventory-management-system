@@ -50,7 +50,7 @@ export default function TransactionForm({ onSuccess }) {
   const [currentScan, setCurrentScan] = useState({
     barcode: "",
     qty: 1,
-    priceOverride: "",
+    price: "",
     unitCost: "",
     itemName: "",     
     category: "TEXTBOOK", 
@@ -117,7 +117,7 @@ export default function TransactionForm({ onSuccess }) {
           ...prev, 
           barcode: data.barcode,
           itemName: data.name || "", 
-          priceOverride: price,
+          price: price,
           unitCost: cost,
           location: data.location || "",
           accpacCode: data.accpac_code || "",
@@ -142,7 +142,7 @@ export default function TransactionForm({ onSuccess }) {
         setCurrentScan(prev => ({ 
              ...prev, 
              itemName: "", 
-             priceOverride: "", 
+             price: "", 
              unitCost: "", 
              location: ""
         })); 
@@ -257,7 +257,6 @@ export default function TransactionForm({ onSuccess }) {
             newQueue[existingIndex] = { 
                 ...newQueue[existingIndex], 
                 qty: parseInt(currentScan.qty), // Set to the new scanned quantity
-                priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
                 unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost,
             };
             return newQueue;
@@ -265,7 +264,6 @@ export default function TransactionForm({ onSuccess }) {
             // Add new row
             const newItem = { 
               ...currentScan, 
-              priceOverride: currentScan.priceOverride === "" ? "0" : currentScan.priceOverride,
               unitCost: currentScan.unitCost === "" ? "0" : currentScan.unitCost, 
               accpacCode: currentScan.accpacCode, 
               id: Date.now() 
@@ -279,7 +277,7 @@ export default function TransactionForm({ onSuccess }) {
       ...prev,
       barcode: "",
       qty: 1,
-      priceOverride: "",
+      price: "",
       unitCost: "", 
       itemName: "",
       location: ""
@@ -328,8 +326,8 @@ export default function TransactionForm({ onSuccess }) {
             displayName: itemToRemove.itemName,
             
             // FIX 1: Restore price data so re-adding doesn't result in NaN
-            price: itemToRemove.priceOverride, 
-            price_snapshot: itemToRemove.priceOverride,
+            price: itemToRemove.price, 
+            price_snapshot: itemToRemove.price,
             cost_snapshot: itemToRemove.unitCost, 
 
             // FIX 2: Restore the Reference Number
@@ -410,7 +408,7 @@ export default function TransactionForm({ onSuccess }) {
       setIsNewStudent(null);
       setIsNewSupplier(null);
       setCurrentScan({
-        barcode: "", qty: 1, priceOverride: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
+        barcode: "", qty: 1, price: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
       });
       if(barcodeRef.current) barcodeRef.current.focus();
 
@@ -457,7 +455,7 @@ export default function TransactionForm({ onSuccess }) {
       setCurrentScan(prev => ({
         ...prev,
         itemName: "",
-        priceOverride: "",
+        price: "",
         unitCost: "",
         location: "",
         qty: 1
@@ -645,7 +643,7 @@ export default function TransactionForm({ onSuccess }) {
         qty: item.remainingQty,
         maxQty: item.remainingQty,
         originalReceiptQty: item.qty,
-        priceOverride: item.price_snapshot !== undefined ? item.price_snapshot : item.price, 
+        price: item.price_snapshot !== undefined ? item.price_snapshot : item.price, 
         unitCost: item.cost_snapshot !== undefined ? item.cost_snapshot : 0,
         originalTransactionId: item.id,
         refNumber: item.reference_number
@@ -695,7 +693,7 @@ export default function TransactionForm({ onSuccess }) {
     setIsNewItem(null);
     
     setCurrentScan({
-        barcode: "", qty: 1, priceOverride: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
+        barcode: "", qty: 1, price: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
     });
     
     // Intelligent Initial Focus
@@ -1100,7 +1098,7 @@ export default function TransactionForm({ onSuccess }) {
                                     <>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Price</label>
                                         <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm">
-                                            ₱{Number(currentScan.priceOverride || 0).toFixed(2)}
+                                            ₱{Number(currentScan.price || 0).toFixed(2)}
                                         </div>
                                     </>
                                 )}
@@ -1179,7 +1177,7 @@ export default function TransactionForm({ onSuccess }) {
                                     )}
                                     {headerData.type !== 'RECEIVING' && (
                                         <td className="font-mono text-[11px] text-slate-700 font-bold">
-                                            ₱{Number(item.priceOverride).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            ₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                     )}
                                     <td className="text-right pr-4">
