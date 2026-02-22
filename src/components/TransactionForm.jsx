@@ -13,6 +13,7 @@ export default function TransactionForm({ onSuccess }) {
 
   const [isNewItem, setIsNewItem] = useState(null);
   const [isNewStudent, setIsNewStudent] = useState(null); 
+  const [isNewSupplier, setIsNewSupplier] = useState(null);
 
   const [returnLookupRef, setReturnLookupRef] = useState("");
   const [pastTransactionItems, setPastTransactionItems] = useState([]);
@@ -207,6 +208,25 @@ export default function TransactionForm({ onSuccess }) {
     }
   }, [headerData.studentId, headerData.type]);
 
+  // Validation Effect for Supplier
+  useEffect(() => {
+    if (['RECEIVING', 'PULL_OUT'].includes(headerData.type)) {
+        if (headerData.supplier && headerData.supplier.trim() !== "") {
+            // Check against local cached supplier list (case-insensitive)
+            const exactMatch = availableSuppliers.find(
+                s => s.trim().toUpperCase() === headerData.supplier.trim().toUpperCase()
+            );
+            if (exactMatch) {
+                setIsNewSupplier(false); // Verified
+            } else {
+                setIsNewSupplier(true);  // No Record
+            }
+        } else {
+            setIsNewSupplier(null); // Empty
+        }
+    }
+  }, [headerData.supplier, headerData.type, availableSuppliers]);
+
   // Add to Queue & Reset
   const handleAddToQueue = (e) => {
     e.preventDefault();
@@ -220,6 +240,11 @@ export default function TransactionForm({ onSuccess }) {
 
     if (headerData.type === 'ISSUANCE' && isNewStudent !== false) {
         alert("Cannot process Issuance: Student ID not found in records.");
+        return;
+    }
+
+    if (['RECEIVING', 'PULL_OUT'].includes(headerData.type) && isNewSupplier !== false) {
+        alert("Cannot process transaction: Supplier not found in records.");
         return;
     }
     
@@ -321,6 +346,17 @@ export default function TransactionForm({ onSuccess }) {
   const handleFinalSubmit = async () => {
     setSuccessMsg("");
 
+    // Final security guard to prevent bypass
+    if (['RECEIVING', 'PULL_OUT'].includes(headerData.type) && isNewSupplier !== false) {
+        alert("Cannot finalize: A verified supplier is required.");
+        return;
+    }
+    
+    if (headerData.type === 'ISSUANCE' && isNewStudent !== false) {
+        alert("Cannot finalize: A verified Student ID is required.");
+        return;
+    }
+
     // Prepare data with Uppercase enforcement
     const finalHeaderData = {
         ...headerData,
@@ -330,21 +366,6 @@ export default function TransactionForm({ onSuccess }) {
         remarks: headerData.remarks || "",
         supplier: headerData.supplier?.toUpperCase().trim() || ""
     };
-
-    // Auto-add Supplier Logic if new
-    if (['RECEIVING', 'PULL_OUT'].includes(finalHeaderData.type) && finalHeaderData.supplier) {
-        const supName = finalHeaderData.supplier;
-        if (!availableSuppliers.includes(supName)) {
-            try {
-                const { error: supError } = await supabase.from('suppliers').insert([{ name: supName }]);
-                if (!supError) {
-                    setAvailableSuppliers(prev => [...prev, supName].sort());
-                }
-            } catch (err) {
-                console.error("Error auto-adding supplier:", err);
-            }
-        }
-    }
 
     const result = await processTransaction(finalHeaderData, queue);
     
@@ -387,6 +408,7 @@ export default function TransactionForm({ onSuccess }) {
 
       // Reset Scanner
       setIsNewStudent(null);
+      setIsNewSupplier(null);
       setCurrentScan({
         barcode: "", qty: 1, priceOverride: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
       });
@@ -669,6 +691,7 @@ export default function TransactionForm({ onSuccess }) {
     setReturnLookupRef("");
     setSuccessMsg("");
     setIsNewStudent(null);
+    setIsNewSupplier(null);
     setIsNewItem(null);
     
     setCurrentScan({
@@ -921,12 +944,19 @@ export default function TransactionForm({ onSuccess }) {
                         </>
                     ) : (
                         <div className="md:col-span-4 relative">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block tracking-tight">Supplier / Source</label>
+                            <label className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Supplier / Source</span>
+                                {isNewSupplier === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
+                                {isNewSupplier === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
+                            </label>
                             <LimitedInput 
                                 id="supplierInput" 
                                 maxLength={150}
                                 autoComplete="off"
-                                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase font-semibold focus:border-blue-500 outline-none" 
+                                className={`w-full h-9 px-3 rounded-lg border text-sm uppercase font-semibold transition-all outline-none
+                                    ${isNewSupplier === true ? 'border-rose-300 bg-rose-50/30 text-rose-900' : 'border-slate-200 bg-white focus:border-blue-500'}
+                                    ${isNewSupplier === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
+                                `}
                                 placeholder="Start typing supplier..."
                                 value={headerData.supplier} onChange={handleSupplierChange} onKeyDown={handleSupplierKeyDown}
                                 onFocus={() => { if(headerData.supplier) { setSupplierSuggestions(availableSuppliers.filter(s => s.startsWith(headerData.supplier))); setShowSupplierDropdown(true); }}}

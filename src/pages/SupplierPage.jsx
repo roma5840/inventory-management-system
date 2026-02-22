@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import Sidebar from "../components/Sidebar";
 import Pagination from "../components/Pagination";
@@ -7,6 +8,7 @@ import Toast from "../components/Toast";
 import DeleteModal from "../components/DeleteModal";
 
 export default function SupplierPage() {
+  const { userRole } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -168,7 +170,8 @@ export default function SupplierPage() {
             <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
 
 
-            {/* Add Form */}
+            {/* Add Form - Only for Admins */}
+            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
             <div className="p-6 bg-white border-b">
                 <h3 className="text-sm font-bold text-gray-600 mb-4 uppercase tracking-wider">Add New Supplier</h3>
                 <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
@@ -205,6 +208,7 @@ export default function SupplierPage() {
                     </div>
                 </form>
             </div>
+            )}
 
             {/* List */}
             <div className="overflow-x-auto min-h-[400px]">
@@ -213,14 +217,14 @@ export default function SupplierPage() {
                         <tr>
                             <th>Name</th>
                             <th>Contact Info</th>
-                            <th className="text-right">Action</th>
+                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right">Action</th>}
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                             <tr><td colSpan="3" className="text-center py-12 text-slate-400 font-medium"><span className="loading loading-spinner loading-md text-primary"></span></td></tr>
+                             <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? "3" : "2"} className="text-center py-12 text-slate-400 font-medium"><span className="loading loading-spinner loading-md text-primary"></span></td></tr>
                         ) : suppliers.length === 0 ? (
-                             <tr><td colSpan="3" className="text-center py-12 text-slate-400 font-medium italic">No suppliers found in the database.</td></tr>
+                             <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? "3" : "2"} className="text-center py-12 text-slate-400 font-medium italic">No suppliers found in the database.</td></tr>
                         ) : (
                             suppliers.map(s => (
                                 <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -234,6 +238,7 @@ export default function SupplierPage() {
                                             {s.contact_info || <span className="text-slate-300 italic">—</span>}
                                         </div>
                                     </td>
+                                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                                     <td className="text-right whitespace-nowrap">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button 
@@ -256,6 +261,7 @@ export default function SupplierPage() {
                                             </button>
                                         </div>
                                     </td>
+                                    )}
                                 </tr>
                             ))
                         )}
