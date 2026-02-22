@@ -201,25 +201,57 @@ export default function TransactionsManager() {
         const { data: rawData, error } = await buildQuery(true);
         if (error) throw error;
 
-        // Fetch linked BIS numbers for returns in export
+        // Fetch linked BIS numbers and types for returns & voids via original_transaction_id
         const originIds = [...new Set(rawData.map(t => t.original_transaction_id).filter(Boolean))];
         let originMap = {};
         if (originIds.length > 0) {
-            const { data: origins } = await supabase.from('transactions').select('id, bis_number').in('id', originIds);
-            origins?.forEach(o => { originMap[o.id] = o.bis_number; });
+            const { data: origins } = await supabase.from('transactions').select('id, bis_number, type').in('id', originIds);
+            origins?.forEach(o => { originMap[o.id] = o; });
+        }
+
+        // Fetch original types for VOID transactions via reference_number (if not found in originMap)
+        const voidRefs = [...new Set(rawData.filter(t => t.type === 'VOID').map(t => t.reference_number).filter(Boolean))];
+        let voidOriginalTypeMap = {};
+        
+        if (voidRefs.length > 0) {
+            voidRefs.forEach(ref => {
+                const orig = rawData.find(t => t.reference_number === ref && t.type !== 'VOID');
+                if (orig) voidOriginalTypeMap[ref] = orig.type;
+            });
+
+            const missingRefs = voidRefs.filter(ref => !voidOriginalTypeMap[ref]);
+            if (missingRefs.length > 0) {
+                const { data: missingOrigs } = await supabase
+                    .from('transactions')
+                    .select('reference_number, type')
+                    .in('reference_number', missingRefs)
+                    .neq('type', 'VOID');
+                
+                missingOrigs?.forEach(o => {
+                    voidOriginalTypeMap[o.reference_number] = o.type;
+                });
+            }
         }
 
         const fullData = await enrichWithStaffNames(rawData);
 
         const excelRows = fullData.map(item => {
             const dateObj = new Date(item.timestamp);
-            const isCostType = ['RECEIVING', 'PULL_OUT'].includes(item.type);
+            const isVoid = item.type === 'VOID';
+            
+            // Resolve actual transaction type for VOIDs to correctly assign Unit Cost vs Unit Price
+            const linkedData = originMap[item.original_transaction_id] || {};
+            let actualType = item.type;
+            if (isVoid) {
+                actualType = linkedData.type || voidOriginalTypeMap[item.reference_number] || 'VOID';
+            }
+            
+            const isCostType = ['RECEIVING', 'PULL_OUT'].includes(actualType);
             const unitValue = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
             const totalValue = unitValue * item.qty;
 
             // Resolve BIS display logic
-            const linkedBis = originMap[item.original_transaction_id];
-            const isVoid = item.type === 'VOID';
+            const linkedBis = linkedData.bis_number;
 
             // If VOID, show original BIS in "BIS #" column. Otherwise use row's BIS #.
             const bisColumnValue = isVoid ? (linkedBis || "---") : (item.bis_number || "---");
@@ -248,7 +280,7 @@ export default function TransactionsManager() {
                 "Valuation Type": isCostType ? "UNIT COST" : "UNIT PRICE",
                 "Unit Value": unitValue,
                 "Total Amount": totalValue,
-                "Remarks": (item.type === 'VOID' && item.void_reason) ? item.void_reason : (item.remarks || ""),
+                "Remarks": (isVoid && item.void_reason) ? item.void_reason : (item.remarks || ""),
                 "Void Status": item.is_voided ? "VOIDED" : "Active"
             };
         });
