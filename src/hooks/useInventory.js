@@ -32,8 +32,7 @@ export const useInventory = () => {
 
       const { data: rpcData, error: rpcError } = await supabase.rpc('process_inventory_batch', {
         header_data: finalHeader,
-        item_queue: queue,
-        p_user_id: currentUser.auth_uid
+        item_queue: queue
       });
 
       if (rpcError) throw rpcError;
@@ -64,8 +63,7 @@ export const useInventory = () => {
     try {
       const { error } = await supabase.rpc('void_transaction_by_ref', {
         p_reference_number: refNumber,
-        p_reason: reason,
-        p_user_id: currentUser.auth_uid
+        p_reason: reason
       });
 
       if (error) throw error;
