@@ -803,19 +803,10 @@ export default function TransactionForm({ onSuccess }) {
   };
 
   const handleReturnRefChange = (e) => {
-    const input = e.target;
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const val = input.value.toUpperCase();
-    
+    // STRICTLY INTEGERS ONLY: Remove any character that is not a digit (0-9)
+    // This handles typing, pasting, and symbols like +, -, =
+    const val = e.target.value.replace(/[^0-9]/g, '');
     setReturnLookupRef(val);
-
-    // Restore cursor position after React state update
-    window.requestAnimationFrame(() => {
-        if (input) {
-            input.setSelectionRange(start, end);
-        }
-    });
   };
 
   return (
