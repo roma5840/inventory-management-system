@@ -79,7 +79,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
       if (originIds.length > 0) {
         const { data: origins } = await supabase
           .from('transactions')
-          .select('id, bis_number') // Fetch the BIS number instead of/alongside ref
+          .select('id, bis_number') 
           .in('id', originIds);
         origins?.forEach(o => { originMap[o.id] = o.bis_number; });
       }
@@ -87,17 +87,18 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
       const userIds = [...new Set(combinedData.map(t => t.user_id).filter(Boolean))];
       let userMap = {};
       if (userIds.length > 0) {
+        // SECURITY PATCH: Removed 'email' from select to prevent data leakage in dev console
         const { data: users } = await supabase
           .from('authorized_users')
-          .select('auth_uid, full_name, email')
+          .select('auth_uid, full_name')
           .in('auth_uid', userIds);
-        users?.forEach(u => { userMap[u.auth_uid] = u.full_name || u.email; });
+        users?.forEach(u => { userMap[u.auth_uid] = u.full_name || 'Unknown Staff'; });
       }
 
       const enrichedData = combinedData.map(t => ({
         ...t,
         staff_name: userMap[t.user_id] || 'Unknown Staff',
-        original_bis: originMap[t.original_transaction_id] // Map the linked BIS number
+        original_bis: originMap[t.original_transaction_id] 
       }));
 
       setTransactions(enrichedData || []);
