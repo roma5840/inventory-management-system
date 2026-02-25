@@ -27,19 +27,16 @@ export default function TransactionsManager() {
   // Debounce Search Effect
   useEffect(() => {
     const handler = setTimeout(() => {
-      setSearchRef(localSearch);
+      if (localSearch !== searchRef) {
+        setSearchRef(localSearch);
+        setCurrentPage(1); // Reset page only when search actually updates
+      }
     }, 400); // Wait 400ms after typing stops
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [localSearch]);
+    return () => clearTimeout(handler);
+  }, [localSearch, searchRef]);
 
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [dateFilter, typeFilter, modeFilter, searchRef]);
-
+  // Fetch transactions when dependencies change
   useEffect(() => {
     fetchTransactions();
   }, [currentPage, dateFilter, typeFilter, modeFilter, searchRef]);
@@ -47,7 +44,7 @@ export default function TransactionsManager() {
   // Helper to build the base query based on filters
   const buildQuery = (isForExport = false) => {
     let query = supabase
-        .from('transactions')
+        .from('vw_transaction_history') // CHANGED to View
         .select('*', { count: isForExport ? 'exact' : 'exact' }) // Always get count
         .order('timestamp', { ascending: false });
 
@@ -117,7 +114,7 @@ export default function TransactionsManager() {
 
       if (orphanRefs.length > 0) {
           const { data: originals } = await supabase
-              .from('transactions')
+              .from('vw_transaction_history') // CHANGED to View
               .select('*')
               .in('reference_number', orphanRefs)
               .neq('type', 'VOID');
@@ -127,27 +124,8 @@ export default function TransactionsManager() {
           }
       }
 
-      // --- RESOLVE BIS NUMBERS FOR RETURNS ---
-      const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
-      let originMap = {};
-      if (originIds.length > 0) {
-        const { data: origins } = await supabase
-          .from('transactions')
-          .select('id, bis_number') // Fetch BIS number instead of Ref
-          .in('id', originIds);
-        origins?.forEach(o => { originMap[o.id] = o.bis_number; });
-      }
-
-      // Fetch Staff Names
-      const enriched = await enrichWithStaffNames(combinedData);
-      
-      // Map the linked BIS numbers
-      const finalData = enriched.map(t => ({
-        ...t,
-        original_bis: originMap[t.original_transaction_id]
-      }));
-
-      setTransactions(finalData);
+      // The View already provided staff_name and original_bis natively!
+      setTransactions(combinedData);
       setTotalCount(count || 0);
 
     } catch (err) {
@@ -157,34 +135,8 @@ export default function TransactionsManager() {
     }
   };
 
-  const enrichWithStaffNames = async (data) => {
-      if (!data || data.length === 0) return [];
-      const userIds = [...new Set(data.map(t => t.user_id).filter(Boolean))];
-      let userMap = {};
-      if (userIds.length > 0) {
-        const { data: users } = await supabase
-          .from('authorized_users')
-          .select('auth_uid, full_name, email')
-          .in('auth_uid', userIds); 
-        users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
-      }
-      return data.map(t => ({
-        ...t,
-        staff_name: userMap[t.user_id] || 'Unknown'
-      }));
-  };
-
   // Grouping Logic
   const groupedTransactions = transactions.reduce((acc, curr) => {
-    // Search Filter applied post-fetch for client-side responsiveness
-    if (searchRef && 
-        !curr.student_name?.toLowerCase().includes(searchRef.toLowerCase()) &&
-        !curr.student_id?.toString().toLowerCase().includes(searchRef.toLowerCase()) &&
-        !curr.supplier?.toLowerCase().includes(searchRef.toLowerCase())
-       ) {
-        return acc;
-    }
-
     const key = curr.reference_number || "NO_REF";
     if (!acc[key]) acc[key] = [];
     acc[key].push(curr);
@@ -198,18 +150,10 @@ export default function TransactionsManager() {
     
     setIsExporting(true);
     try {
-        const { data: rawData, error } = await buildQuery(true);
+        const { data: rawData, error } = await buildQuery(true).limit(100000);
         if (error) throw error;
 
-        // Fetch linked BIS numbers and types for returns & voids via original_transaction_id
-        const originIds = [...new Set(rawData.map(t => t.original_transaction_id).filter(Boolean))];
-        let originMap = {};
-        if (originIds.length > 0) {
-            const { data: origins } = await supabase.from('transactions').select('id, bis_number, type').in('id', originIds);
-            origins?.forEach(o => { originMap[o.id] = o; });
-        }
-
-        // Fetch original types for VOID transactions via reference_number (if not found in originMap)
+        // Fetch original types for VOID transactions via reference_number
         const voidRefs = [...new Set(rawData.filter(t => t.type === 'VOID').map(t => t.reference_number).filter(Boolean))];
         let voidOriginalTypeMap = {};
         
@@ -222,7 +166,7 @@ export default function TransactionsManager() {
             const missingRefs = voidRefs.filter(ref => !voidOriginalTypeMap[ref]);
             if (missingRefs.length > 0) {
                 const { data: missingOrigs } = await supabase
-                    .from('transactions')
+                    .from('vw_transaction_history') // CHANGED to View
                     .select('reference_number, type')
                     .in('reference_number', missingRefs)
                     .neq('type', 'VOID');
@@ -233,31 +177,24 @@ export default function TransactionsManager() {
             }
         }
 
-        const fullData = await enrichWithStaffNames(rawData);
-
-        const excelRows = fullData.map(item => {
+        const excelRows = rawData.map(item => {
             const dateObj = new Date(item.timestamp);
             const isVoid = item.type === 'VOID';
             
-            // Resolve actual transaction type for VOIDs to correctly assign Unit Cost vs Unit Price
-            const linkedData = originMap[item.original_transaction_id] || {};
+            // Resolve actual transaction type for VOIDs
             let actualType = item.type;
             if (isVoid) {
-                actualType = linkedData.type || voidOriginalTypeMap[item.reference_number] || 'VOID';
+                // original_type comes natively from the view now!
+                actualType = item.original_type || voidOriginalTypeMap[item.reference_number] || 'VOID';
             }
             
             const isCostType = ['RECEIVING', 'PULL_OUT'].includes(actualType);
             const unitValue = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
             const totalValue = unitValue * item.qty;
 
-            // Resolve BIS display logic
-            const linkedBis = linkedData.bis_number;
-
-            // If VOID, show original BIS in "BIS #" column. Otherwise use row's BIS #.
-            const bisColumnValue = isVoid ? (linkedBis || "---") : (item.bis_number || "---");
-            
-            // If VOID, clear "Linked BIS #" (since we moved it to main column). Otherwise show linked (for Returns).
-            const linkedColumnValue = isVoid ? "" : (linkedBis || "");
+            // Resolve BIS display logic using original_bis provided by the view
+            const bisColumnValue = isVoid ? (item.original_bis || "---") : (item.bis_number || "---");
+            const linkedColumnValue = isVoid ? "" : (item.original_bis || "");
 
             return {
                 "Type": item.type,
@@ -266,7 +203,7 @@ export default function TransactionsManager() {
                 "Date Encoded": dateObj.toLocaleDateString(),
                 "Time Encoded": dateObj.toLocaleTimeString(),
                 "Month": dateObj.toLocaleString('default', { month: 'long' }),
-                "Encoder": item.staff_name,
+                "Encoder": item.staff_name, // comes natively from the view!
                 "Ref #": item.reference_number,
                 "Linked BIS #": linkedColumnValue,
                 "Student ID": item.student_id || "",
@@ -316,7 +253,7 @@ export default function TransactionsManager() {
                 <select 
                   className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
                   value={dateFilter} 
-                  onChange={e => setDateFilter(e.target.value)}
+                  onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
                 >
                     <option value="TODAY">Today</option>
                     <option value="7DAYS">Last 7 Days</option>
@@ -328,7 +265,7 @@ export default function TransactionsManager() {
                 <select 
                   className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
                   value={typeFilter} 
-                  onChange={e => { setTypeFilter(e.target.value); setModeFilter("ALL"); }}
+                  onChange={e => { setTypeFilter(e.target.value); setModeFilter("ALL"); setCurrentPage(1); }}
                 >
                     <option value="ALL">All Types</option>
                     <option value="ISSUANCE">Issuance</option>
@@ -342,7 +279,7 @@ export default function TransactionsManager() {
                      <select 
                       className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
                       value={modeFilter} 
-                      onChange={e => setModeFilter(e.target.value)}
+                      onChange={e => { setModeFilter(e.target.value); setCurrentPage(1); }}
                     >
                         <option value="ALL">All Modes</option>
                         <option value="CASH">Cash</option>
@@ -553,7 +490,9 @@ export default function TransactionsManager() {
                                         <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
                                             <span className="text-[8px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
                                             <div className="text-[10px] text-red-700 font-medium break-words w-full text-right">{voidSource.staff_name || "Unknown"}</div>
-                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5 whitespace-nowrap">{new Date(voidSource.timestamp).toLocaleDateString()}</div>
+                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5 whitespace-nowrap">
+                                                {new Date(voidSource.timestamp).toLocaleDateString()} <span className="opacity-75">• {new Date(voidSource.timestamp).toLocaleTimeString()}</span>
+                                            </div>
                                             <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1 rounded border border-red-100/50 w-full text-right leading-tight break-words whitespace-normal">"{voidSource.void_reason || first.void_reason || "N/A"}"</div>
                                         </div>
                                     )}

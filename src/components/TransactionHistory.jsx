@@ -35,8 +35,9 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
       const now = new Date();
       const startOfDay = new Date(now.setHours(0,0,0,0)).toISOString();
 
+      // Query the VIEW instead of the base table
       const { data: txData, count, error } = await supabase
-        .from('transactions')
+        .from('vw_transaction_history')
         .select('*', { count: 'exact' })
         .gte('timestamp', startOfDay) 
         .order('timestamp', { ascending: false })
@@ -62,8 +63,9 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
       });
 
       if (orphanRefs.length > 0) {
+          // Also query the VIEW for orphan checks
           const { data: originals } = await supabase
-              .from('transactions')
+              .from('vw_transaction_history')
               .select('*')
               .in('reference_number', orphanRefs)
               .neq('type', 'VOID');
@@ -73,35 +75,9 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
           }
       }
 
-      // --- RESOLVE BIS NUMBERS FOR RETURNS ---
-      const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
-      let originMap = {};
-      if (originIds.length > 0) {
-        const { data: origins } = await supabase
-          .from('transactions')
-          .select('id, bis_number') 
-          .in('id', originIds);
-        origins?.forEach(o => { originMap[o.id] = o.bis_number; });
-      }
-
-      const userIds = [...new Set(combinedData.map(t => t.user_id).filter(Boolean))];
-      let userMap = {};
-      if (userIds.length > 0) {
-        // SECURITY PATCH: Removed 'email' from select to prevent data leakage in dev console
-        const { data: users } = await supabase
-          .from('authorized_users')
-          .select('auth_uid, full_name')
-          .in('auth_uid', userIds);
-        users?.forEach(u => { userMap[u.auth_uid] = u.full_name || 'Unknown Staff'; });
-      }
-
-      const enrichedData = combinedData.map(t => ({
-        ...t,
-        staff_name: userMap[t.user_id] || 'Unknown Staff',
-        original_bis: originMap[t.original_transaction_id] 
-      }));
-
-      setTransactions(enrichedData || []);
+      // We no longer need the auth_uid manual mapping! 
+      // The DB provides `staff_name` and `original_bis` natively.
+      setTransactions(combinedData || []);
       setTotalCount(count || 0);
 
     } catch (err) {

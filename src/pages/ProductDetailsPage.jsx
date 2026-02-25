@@ -126,8 +126,9 @@ export default function ProductDetailsPage() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
+      // 1. Query the VIEW instead of the base table
       let query = supabase
-        .from('transactions')
+        .from('vw_transaction_history')
         .select('*', { count: 'exact' })
         .eq('product_internal_id', id)
         .order('timestamp', { ascending: false })
@@ -138,76 +139,35 @@ export default function ProductDetailsPage() {
 
       let combinedData = [...(txs || [])];
 
-      // 1. Fetch void details and cross-reference BIS numbers for VOID rows
-      const voidedRefs = combinedData.filter(t => t.is_voided || t.type === 'VOID').map(t => t.reference_number);
-      const originIds = [...new Set(combinedData.map(t => t.original_transaction_id).filter(Boolean))];
-
-      let voidRows = [];
-      let voidRefToBisMap = {};
+      // 2. Fetch void details (Who voided it) for rows that are marked as voided.
+      // We still need this because the VOID row might be on a different pagination page.
+      const voidedRefs = combinedData.filter(t => t.is_voided).map(t => t.reference_number);
+      let voidDetailMap = {};
 
       if (voidedRefs.length > 0) {
+        // Query the VIEW again just for the specific VOID rows
         const { data: vRows } = await supabase
-          .from('transactions')
-          .select('*')
+          .from('vw_transaction_history')
+          .select('reference_number, staff_name, timestamp, void_reason')
           .eq('type', 'VOID')
           .in('reference_number', voidedRefs);
-        voidRows = vRows || [];
 
-        // Also fetch the original BIS numbers for the VOID entries to display in the BIS column
-        const { data: originals } = await supabase
-          .from('transactions')
-          .select('reference_number, bis_number')
-          .in('reference_number', voidedRefs)
-          .neq('type', 'VOID');
-        
-        originals?.forEach(o => {
-          voidRefToBisMap[o.reference_number] = o.bis_number;
+        vRows?.forEach(v => {
+          voidDetailMap[v.reference_number] = {
+            reason: v.void_reason,
+            who: v.staff_name, // natively from view
+            when: v.timestamp
+          };
         });
       }
 
-      // 2. Fetch Original BIS Numbers for Returns
-      let originMap = {};
-      if (originIds.length > 0) {
-        const { data: origins } = await supabase
-          .from('transactions')
-          .select('id, bis_number')
-          .in('id', originIds);
-        origins?.forEach(o => { originMap[o.id] = o.bis_number; });
-      }
-
-      // 3. Collect ALL unique User IDs for Staff mapping
-      const allUserIds = new Set([
-        ...combinedData.map(t => t.user_id),
-        ...voidRows.map(v => v.user_id)
-      ].filter(Boolean));
-
-      let userMap = {};
-      if (allUserIds.size > 0) {
-        const { data: users } = await supabase
-          .from('authorized_users')
-          .select('auth_uid, full_name, email')
-          .in('auth_uid', Array.from(allUserIds));
-        users?.forEach(u => userMap[u.auth_uid] = u.full_name || u.email);
-      }
-
-      // 4. Map Void details (Who voided it and why)
-      let voidDetailMap = {};
-      voidRows.forEach(v => {
-        voidDetailMap[v.reference_number] = {
-          reason: v.void_reason,
-          who: userMap[v.user_id] || 'Unknown Staff',
-          when: v.timestamp
-        };
-      });
-
-      // 5. Enrich the main data
+      // 3. Enrich the main data
+      // The View already provided staff_name and original_bis natively!
       const enriched = combinedData.map(t => ({
         ...t,
-        staff_name: userMap[t.user_id] || 'Unknown',
         void_details: t.is_voided ? voidDetailMap[t.reference_number] : null,
-        original_bis: originMap[t.original_transaction_id] || null,
-        // If it's a VOID row, use the resolved original BIS number
-        display_bis: t.type === 'VOID' ? (voidRefToBisMap[t.reference_number] || t.bis_number) : t.bis_number
+        // If it's a VOID row, the view automatically maps original_bis to the original transaction's BIS
+        display_bis: t.type === 'VOID' ? (t.original_bis || t.bis_number) : t.bis_number
       }));
 
       setHistory(enriched);
