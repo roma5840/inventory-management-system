@@ -20,7 +20,6 @@ export default function TransactionForm({ onSuccess }) {
   const [lookupLoading, setLookupLoading] = useState(false);
 
   const [receiptData, setReceiptData] = useState(null);
-  const [availableCourses, setAvailableCourses] = useState([]);
   const [availableSuppliers, setAvailableSuppliers] = useState([]);
 
   // Custom Dropdown State
@@ -68,34 +67,23 @@ export default function TransactionForm({ onSuccess }) {
   }, [headerData.type, queue]);
 
     useEffect(() => {
-        const fetchStaticData = async () => {
-            const { data } = await supabase.from('courses').select('code').order('code');
-            if (data) setAvailableCourses(data.map(c => c.code));
-        };
-
         const fetchSuppliers = async () => {
             const { data } = await supabase.from('suppliers').select('name').order('name');
             if (data) setAvailableSuppliers(data.map(s => s.name));
         };
 
-        fetchStaticData();
         fetchSuppliers();
 
         // ONLY LISTEN TO SPECIFIC TABLES FOR DROPDOWNS
-        // Removed 'app_updates' broadcast listener
         const supplierChannel = supabase.channel('tf-supplier-db')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
             .subscribe();
-
-        const courseChannel = supabase.channel('tf-course-db')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, fetchStaticData)
-                .subscribe();
             
         return () => {
             supabase.removeChannel(supplierChannel);
-            supabase.removeChannel(courseChannel);
         };
     }, []);
+
 
   const checkProduct = async (barcodeInput) => {
     const barcodeToSearch = barcodeInput?.trim();
@@ -896,15 +884,14 @@ export default function TransactionForm({ onSuccess }) {
 
                             <div className="md:col-span-2">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Course</label>
-                                <select 
+                                <input 
+                                    type="text" 
                                     disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                    className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold"
+                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase disabled:text-slate-500"
+                                    placeholder="e.g. BSCS"
                                     value={headerData.course}
-                                    onChange={e => setHeaderData({...headerData, course: e.target.value})}
-                                >
-                                    <option value="">Select...</option>
-                                    {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
+                                    onChange={e => setHeaderData({...headerData, course: e.target.value})} 
+                                />
                             </div>
 
                             <div className="md:col-span-2">
