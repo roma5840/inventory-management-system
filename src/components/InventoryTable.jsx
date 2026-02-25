@@ -313,7 +313,9 @@ export default function InventoryTable({ lastUpdated }) {
       beforeFirstChunk: (chunk) => {
         const lines = chunk.split('\n');
         const headerIndex = lines.findIndex(line => 
-            line.toUpperCase().includes('ACCPAC ITEM CODE')
+            line.toUpperCase().includes('BARCODE') || 
+            line.toUpperCase().includes('ACCPAC ITEM CODE') || 
+            line.toUpperCase().includes('ITEM DESCRIPTION')
         );
         return headerIndex > -1 ? lines.slice(headerIndex).join('\n') : chunk;
       },
@@ -322,98 +324,191 @@ export default function InventoryTable({ lastUpdated }) {
             const rows = results.data;
             if (rows.length === 0) throw new Error("No data found or invalid header.");
 
-            const rawRows = rows.map(r => {
-                const keys = Object.keys(r);
-                const accpacKey = keys.find(k => k.toUpperCase().includes('ACCPAC ITEM CODE'));
-                const descKey = keys.find(k => k.toUpperCase().includes('ITEM DESCRIPTION') || k.toUpperCase().includes('DESCRIPTION'));
-                
-                const code = r[accpacKey]?.trim().toUpperCase().slice(0, 50);
-                const name = r[descKey]?.trim().toUpperCase().slice(0, 300);
+            const validationErrors = [];
 
-                if (!code || !name) return null;
-                return { accpac: code, name: name };
+            const rawRows = rows.map((r, index) => {
+                const keys = Object.keys(r);
+                const getVal = (search) => {
+                    const key = keys.find(k => k.toUpperCase().includes(search));
+                    return key ? r[key]?.trim() : null;
+                };
+
+                // Determine which columns actually exist in the CSV
+                const hasPrice = keys.some(k => k.toUpperCase().includes('PRICE'));
+                const hasLoc = keys.some(k => k.toUpperCase().includes('LOCATION'));
+                const hasInit = keys.some(k => k.toUpperCase().includes('INITIAL STOCK'));
+                const hasMin = keys.some(k => k.toUpperCase().includes('MIN. STOCK'));
+
+                const barcode = getVal('BARCODE')?.toUpperCase() || null;
+                const accpac = getVal('ACCPAC')?.toUpperCase() || null;
+                const name = getVal('DESCRIPTION')?.toUpperCase();
+                
+                const price = hasPrice ? Number((getVal('PRICE') || '0').replace(/,/g, '')) : undefined;
+                const location = hasLoc ? (getVal('LOCATION')?.toUpperCase() || '') : undefined;
+                const initialStock = hasInit ? parseInt((getVal('INITIAL STOCK') || '0').replace(/,/g, ''), 10) : undefined;
+                const minStockLevel = hasMin ? parseInt((getVal('MIN. STOCK') || '10').replace(/,/g, ''), 10) : undefined;
+
+                // Validation Phase
+                const rowId = barcode || accpac || `Row ${index + 1}`;
+                let rowValid = true;
+
+                if (!name) {
+                    validationErrors.push(`[${rowId}] Missing Item Description.`);
+                    rowValid = false;
+                } else if (name.length > 300) {
+                    validationErrors.push(`[${rowId}] Name exceeds 300 characters.`);
+                    rowValid = false;
+                }
+
+                if (barcode && barcode.length > 50) {
+                    validationErrors.push(`[${rowId}] Barcode exceeds 50 characters.`);
+                    rowValid = false;
+                }
+
+                if (accpac && accpac.length > 50) {
+                    validationErrors.push(`[${rowId}] AccPac Code exceeds 50 characters.`);
+                    rowValid = false;
+                }
+
+                if (hasLoc && location && location.length > 150) {
+                    validationErrors.push(`[${rowId}] Location exceeds 150 characters.`);
+                    rowValid = false;
+                }
+
+                if (hasPrice && (isNaN(price) || price < 0 || price >= 10000000000)) {
+                    validationErrors.push(`[${rowId}] Invalid price (Must be 0 - 9,999,999,999).`);
+                    rowValid = false;
+                }
+                
+                if ((hasInit && isNaN(initialStock)) || (hasMin && isNaN(minStockLevel))) {
+                    validationErrors.push(`[${rowId}] Stock values must be valid numbers.`);
+                    rowValid = false;
+                }
+
+                if (!rowValid) return null;
+
+                return { barcode, accpac, name, price, location, initialStock, minStockLevel };
             }).filter(Boolean);
 
-            if (rawRows.length === 0) throw new Error("Could not parse columns. Ensure 'ACCPAC ITEM CODE' and 'ITEM DESCRIPTION' headers exist.");
+            if (rawRows.length === 0 && validationErrors.length === 0) {
+                throw new Error("Could not parse columns. Ensure 'ITEM DESCRIPTION' header exists.");
+            }
 
+            // Deduplicate within the CSV itself based on Barcode (primary) or AccPac (secondary)
             const uniqueMap = new Map();
-            rawRows.forEach(r => uniqueMap.set(r.accpac, r));
+            rawRows.forEach(r => uniqueMap.set(r.barcode || r.accpac || r.name, r));
             const cleanRows = Array.from(uniqueMap.values());
 
             const BATCH_SIZE = 300;
             let insertedCount = 0;
             let updatedCount = 0;
             let unchangedCount = 0;
-            const insertErrors = []; // Restore error collection
+            const processErrors = [...validationErrors]; 
 
             for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
                 const batch = cleanRows.slice(i, i + BATCH_SIZE);
-                const batchAccPacs = batch.map(r => r.accpac);
+                const batchBarcodes = batch.map(r => r.barcode).filter(Boolean);
+                const batchAccPacs = batch.map(r => r.accpac).filter(Boolean);
 
-                const { data: existingItems, error: fetchError } = await supabase
-                    .from('products')
-                    .select('internal_id, accpac_code, name')
-                    .in('accpac_code', batchAccPacs);
+                let existingItems = [];
+                
+                if (batchBarcodes.length > 0) {
+                    const { data: bData, error: bErr } = await supabase.from('products')
+                        .select('internal_id, barcode, accpac_code, name, price, location, min_stock_level')
+                        .in('barcode', batchBarcodes);
+                    if (bErr) throw bErr;
+                    if (bData) existingItems.push(...bData);
+                }
 
-                if (fetchError) throw fetchError;
+                if (batchAccPacs.length > 0) {
+                    const { data: aData, error: aErr } = await supabase.from('products')
+                        .select('internal_id, barcode, accpac_code, name, price, location, min_stock_level')
+                        .in('accpac_code', batchAccPacs);
+                    if (aErr) throw aErr;
+                    if (aData) existingItems.push(...aData);
+                }
 
-                const existingMap = new Map();
+                const uniqueExisting = new Map();
+                existingItems.forEach(item => uniqueExisting.set(item.internal_id, item));
+                existingItems = Array.from(uniqueExisting.values());
+
+                const existingByBarcode = new Map();
+                const existingByAccPac = new Map();
                 existingItems.forEach(item => {
-                    if(item.accpac_code) existingMap.set(item.accpac_code.toUpperCase(), item);
+                    if (item.barcode) existingByBarcode.set(item.barcode.toUpperCase(), item);
+                    if (item.accpac_code) existingByAccPac.set(item.accpac_code.toUpperCase(), item);
                 });
 
                 const toInsert = [];
                 const toUpdate = [];
 
-                batch.forEach((row, batchIndex) => {
-                    const existing = existingMap.get(row.accpac);
+                batch.forEach((row, index) => {
+                    // Priority 1: Match by Barcode. Priority 2: Match by AccPac
+                    const existing = (row.barcode ? existingByBarcode.get(row.barcode) : null) || 
+                                     (row.accpac ? existingByAccPac.get(row.accpac) : null);
 
                     if (existing) {
-                        if (existing.name !== row.name) {
-                            toUpdate.push({
-                                internal_id: existing.internal_id,
-                                name: row.name
-                            });
+                        let needsUpdate = false;
+                        const updatePayload = { internal_id: existing.internal_id, last_updated: new Date() };
+
+                        // Only flag as changed if the CSV explicitly provided the column and it differs
+                        if (row.name && existing.name !== row.name) {
+                            needsUpdate = true; updatePayload.name = row.name;
+                        }
+                        if (row.barcode && existing.barcode !== row.barcode) {
+                            needsUpdate = true; updatePayload.barcode = row.barcode;
+                        }
+                        if (row.accpac && existing.accpac_code !== row.accpac) {
+                            needsUpdate = true; updatePayload.accpac_code = row.accpac;
+                        }
+                        if (row.price !== undefined && existing.price !== row.price) {
+                            needsUpdate = true; updatePayload.price = row.price;
+                        }
+                        if (row.location !== undefined && existing.location !== row.location) {
+                            needsUpdate = true; updatePayload.location = row.location;
+                        }
+                        if (row.minStockLevel !== undefined && existing.min_stock_level !== row.minStockLevel) {
+                            needsUpdate = true; updatePayload.min_stock_level = row.minStockLevel;
+                        }
+
+                        if (needsUpdate) {
+                            toUpdate.push(updatePayload);
                         } else {
                             unchangedCount++;
                         }
                     } else {
-                        const globalIndex = i + batchIndex;
-                        const seq = Date.now() + globalIndex; 
-                        const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                        // BRAND NEW ITEM - Generate barcode ONLY if missing in CSV
+                        const newBarcode = row.barcode || `SYS-${Date.now()}-${i + index}-${Math.floor(Math.random() * 1000)}`;
                         
                         toInsert.push({
-                            barcode: `SYS-${seq}-${rand}`,
-                            accpac_code: row.accpac,
+                            barcode: newBarcode,
+                            accpac_code: row.accpac || null,
                             name: row.name,
-                            price: 0,
+                            price: row.price !== undefined ? row.price : 0,
                             unit_cost: 0,
-                            min_stock_level: 10,
-                            current_stock: 0,
-                            location: 'N/A',
+                            min_stock_level: row.minStockLevel !== undefined ? row.minStockLevel : 10,
+                            current_stock: row.initialStock !== undefined ? row.initialStock : 0,
+                            location: row.location !== undefined ? row.location : 'N/A',
                             last_updated: new Date()
                         });
                     }
                 });
 
                 if (toInsert.length > 0) {
-                    // Capture error instead of throwing
                     const { error: insError } = await supabase.from('products').insert(toInsert);
                     if (insError) {
                         console.error("Batch Insert Error:", insError);
-                        insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Failed: ${insError.message}`);
+                        processErrors.push(`Database Insert Failed for Batch ${Math.floor(i/BATCH_SIZE) + 1}: ${insError.message}`);
                     } else {
                         insertedCount += toInsert.length;
                     }
                 }
 
                 if (toUpdate.length > 0) {
-                    await Promise.all(toUpdate.map(item => 
-                        supabase
-                            .from('products')
-                            .update({ name: item.name, last_updated: new Date() })
-                            .eq('internal_id', item.internal_id)
-                    ));
+                    await Promise.all(toUpdate.map(item => {
+                        const { internal_id, ...fieldsToUpdate } = item;
+                        return supabase.from('products').update(fieldsToUpdate).eq('internal_id', internal_id);
+                    }));
                     updatedCount += toUpdate.length;
                 }
             }
@@ -422,7 +517,7 @@ export default function InventoryTable({ lastUpdated }) {
                 inserted: insertedCount, 
                 updated: updatedCount, 
                 unchanged: unchangedCount,
-                errors: insertErrors 
+                errors: processErrors 
             });
             setIsImportModalOpen(false);
             fetchInventory();
@@ -878,10 +973,10 @@ export default function InventoryTable({ lastUpdated }) {
                </div>
             ) : (
                <>
-                <h3 className="font-bold text-lg text-gray-700 mb-4">Import AccPac CSV</h3>
+                <h3 className="font-bold text-lg text-gray-700 mb-4">Import Inventory CSV</h3>
                 <p className="text-xs text-gray-500 mb-4">
-                    CSV Format must contain headers: <strong>ACCPAC ITEM CODE, ITEM DESCRIPTION</strong><br/>
-                    Existing codes will be updated. New items will receive generated barcodes.
+                    CSV Format headers: <strong>BARCODE, ACCPAC ITEM CODE, ITEM DESCRIPTION, PRICE, LOCATION, INITIAL STOCK, MIN. STOCK ALERT LEVEL</strong><br/>
+                    Existing items will be updated. Missing barcodes will be auto-generated. Initial stock only applies to new items.
                 </p>
                 
                 <input 
@@ -903,7 +998,7 @@ export default function InventoryTable({ lastUpdated }) {
 
       {importResult && (
         <div className="modal modal-open">
-            <div className="modal-box max-w-sm text-center p-8 border border-slate-200 shadow-2xl">
+            <div className="modal-box max-w-lg text-center p-8 border border-slate-200 shadow-2xl">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${importResult.errors?.length > 0 ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
                     {importResult.errors?.length > 0 ? (
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
@@ -918,7 +1013,7 @@ export default function InventoryTable({ lastUpdated }) {
                 <h3 className="font-bold text-xl text-slate-800">
                     {importResult.errors?.length > 0 ? "Import Completed with Issues" : "Import Successful"}
                 </h3>
-                <p className="text-sm text-slate-500 mb-6">Catalog updated with AccPac data.</p>
+                <p className="text-sm text-slate-500 mb-6">Catalog updated with CSV data.</p>
                 
                 <div className="grid grid-cols-3 gap-2 mb-6">
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -936,9 +1031,11 @@ export default function InventoryTable({ lastUpdated }) {
                 </div>
 
                 {importResult.errors && importResult.errors.length > 0 && (
-                    <div className="mb-6 text-left bg-red-50 border border-red-100 rounded-lg p-3 max-h-32 overflow-y-auto">
-                        <h4 className="text-xs font-bold text-red-700 uppercase mb-2">Errors Encountered:</h4>
-                        <ul className="text-[10px] text-red-600 space-y-1 list-disc pl-4">
+                    <div className="mb-6 text-left bg-red-50 border border-red-100 rounded-lg p-3 max-h-60 overflow-y-auto">
+                        <h4 className="text-xs font-bold text-red-700 uppercase mb-2">
+                            Skipped Rows ({importResult.errors.length}):
+                        </h4>
+                        <ul className="text-[11px] text-red-600 space-y-1.5 list-disc pl-4 font-mono">
                             {importResult.errors.map((err, idx) => (
                                 <li key={idx}>{err}</li>
                             ))}
@@ -946,7 +1043,7 @@ export default function InventoryTable({ lastUpdated }) {
                     </div>
                 )}
 
-                <button onClick={() => setImportResult(null)} className="btn btn-primary w-full shadow-lg">Done</button>
+                <button onClick={() => setImportResult(null)} className="btn btn-primary w-full shadow-lg">Close</button>
             </div>
         </div>
       )}
