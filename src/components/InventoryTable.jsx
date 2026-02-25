@@ -300,6 +300,27 @@ export default function InventoryTable({ lastUpdated }) {
     return `SYS-${seq}-${rand}`;
   }
 
+  const handleDownloadTemplate = () => {
+    const csvContent = Papa.unparse({
+      fields: ["BARCODE", "ACCPAC ITEM CODE", "ITEM DESCRIPTION", "PRICE", "LOCATION", "INITIAL STOCK", "MIN. STOCK ALERT LEVEL"],
+      data: [
+        ["SYS-123456", "SLX-UNI0000", "ADVANCED CALCULUS 3RD ED", "450", "SHELF-A1", "50", "10"]
+      ]
+    });
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", "inventory_import_template.csv");
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleCSVImport = (e) => {
     e.preventDefault();
     const file = e.target.files[0];
@@ -547,6 +568,16 @@ export default function InventoryTable({ lastUpdated }) {
             </div>
               {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
                   <div className="flex gap-2">
+                    <button 
+                        onClick={handleDownloadTemplate}
+                        className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
+                        title="Download CSV Template"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        Template
+                    </button>
                     <button 
                       onClick={() => setIsAddModalOpen(true)}
                       className="btn btn-sm btn-primary px-4 normal-case"
