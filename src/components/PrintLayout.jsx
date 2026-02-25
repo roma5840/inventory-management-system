@@ -5,12 +5,16 @@ export default function PrintLayout({ data, elementId }) {
 
   const isCostType = ['RECEIVING', 'PULL_OUT'].includes(data.type);
 
-  // Helper to calculate line amount (Unit * Qty)
-  const calculateLineTotal = (item) => {
-    const unitVal = isCostType 
+  // Helper to get the individual unit value
+  const getUnitVal = (item) => {
+    return isCostType 
         ? Number(item.unitCost || item.cost || 0) 
         : Number(item.priceOverride || item.price || 0);
-    return (unitVal * item.qty);
+  };
+
+  // Helper to calculate line amount (Unit * Qty)
+  const calculateLineTotal = (item) => {
+    return (getUnitVal(item) * item.qty);
   };
 
   const grandTotal = data.items.reduce((acc, item) => acc + calculateLineTotal(item), 0);
@@ -101,9 +105,12 @@ export default function PrintLayout({ data, elementId }) {
             <thead>
                 <tr className="border-t border-b border-black">
                     <th className="py-2 text-left uppercase font-bold pl-2">DESCRIPTION</th>
-                    <th className="py-2 text-center w-16 uppercase font-bold border-l border-black">QTY</th>
+                    <th className="py-2 text-center w-12 uppercase font-bold border-l border-black">QTY</th>
                     <th className="py-2 text-right w-24 uppercase font-bold pr-2 border-l border-black">
-                        {isCostType ? "COST" : "PRICE"}
+                        {isCostType ? "UNIT COST" : "UNIT PRICE"}
+                    </th>
+                    <th className="py-2 text-right w-24 uppercase font-bold pr-2 border-l border-black">
+                        TOTAL
                     </th>
                 </tr>
             </thead>
@@ -117,21 +124,26 @@ export default function PrintLayout({ data, elementId }) {
                              {data.type === 'ISSUANCE_RETURN' ? `(${item.qty})` : item.qty}
                         </td>
                         <td className="py-1 text-right font-mono pr-2 border-l border-black">
+                            {formatCurrency(getUnitVal(item))}
+                        </td>
+                        <td className="py-1 text-right font-mono pr-2 border-l border-black">
                             {formatCurrency(calculateLineTotal(item))}
                         </td>
                     </tr>
                 ))}
                 
+                {/* Filler Rows to keep layout height stable */}
                 {data.items.length < 5 && Array.from({ length: 5 - data.items.length }).map((_, i) => (
                     <tr key={`filler-${i}`}>
                         <td className="py-2">&nbsp;</td>
+                        <td className="py-2 border-l border-black">&nbsp;</td>
                         <td className="py-2 border-l border-black">&nbsp;</td>
                         <td className="py-2 border-l border-black">&nbsp;</td>
                     </tr>
                 ))}
 
                 <tr className="border-t border-black font-bold text-sm">
-                    <td className="pt-2 text-right"></td>
+                    <td className="pt-2 text-right" colSpan="2"></td>
                     <td className="pt-2 text-right pr-2 border-l border-black">TOTAL:</td>
                     <td className="pt-2 text-right pr-2 border-l border-black">
                         <span className="border-b-4 border-double border-black">
