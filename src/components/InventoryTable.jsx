@@ -502,11 +502,29 @@ export default function InventoryTable({ lastUpdated }) {
                 const toUpdate = [];
 
                 batch.forEach((row, index) => {
-                    // Strict match hierarchy
-                    const existing = 
-                        (row.barcode ? existingByBarcode.get(row.barcode) : null) || 
-                        (row.accpac ? existingByAccPac.get(row.accpac) : null) ||
-                        ((!row.barcode && !row.accpac) ? existingByName.get(row.name) : null);
+                    let existing = null;
+                    let conflictMsg = null;
+
+                    // 1. Strict Match Hierarchy & Conflict Detection
+                    if (row.barcode && existingByBarcode.has(row.barcode)) {
+                        existing = existingByBarcode.get(row.barcode);
+                    } else if (row.accpac && existingByAccPac.has(row.accpac)) {
+                        const matchedByAccpac = existingByAccPac.get(row.accpac);
+                        // PREVENT FLIP-FLOPPING: 
+                        // If we matched via AccPac, but the CSV barcode differs from the DB barcode, reject it.
+                        if (row.barcode && matchedByAccpac.barcode && matchedByAccpac.barcode !== row.barcode) {
+                            conflictMsg = `[${row.barcode}] Conflict: AccPac '${row.accpac}' is already assigned to Barcode '${matchedByAccpac.barcode}'. Row skipped.`;
+                        } else {
+                            existing = matchedByAccpac;
+                        }
+                    } else if (!row.barcode && !row.accpac && existingByName.has(row.name)) {
+                        existing = existingByName.get(row.name);
+                    }
+
+                    if (conflictMsg) {
+                        processErrors.push(conflictMsg);
+                        return; // Skip processing this row entirely
+                    }
 
                     if (existing) {
                         // UPDATE LOGIC (Strictly ignores initial stock)
