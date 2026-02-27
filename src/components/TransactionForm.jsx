@@ -75,13 +75,12 @@ export default function TransactionForm({ onSuccess }) {
     }
 
     try {
-      // Server-side starts-with search, limited to 10 results for efficiency
+      // Server-side starts-with search, fetching all matches
       const { data, error } = await supabase
         .from('suppliers')
         .select('name')
         .ilike('name', `${searchVal}%`)
-        .order('name')
-        .limit(10);
+        .order('name');
 
       if (data) {
         const names = data.map(s => s.name);
