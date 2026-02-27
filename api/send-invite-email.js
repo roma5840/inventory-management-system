@@ -63,18 +63,55 @@ export default async function handler(req, res) {
     });
 
     const htmlTemplate = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; color: #333;">
-        <h2 style="color: #1e3a8a;">System Access Authorization</h2>
-        <p>Hello <strong>${to_name}</strong>,</p>
-        <p>${professionalMessage}</p>
-        <p>Please click the link below to register your credentials.</p>
-        <div style="margin: 30px 0;">
-          <a href="${invite_link}" style="background-color: #2563eb; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-            Complete Registration
-          </a>
+      <div style="background-color: #f1f5f9; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <!-- Header: Matches Sidebar Slate-900 -->
+          <div style="background-color: #0f172a; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: -0.025em; font-weight: 700;">
+              Bookstore<span style="color: #3b82f6;">IMS</span>
+            </h1>
+            <p style="color: #94a3b8; margin: 5px 0 0 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">
+              Finance & Inventory Portal
+            </p>
+          </div>
+
+          <!-- Body -->
+          <div style="padding: 40px 30px;">
+            <h2 style="font-size: 20px; color: #0f172a; margin-top: 0;">System Access Authorization</h2>
+            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
+              Hello <strong>${to_name}</strong>,
+            </p>
+            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
+              ${professionalMessage}
+            </p>
+            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
+              To begin managing resources, please complete your secure account registration by clicking the button below.
+            </p>
+
+            <!-- CTA: Matches Sidebar Blue-600 -->
+            <div style="margin: 35px 0; text-align: center;">
+              <a href="${invite_link}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
+                Complete Registration
+              </a>
+            </div>
+
+            <div style="background-color: #f8fafc; border-left: 4px solid #cbd5e1; padding: 15px; margin-bottom: 20px;">
+              <p style="font-size: 12px; color: #64748b; margin: 0;">
+                <strong>Security Note:</strong> This invitation link is intended only for <strong>${cleanEmail}</strong>. Do not forward this email.
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="padding: 20px 30px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+              &copy; ${new Date().getFullYear()} University Bookstore System. All rights reserved.
+            </p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 5px 0 0 0;">
+              If you were not expecting this authorization, please contact the system administrator immediately.
+            </p>
+          </div>
         </div>
-        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-        <p style="font-size: 12px; color: #6b7280;">If you are not expecting this authorization, please ignore this email.</p>
       </div>
     `;
 
