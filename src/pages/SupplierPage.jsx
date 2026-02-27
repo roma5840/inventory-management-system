@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
+import Papa from "papaparse";
 import Sidebar from "../components/Sidebar";
 import Pagination from "../components/Pagination";
 import LimitedInput from "../components/LimitedInput";
@@ -14,6 +15,13 @@ export default function SupplierPage() {
   const [newName, setNewName] = useState("");
   const [newContact, setNewContact] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Search & Import State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedTerm, setDebouncedTerm] = useState("");
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   // Edit State
   const [editingSupplier, setEditingSupplier] = useState(null);
@@ -32,16 +40,29 @@ export default function SupplierPage() {
   const [deletingSupplier, setDeletingSupplier] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Debounce Search Term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTerm(searchTerm);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const fetchSuppliers = async () => {
     setLoading(true);
+    let query = supabase.from('suppliers').select('*', { count: 'exact' });
+
+    if (debouncedTerm.trim()) {
+        const safeTerm = debouncedTerm.replace(/,/g, '_');
+        query = query.or(`name.ilike.%${safeTerm}%,contact_info.ilike.%${safeTerm}%`);
+    } else {
+        query = query.order('name', { ascending: true });
+    }
+
     const from = (currentPage - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
-    const { data, count, error } = await supabase
-        .from('suppliers')
-        .select('*', { count: 'exact' })
-        .order('name')
-        .range(from, to);
+    const { data, count, error } = await query.range(from, to);
 
     if (!error) {
         setSuppliers(data || []);
@@ -53,14 +74,250 @@ export default function SupplierPage() {
   useEffect(() => {
     fetchSuppliers();
 
+    let changeCount = 0;
+    let burstResetTimer = null;
+    let debounceTimer = null;
+
     const dbChannel = supabase.channel('supplier-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, () => {
+            changeCount++;
+
+            if (burstResetTimer) clearTimeout(burstResetTimer);
+            burstResetTimer = setTimeout(() => { changeCount = 0; }, 300);
+
+            if (changeCount <= 2) {
+                fetchSuppliers();
+            } else {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    fetchSuppliers();
+                    changeCount = 0;
+                }, 500);
+            }
+        })
         .subscribe();
 
     return () => {
+        if (burstResetTimer) clearTimeout(burstResetTimer);
+        if (debounceTimer) clearTimeout(debounceTimer);
         supabase.removeChannel(dbChannel);
     };
-  }, [currentPage]); // Dependency updated
+  }, [debouncedTerm, currentPage]);
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleDownloadTemplate = () => {
+    const csvContent = Papa.unparse({
+      fields: ["INFO", "SUPPLIER"],
+      data: [
+        ["S-M0003", "101 MEGA BEAUTY EFFECTS CORPORATION"],
+        ["S-G0002", "2GO GROUP, INC."]
+      ]
+    });
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", "supplier_import_template.csv");
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCSVImport = (e) => {
+    e.preventDefault();
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImportLoading(true);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      beforeFirstChunk: (chunk) => {
+        const lines = chunk.split('\n');
+        const headerIndex = lines.findIndex(line => 
+            line.toUpperCase().includes('SUPPLIER') || 
+            line.toUpperCase().includes('INFO')
+        );
+        return headerIndex > -1 ? lines.slice(headerIndex).join('\n') : chunk;
+      },
+      complete: async (results) => {
+        try {
+            const rows = results.data;
+            if (rows.length === 0) throw new Error("No data found or invalid header.");
+
+            const validationErrors = [];
+
+            const sanitize = (str) => {
+                if (typeof str !== 'string') return str !== undefined && str !== null ? String(str).trim() : null;
+                const clean = str.trim();
+                return /^[=+\-@]/.test(clean) ? "'" + clean : clean;
+            };
+
+            const rawRows = rows.map((r, index) => {
+                const keys = Object.keys(r);
+                const getVal = (search) => {
+                    const key = keys.find(k => k.toUpperCase().includes(search));
+                    return key ? sanitize(r[key]) : null;
+                };
+
+                let rawName = getVal('SUPPLIER');
+                const name = (!rawName || rawName.toUpperCase() === '#N/A' || rawName.toUpperCase() === 'N/A') ? null : rawName.toUpperCase();
+                
+                let rawInfo = getVal('INFO');
+                const contact_info = (!rawInfo || rawInfo.toUpperCase() === '#N/A' || rawInfo.toUpperCase() === 'N/A') ? null : rawInfo;
+
+                const rowId = name || `Row ${index + 2}`;
+                let rowValid = true;
+
+                if (!name) {
+                    validationErrors.push(`[${rowId}] Missing Supplier Name. Row Skipped.`);
+                    rowValid = false;
+                } else if (name.length > 150) {
+                    validationErrors.push(`[${rowId}] Name exceeds 150 characters.`);
+                    rowValid = false;
+                }
+                if (contact_info && contact_info.length > 300) {
+                    validationErrors.push(`[${rowId}] Info/Contact exceeds 300 characters.`);
+                    rowValid = false;
+                }
+
+                if (!rowValid) return null;
+                return { name, contact_info };
+            }).filter(Boolean);
+
+            if (rawRows.length === 0 && validationErrors.length === 0) {
+                throw new Error("Could not parse columns. Ensure 'SUPPLIER' header exists.");
+            }
+
+            const uniqueMap = new Map();
+            rawRows.forEach((r) => {
+                if (uniqueMap.has(r.name)) {
+                    const existing = uniqueMap.get(r.name);
+                    if (!existing.contact_info && r.contact_info) existing.contact_info = r.contact_info;
+                    uniqueMap.set(r.name, existing);
+                    validationErrors.push(`[${r.name}] CSV Duplicate Merged.`);
+                } else {
+                    uniqueMap.set(r.name, r);
+                }
+            });
+
+            const cleanRows = Array.from(uniqueMap.values());
+            const BATCH_SIZE = 300;
+            let insertedCount = 0;
+            let updatedCount = 0;
+            let unchangedCount = 0;
+            const processErrors = [...validationErrors];
+
+            for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
+                const batch = cleanRows.slice(i, i + BATCH_SIZE);
+                const batchNames = batch.map(r => r.name).filter(Boolean);
+
+                let existingItems = [];
+                if (batchNames.length > 0) {
+                    const { data, error } = await supabase.from('suppliers').select('*').in('name', batchNames);
+                    if (error) throw error;
+                    if (data) existingItems.push(...data);
+                }
+
+                const existingByName = new Map();
+                existingItems.forEach(item => existingByName.set(item.name.toUpperCase(), item));
+
+                const toInsert = [];
+                const toUpdate = [];
+
+                batch.forEach((row) => {
+                    const existing = existingByName.get(row.name);
+
+                    if (existing) {
+                        let needsUpdate = false;
+                        const updatePayload = { id: existing.id };
+
+                        if (row.contact_info && existing.contact_info !== row.contact_info) {
+                            needsUpdate = true;
+                            updatePayload.contact_info = row.contact_info;
+                            if (existing.contact_info) {
+                                processErrors.push(`[${row.name}] Info updated from '${existing.contact_info}' to '${row.contact_info}'`);
+                            }
+                        }
+
+                        if (needsUpdate) {
+                            toUpdate.push(updatePayload);
+                        } else {
+                            unchangedCount++;
+                        }
+                    } else {
+                        toInsert.push({
+                            name: row.name,
+                            contact_info: row.contact_info || null
+                        });
+                    }
+                });
+
+                if (toInsert.length > 0) {
+                    const { error: insError } = await supabase.from('suppliers').insert(toInsert);
+                    if (insError) {
+                        for (const item of toInsert) {
+                            const { error: singleErr } = await supabase.from('suppliers').insert(item);
+                            if (singleErr) {
+                                processErrors.push(`[${item.name}] Insert Failed: ${singleErr.message}`);
+                            } else {
+                                insertedCount++;
+                            }
+                        }
+                    } else {
+                        insertedCount += toInsert.length;
+                    }
+                }
+
+                if (toUpdate.length > 0) {
+                    const updatePromises = toUpdate.map(async (item) => {
+                        const { id, ...fieldsToUpdate } = item;
+                        const { error } = await supabase.from('suppliers').update(fieldsToUpdate).eq('id', id);
+                        if (error) throw new Error(`[${item.name || 'Update'}] Failed: ${error.message}`);
+                        return true;
+                    });
+
+                    const results = await Promise.allSettled(updatePromises);
+                    results.forEach(res => {
+                        if (res.status === 'fulfilled') {
+                            updatedCount++;
+                        } else {
+                            processErrors.push(res.reason.message);
+                        }
+                    });
+                }
+            }
+
+            setImportResult({ 
+                inserted: insertedCount, 
+                updated: updatedCount, 
+                unchanged: unchangedCount,
+                errors: processErrors 
+            });
+            setIsImportModalOpen(false);
+            fetchSuppliers();
+
+        } catch (err) {
+            showToast("Import Failed", err.message, "error");
+        } finally {
+            setImportLoading(false);
+        }
+      },
+      error: (error) => {
+        showToast("Parsing Error", error.message, "error");
+        setImportLoading(false);
+      }
+    });
+  };
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -168,6 +425,44 @@ export default function SupplierPage() {
             </div>
 
             <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+
+            {/* Action Bar (Search & Import) */}
+            <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white gap-4">
+                <div className="relative w-full md:w-80">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="Search supplier name or info..." 
+                        className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+                        value={searchTerm}
+                        onChange={handleSearch}
+                    />
+                </div>
+
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <button 
+                            onClick={handleDownloadTemplate}
+                            className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50 flex-1 md:flex-none"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Template
+                        </button>
+                        <button 
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50 flex-1 md:flex-none"
+                        >
+                            Import CSV
+                        </button>
+                    </div>
+                )}
+            </div>
 
 
             {/* Add Form - Only for Admins */}
@@ -325,6 +620,95 @@ export default function SupplierPage() {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+      {/* CSV Import Modal */}
+      {isImportModalOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box relative">
+            {importLoading ? (
+               <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                  <span className="loading loading-spinner loading-lg text-primary"></span>
+                  <div className="text-center">
+                    <h3 className="font-bold text-lg text-gray-700">Importing Data...</h3>
+                    <p className="text-sm text-gray-500">Please do not close this window.</p>
+                  </div>
+               </div>
+            ) : (
+               <>
+                <h3 className="font-bold text-lg text-gray-700 mb-4">Import Supplier CSV</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                    CSV Format headers: <strong>INFO, SUPPLIER</strong><br/>
+                    Supplier Name is the primary identifier. Matching names will update contact info if different.
+                </p>
+                
+                <input 
+                    type="file" 
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    className="file-input file-input-bordered w-full file-input-sm 
+                               file:bg-blue-600 file:text-white file:border-none hover:file:bg-blue-700 transition-all" 
+                />
+
+                <div className="modal-action">
+                    <button className="btn btn-ghost" onClick={() => setIsImportModalOpen(false)}>Cancel</button>
+                </div>
+               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Import Result Modal */}
+      {importResult && (
+        <div className="modal modal-open">
+            <div className="modal-box max-w-lg text-center p-8 border border-slate-200 shadow-2xl">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${importResult.errors?.length > 0 ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {importResult.errors?.length > 0 ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    )}
+                </div>
+                <h3 className="font-bold text-xl text-slate-800">
+                    {importResult.errors?.length > 0 ? "Import Completed with Notices" : "Import Successful"}
+                </h3>
+                <p className="text-sm text-slate-500 mb-6">Supplier list updated with CSV data.</p>
+                
+                <div className="grid grid-cols-3 gap-2 mb-6">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-emerald-600">{importResult.inserted}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">New</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-blue-600">{importResult.updated}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Updated</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="text-xl font-bold text-slate-400">{importResult.unchanged}</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Match</div>
+                    </div>
+                </div>
+
+                {importResult.errors && importResult.errors.length > 0 && (
+                    <div className="mb-6 text-left bg-orange-50 border border-orange-100 rounded-lg p-3 max-h-60 overflow-y-auto">
+                        <h4 className="text-xs font-bold text-orange-800 uppercase mb-2">
+                            Notices & Skipped Rows ({importResult.errors.length}):
+                        </h4>
+                        <ul className="text-[11px] text-orange-700 space-y-1.5 list-disc pl-4 font-mono">
+                            {importResult.errors.map((err, idx) => (
+                                <li key={idx}>{err}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                <button onClick={() => setImportResult(null)} className="btn btn-primary w-full shadow-lg">Close</button>
             </div>
         </div>
       )}

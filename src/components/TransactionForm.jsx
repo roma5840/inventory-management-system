@@ -66,23 +66,35 @@ export default function TransactionForm({ onSuccess }) {
     }
   }, [headerData.type, queue]);
 
-    useEffect(() => {
-        const fetchSuppliers = async () => {
-            const { data } = await supabase.from('suppliers').select('name').order('name');
-            if (data) setAvailableSuppliers(data.map(s => s.name));
-        };
+  const checkSupplier = async (supplierInput) => {
+    const searchVal = supplierInput?.trim();
+    if (!searchVal) {
+        setIsNewSupplier(null);
+        setSupplierSuggestions([]);
+        return;
+    }
 
-        fetchSuppliers();
+    try {
+      // Server-side starts-with search, limited to 10 results for efficiency
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('name')
+        .ilike('name', `${searchVal}%`)
+        .order('name')
+        .limit(10);
 
-        // ONLY LISTEN TO SPECIFIC TABLES FOR DROPDOWNS
-        const supplierChannel = supabase.channel('tf-supplier-db')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, fetchSuppliers)
-            .subscribe();
-            
-        return () => {
-            supabase.removeChannel(supplierChannel);
-        };
-    }, []);
+      if (data) {
+        const names = data.map(s => s.name);
+        setSupplierSuggestions(names);
+
+        // Verify if exact match exists in the returned suggestions
+        const exactMatch = names.find(n => n.toUpperCase() === searchVal.toUpperCase());
+        setIsNewSupplier(exactMatch ? false : true);
+      }
+    } catch (err) {
+      console.error("Supplier lookup failed", err);
+    }
+  };
 
 
   const checkProduct = async (barcodeInput) => {
@@ -196,24 +208,20 @@ export default function TransactionForm({ onSuccess }) {
     }
   }, [headerData.studentId, headerData.type]);
 
-  // Validation Effect for Supplier
+  // Debounce Effect for Supplier
   useEffect(() => {
     if (['RECEIVING', 'PULL_OUT'].includes(headerData.type)) {
         if (headerData.supplier && headerData.supplier.trim() !== "") {
-            // Check against local cached supplier list (case-insensitive)
-            const exactMatch = availableSuppliers.find(
-                s => s.trim().toUpperCase() === headerData.supplier.trim().toUpperCase()
-            );
-            if (exactMatch) {
-                setIsNewSupplier(false); // Verified
-            } else {
-                setIsNewSupplier(true);  // No Record
-            }
+            const timer = setTimeout(() => {
+                checkSupplier(headerData.supplier);
+            }, 300);
+            return () => clearTimeout(timer);
         } else {
-            setIsNewSupplier(null); // Empty
+            setIsNewSupplier(null);
+            setSupplierSuggestions([]);
         }
     }
-  }, [headerData.supplier, headerData.type, availableSuppliers]);
+  }, [headerData.supplier, headerData.type]);
 
   // Add to Queue & Reset
   const handleAddToQueue = (e) => {
@@ -744,10 +752,8 @@ export default function TransactionForm({ onSuccess }) {
     
     setHeaderData(prev => ({...prev, supplier: val}));
 
-    // Filter suggestions (Starts With logic)
+    // Trigger dropdown UI immediately, suggestions will populate via debounce
     if (val.trim()) {
-        const filtered = availableSuppliers.filter(s => s.startsWith(val));
-        setSupplierSuggestions(filtered);
         setShowSupplierDropdown(true);
         setActiveSupplierIndex(0); 
     } else {
@@ -935,7 +941,7 @@ export default function TransactionForm({ onSuccess }) {
                                 `}
                                 placeholder="Start typing supplier..."
                                 value={headerData.supplier} onChange={handleSupplierChange} onKeyDown={handleSupplierKeyDown}
-                                onFocus={() => { if(headerData.supplier) { setSupplierSuggestions(availableSuppliers.filter(s => s.startsWith(headerData.supplier))); setShowSupplierDropdown(true); }}}
+                                onFocus={() => { if(headerData.supplier) { checkSupplier(headerData.supplier); setShowSupplierDropdown(true); }}}
                                 onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
                             />
                             {showSupplierDropdown && supplierSuggestions.length > 0 && (
