@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import emailjs from '@emailjs/browser';
 import LimitedInput from "./LimitedInput";
 
 export default function AdminInvite({ onSuccess }) {
@@ -44,54 +43,63 @@ export default function AdminInvite({ onSuccess }) {
     setMsg("");
 
     try {
-      // SECURE INVITE: Call the RPC instead of direct .insert()
-      // This enforces the Role Hierarchy (Admin cannot create Super Admin)
+      // 1. Get current secure session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Authentication error: No active session found.");
+
+      // 2. SECURE INVITE: Call the DB RPC
+      // The RPC strictly enforces Role Hierarchies.
       const { error } = await supabase.rpc('invite_new_user', {
-        new_email: email,
-        new_name: name,
+        new_email: email.trim().toLowerCase(),
+        new_name: name.trim(),
         new_role: role
       });
 
       if (error) throw error;
 
-      // --- SYNC WITH CLOUDFLARE ---
-      // Note: We sync AFTER the DB transaction succeeds
-      await callCloudflareSync(email, 'add');
-      // ----------------------------
+      // 3. Sync with Cloudflare
+      await callCloudflareSync(email.trim().toLowerCase(), 'add');
 
+      // 4. Update UI state across active clients
       await supabase.channel('app_updates').send({
         type: 'broadcast',
         event: 'staff_update',
         payload: {} 
       });
 
-      const templateParams = {
-        to_name: name,
-        to_email: email,
-        invite_link: window.location.origin, 
-        message: "You have been authorized to access the Bookstore IMS."
-      };
+      // 5. CALL SECURE BACKEND EMAIL API
+      const emailResponse = await fetch('/api/send-invite-email', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` // Critical Security Addition
+        },
+        body: JSON.stringify({
+          to_name: name.trim(),
+          to_email: email.trim().toLowerCase(),
+          invite_link: `${window.location.origin}/register` // Points them directly to registration
+        })
+      });
 
-      await emailjs.send(
-        'service_vgbev8k',    
-        'template_qhp0o09',   
-        templateParams, 
-        'TiKR5JvOcEky675Gx'     
-      );
+      if (!emailResponse.ok) {
+        const errData = await emailResponse.json();
+        console.warn("Email API Warning:", errData);
+        // We throw so the UI shows the failure, forcing the Admin to know the email didn't send.
+        throw new Error(errData.error || "User added to database, but email dispatch failed.");
+      }
 
       if (onSuccess) onSuccess();
       
-      setMsg(`Invite sent to ${name}`);
+      setMsg(`Invitation sent securely to ${name}`);
       setEmail("");
       setName("");
       setRole("EMPLOYEE");
     } catch (error) {
-      console.error(error);
+      console.error("Invite Process Error:", error);
       if (error.message === "Cloudflare Sync Failed") {
           setMsg("User saved to DB, but Cloudflare Sync failed. Check logs.");
       } else {
-          // Display the custom error from the database (e.g., "Admins can only invite Employees")
-          setMsg(error.message || "Error sending invite.");
+          setMsg(error.message || "An unexpected error occurred processing the invite.");
       }
     } finally {
       setLoading(false);
