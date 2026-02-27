@@ -211,9 +211,19 @@ export default function TransactionForm({ onSuccess }) {
   // Debounce Effect for Supplier
   useEffect(() => {
     if (['RECEIVING', 'PULL_OUT'].includes(headerData.type)) {
-        if (headerData.supplier && headerData.supplier.trim() !== "") {
+        const currentVal = headerData.supplier?.trim() || "";
+        
+        if (currentVal !== "") {
+            // OPTIMIZATION: If the value perfectly matches an already cached suggestion, 
+            // set to verified instantly and skip the server round-trip.
+            const exactMatch = supplierSuggestions.find(s => s.toUpperCase() === currentVal.toUpperCase());
+            if (exactMatch) {
+                setIsNewSupplier(false);
+                return; // Skip fetch
+            }
+
             const timer = setTimeout(() => {
-                checkSupplier(headerData.supplier);
+                checkSupplier(currentVal);
             }, 300);
             return () => clearTimeout(timer);
         } else {
@@ -221,7 +231,7 @@ export default function TransactionForm({ onSuccess }) {
             setSupplierSuggestions([]);
         }
     }
-  }, [headerData.supplier, headerData.type]);
+  }, [headerData.supplier, headerData.type]); // Intentionally omitting supplierSuggestions to avoid re-triggering
 
   // Add to Queue & Reset
   const handleAddToQueue = (e) => {
@@ -793,6 +803,7 @@ export default function TransactionForm({ onSuccess }) {
 
   const selectSupplier = (name) => {
       setHeaderData(prev => ({...prev, supplier: name}));
+      setIsNewSupplier(false); // Instant UI validation feedback
       setShowSupplierDropdown(false);
   };
 
