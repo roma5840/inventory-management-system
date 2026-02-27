@@ -478,6 +478,15 @@ export default function TransactionForm({ onSuccess }) {
     return () => clearTimeout(timer);
   }, [currentScan.barcode]);
 
+  // Auto-scroll dropdown when using arrow keys
+  useEffect(() => {
+      if (showSupplierDropdown && activeSupplierIndex >= 0) {
+          const activeEl = document.getElementById(`supplier-option-${activeSupplierIndex}`);
+          if (activeEl) {
+              activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+      }
+  }, [activeSupplierIndex, showSupplierDropdown]);
 
   const handleLookupReceipt = async (e) => {
     e.preventDefault();
@@ -956,9 +965,10 @@ export default function TransactionForm({ onSuccess }) {
                                 onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
                             />
                             {showSupplierDropdown && supplierSuggestions.length > 0 && (
-                                <ul className="absolute z-[100] top-full left-0 right-0 bg-white border border-slate-200 rounded-b-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 mt-0.5">
+                                <ul className="absolute z-[100] top-full left-0 right-0 bg-white border border-slate-200 rounded-b-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 mt-0.5 custom-scrollbar">
                                     {supplierSuggestions.map((sup, index) => (
                                         <li key={index} 
+                                            id={`supplier-option-${index}`}
                                             className={`px-4 py-2 text-[11px] cursor-pointer border-b border-slate-50 last:border-0 hover:bg-blue-50 transition-colors ${index === activeSupplierIndex ? 'bg-blue-100 font-bold text-blue-800' : 'text-slate-600'}`}
                                             onMouseDown={() => selectSupplier(sup)}
                                         >
