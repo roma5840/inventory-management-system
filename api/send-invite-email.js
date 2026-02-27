@@ -104,9 +104,6 @@ export default async function handler(req, res) {
 
           <!-- Footer -->
           <div style="padding: 20px 30px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
-            <p style="font-size: 11px; color: #94a3b8; margin: 0;">
-              &copy; ${new Date().getFullYear()} University Bookstore System. All rights reserved.
-            </p>
             <p style="font-size: 11px; color: #94a3b8; margin: 5px 0 0 0;">
               If you were not expecting this authorization, please contact the system administrator immediately.
             </p>
