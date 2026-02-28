@@ -13,6 +13,7 @@
     "@emailjs/browser": "^4.4.1",
     "@supabase/supabase-js": "^2.90.1",
     "firebase": "^12.7.0",
+    "he": "^1.2.0",
     "nodemailer": "^8.0.1",
     "papaparse": "^5.5.3",
     "react": "^19.2.0",

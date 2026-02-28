@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
+import he from 'he';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -38,6 +39,10 @@ export default async function handler(req, res) {
   
   const cleanEmail = to_email.trim().toLowerCase();
 
+  // SECURITY: Use 'he' to encode all HTML entities securely. 
+  // strict: true ensures strict HTML5 encoding.
+  const safeName = he.encode(to_name.trim(), { strict: true });
+
   const { data: targetProfile, error: targetError } = await supabase
     .from('authorized_users')
     .select('status, role')
@@ -53,7 +58,6 @@ export default async function handler(req, res) {
       ? "You have been granted elevated Administrative privileges to manage the system and personnel."
       : "You have been assigned the Employee role with access to process transactions and manage inventory.";
 
-    // Configure Nodemailer with Gmail
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -65,7 +69,6 @@ export default async function handler(req, res) {
     const htmlTemplate = `
       <div style="background-color: #f1f5f9; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <!-- Header: Matches Sidebar Slate-900 -->
           <div style="background-color: #0f172a; padding: 30px; text-align: center;">
             <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: -0.025em; font-weight: 700;">
               Bookstore<span style="color: #3b82f6;">IMS</span>
@@ -75,11 +78,10 @@ export default async function handler(req, res) {
             </p>
           </div>
 
-          <!-- Body -->
           <div style="padding: 40px 30px;">
             <h2 style="font-size: 20px; color: #0f172a; margin-top: 0;">System Access Authorization</h2>
             <p style="font-size: 15px; line-height: 1.6; color: #475569;">
-              Hello <strong>${to_name}</strong>,
+              Hello <strong>${safeName}</strong>,
             </p>
             <p style="font-size: 15px; line-height: 1.6; color: #475569;">
               ${professionalMessage}
@@ -88,7 +90,6 @@ export default async function handler(req, res) {
               To begin managing resources, please complete your secure account registration by clicking the button below.
             </p>
 
-            <!-- CTA: Matches Sidebar Blue-600 -->
             <div style="margin: 35px 0; text-align: center;">
               <a href="${invite_link}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
                 Complete Registration
@@ -102,7 +103,6 @@ export default async function handler(req, res) {
             </div>
           </div>
 
-          <!-- Footer -->
           <div style="padding: 20px 30px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
             <p style="font-size: 11px; color: #94a3b8; margin: 5px 0 0 0;">
               If you were not expecting this authorization, please contact the system administrator immediately.
@@ -112,7 +112,6 @@ export default async function handler(req, res) {
       </div>
     `;
 
-    // Send the email
     await transporter.sendMail({
       from: `"University Bookstore System" <${process.env.GMAIL_USER}>`,
       to: cleanEmail,
