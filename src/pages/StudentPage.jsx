@@ -49,21 +49,25 @@ export default function StudentPage() {
   // 1. Debounce Search Input
   useEffect(() => {
     const timer = setTimeout(() => {
-        setDebouncedTerm(searchTerm);
-        setCurrentPage(1); 
+        if (debouncedTerm !== searchTerm) {
+            setDebouncedTerm(searchTerm);
+            setCurrentPage(1); 
+        }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, debouncedTerm]);
 
   // 2. Fetch Students (The Search Logic)
   useEffect(() => {
     const fetchStudents = async () => {
         setLoading(true);
-        let query = supabase.from('students').select('*', { count: 'exact' });
+        // OPTIMIZATION: Select specific columns to reduce DB sorting memory and network payload
+        let query = supabase
+            .from('students')
+            .select('student_id, name, course, year_level', { count: 'exact' });
 
         if (debouncedTerm.trim()) {
-            // FIX: Replace commas with '_' to prevent breaking the Supabase .or() syntax delimiter
-            // '_' is a SQL wildcard for a single character, so "Doe, John" matches "Doe, John"
+            // '_' is a SQL wildcard for a single character, preventing syntax breaks
             const safeTerm = debouncedTerm.replace(/,/g, '_');
             query = query.or(`name.ilike.%${safeTerm}%,student_id.ilike.%${safeTerm}%`);
         } else {
@@ -79,7 +83,7 @@ export default function StudentPage() {
             console.error("Error fetching students:", error);
         } else {
             setStudents(data || []);
-            setTotalCount(count || 0);
+            if (count !== null) setTotalCount(count);
         }
         
         setLoading(false);
@@ -87,11 +91,36 @@ export default function StudentPage() {
 
     fetchStudents();
 
+    // OPTIMIZATION: Added burst-protection from InventoryTable to prevent 
+    // network lockups during bulk CSV imports or rapid edits
+    let changeCount = 0;
+    let burstResetTimer = null;
+    let debounceTimer = null;
+
     const dbChannel = supabase.channel('student-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchStudents)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+            changeCount++;
+            
+            if (burstResetTimer) clearTimeout(burstResetTimer);
+            burstResetTimer = setTimeout(() => {
+                changeCount = 0;
+            }, 300);
+            
+            if (changeCount <= 2) {
+                fetchStudents();
+            } else {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    fetchStudents();
+                    changeCount = 0; 
+                }, 500);
+            }
+        })
         .subscribe();
 
     return () => {
+        if (burstResetTimer) clearTimeout(burstResetTimer);
+        if (debounceTimer) clearTimeout(debounceTimer);
         supabase.removeChannel(dbChannel);
     };
   }, [debouncedTerm, currentPage]);
