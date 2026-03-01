@@ -27,6 +27,11 @@ export default function TransactionForm({ onSuccess }) {
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
   const [activeSupplierIndex, setActiveSupplierIndex] = useState(-1);
 
+  // Product Dropdown State
+  const [productSuggestions, setProductSuggestions] = useState([]);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [activeProductIndex, setActiveProductIndex] = useState(-1);
+
   // GLOBAL HEADER STATE (Applied to all items)
   const initialHeaderState = {
     type: "",
@@ -96,6 +101,35 @@ export default function TransactionForm({ onSuccess }) {
   };
 
 
+  const selectProduct = (data) => {
+    setIsNewItem(false);
+    const cost = data.unit_cost || "";
+    const price = data.price || "";
+
+    setCurrentScan(prev => ({
+      ...prev, 
+      barcode: data.barcode,
+      itemName: data.name || "", 
+      price: price,
+      unitCost: cost,
+      location: data.location || "",
+      accpacCode: data.accpac_code || "",
+      qty: 1
+    }));
+    
+    setShowProductDropdown(false);
+    setProductSuggestions([]);
+
+    // Intelligent Focus Logic
+    setTimeout(() => {
+        if (headerData.type === 'RECEIVING' && (!cost || parseFloat(cost) === 0)) {
+            document.getElementById('unitCostInput')?.focus();
+        } else {
+            document.getElementById('qtyInput')?.focus();
+        }
+    }, 50); 
+  };
+
   const checkProduct = async (barcodeInput) => {
     const barcodeToSearch = barcodeInput?.trim();
     if (!barcodeToSearch) return;
@@ -108,46 +142,48 @@ export default function TransactionForm({ onSuccess }) {
         .maybeSingle(); 
 
       if (data) {
-        setIsNewItem(false); // Found
-        const cost = data.unit_cost || "";
-        const price = data.price || "";
-
-        setCurrentScan(prev => ({
-          ...prev, 
-          barcode: data.barcode,
-          itemName: data.name || "", 
-          price: price,
-          unitCost: cost,
-          location: data.location || "",
-          accpacCode: data.accpac_code || "",
-          qty: 1
-        }));
-        
-        // Intelligent Focus Logic
-        setTimeout(() => {
-            // 1. If receiving and no cost, go to Cost input
-            if (headerData.type === 'RECEIVING' && (!cost || parseFloat(cost) === 0)) {
-                document.getElementById('unitCostInput')?.focus();
-            } 
-            // 2. For all other scenarios (including PULL_OUT or found items), jump to Qty
-            else {
-                document.getElementById('qtyInput')?.focus();
-            }
-        }, 50); 
-
+        selectProduct(data);
       } else {
-        // NOT FOUND
         setIsNewItem(true); 
         setCurrentScan(prev => ({ 
-             ...prev, 
-             itemName: "", 
-             price: "", 
-             unitCost: "", 
-             location: ""
+             ...prev, itemName: "", price: "", unitCost: "", location: ""
         })); 
+        setShowProductDropdown(false);
       }
     } catch (err) {
       console.error("Lookup failed", err);
+    }
+  };
+
+  const searchProduct = async (searchInput) => {
+    const searchVal = searchInput?.trim();
+    if (!searchVal) return;
+
+    try {
+      // Secure limits to prevent DoS via massive search payload processing
+      const { data, error } = await supabase
+        .from('products')
+        .select('internal_id, barcode, name, price, unit_cost, location, accpac_code')
+        .or(`barcode.ilike.%${searchVal}%,name.ilike.%${searchVal}%`)
+        .limit(10);
+
+      if (error) throw error;
+
+      if (data) {
+        setProductSuggestions(data);
+        const exactMatch = data.find(p => p.barcode.toUpperCase() === searchVal.toUpperCase());
+        
+        if (exactMatch) {
+            setIsNewItem(false);
+        } else if (data.length === 0) {
+            setIsNewItem(true);
+            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", unitCost: "", location: "" })); 
+        } else {
+            setIsNewItem(null);
+        }
+      }
+    } catch (err) {
+      console.error("Product lookup failed", err);
     }
   };
 
@@ -294,19 +330,33 @@ export default function TransactionForm({ onSuccess }) {
 
 
 
-  // Handle Enter Key
+  // Handle Enter and Arrow Keys safely
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      
-      // If pressing Enter on Barcode (eg. Scanner), force immediate check
-      if (e.target.name === 'barcodeField') {
-        checkProduct(currentScan.barcode); 
-      } 
-      // If pressing Enter on Name/Qty, add to cart
-      else {
+    if (e.target.name === 'barcodeField') {
+        if (showProductDropdown && productSuggestions.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveProductIndex(prev => (prev < productSuggestions.length - 1 ? prev + 1 : prev));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveProductIndex(prev => (prev > 0 ? prev - 1 : 0));
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeProductIndex >= 0 && productSuggestions[activeProductIndex]) {
+                    selectProduct(productSuggestions[activeProductIndex]);
+                } else {
+                    checkProduct(currentScan.barcode); // Fallback absolute scanner hit
+                }
+            } else if (e.key === 'Escape') {
+                setShowProductDropdown(false);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            checkProduct(currentScan.barcode);
+        }
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
         handleAddToQueue(e);
-      }
     }
   };
 
@@ -426,53 +476,48 @@ export default function TransactionForm({ onSuccess }) {
     }
   };
 
-  // Reset status when user manually types in barcode field
   const handleBarcodeChange = (e) => {
       const input = e.target;
-      // 1. Capture current cursor position provided by the browser event
       const cursorStart = input.selectionStart;
       const cursorEnd = input.selectionEnd;
-
-      // 2. Force Uppercase
       const newVal = input.value.toUpperCase();
       
       setCurrentScan(prev => ({ ...prev, barcode: newVal }));
       
-      // 3. Restore cursor position after React re-renders
-      // requestAnimationFrame ensures this runs after the DOM update
+      if (newVal.trim()) {
+          setShowProductDropdown(true);
+          setActiveProductIndex(0);
+      } else {
+          setShowProductDropdown(false);
+      }
+      
       window.requestAnimationFrame(() => {
-          if (input) {
-              input.setSelectionRange(cursorStart, cursorEnd);
-          }
+          if (input) input.setSelectionRange(cursorStart, cursorEnd);
       });
       
-      // If user changes text, reset "New/Found" status immediately
-      if (isNewItem !== null) {
-          setIsNewItem(null);
-      }
+      if (isNewItem !== null) setIsNewItem(null);
   };
 
 
   useEffect(() => {
-    // If field is cleared (Backspace/Ctrl+A), reset details immediately
     if (!currentScan.barcode.trim()) {
       setIsNewItem(null);
+      setProductSuggestions([]);
       setCurrentScan(prev => ({
-        ...prev,
-        itemName: "",
-        price: "",
-        unitCost: "",
-        location: "",
-        qty: 1
+        ...prev, itemName: "", price: "", unitCost: "", location: "", qty: 1
       }));
       return;
     }
 
+    const exactMatch = productSuggestions.find(p => p.barcode.toUpperCase() === currentScan.barcode.trim().toUpperCase());
+    if (exactMatch && exactMatch.barcode === currentScan.barcode.trim()) {
+        setIsNewItem(false);
+        return;
+    }
+
     const timer = setTimeout(() => {
-      if (currentScan.barcode.trim()) {
-         checkProduct(currentScan.barcode);
-      }
-    }, 150);
+      searchProduct(currentScan.barcode);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [currentScan.barcode]);
@@ -481,11 +526,16 @@ export default function TransactionForm({ onSuccess }) {
   useEffect(() => {
       if (showSupplierDropdown && activeSupplierIndex >= 0) {
           const activeEl = document.getElementById(`supplier-option-${activeSupplierIndex}`);
-          if (activeEl) {
-              activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-          }
+          if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
   }, [activeSupplierIndex, showSupplierDropdown]);
+
+  useEffect(() => {
+      if (showProductDropdown && activeProductIndex >= 0) {
+          const activeEl = document.getElementById(`product-option-${activeProductIndex}`);
+          if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+  }, [activeProductIndex, showProductDropdown]);
 
   const handleLookupReceipt = async (e) => {
     e.preventDefault();
@@ -1068,20 +1118,45 @@ export default function TransactionForm({ onSuccess }) {
                     /* --- STANDARD SCANNER UI (Receiving/Issuance) --- */
                     <>
                         <div className="grid grid-cols-12 gap-3 mb-3">
-                            {/* 1. Barcode Field (Slightly Reduced for Qty) */}
-                            <div className="col-span-6">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Barcode</label>
+                            {/* 1. Barcode Field */}
+                            <div className="col-span-6 relative">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Barcode / Item Name</label>
                                 <LimitedInput 
                                     maxLength={50}
                                     name="barcodeField" 
                                     as="input" 
                                     ref={barcodeRef} 
                                     type="text" 
+                                    autoComplete="off"
                                     className={`w-full h-10 px-3 rounded-lg border-2 font-mono font-bold uppercase outline-none
                                         ${isNewItem === true ? 'border-rose-400 bg-rose-50 text-rose-600' : 
                                         isNewItem === false ? 'border-emerald-400 text-emerald-800' : 'border-slate-200 text-blue-700 focus:border-blue-500'}`}
-                                    value={currentScan.barcode} onChange={handleBarcodeChange} onKeyDown={handleKeyDown} placeholder="SCAN..."
+                                    value={currentScan.barcode} 
+                                    onChange={handleBarcodeChange} 
+                                    onKeyDown={handleKeyDown} 
+                                    onFocus={() => { if(currentScan.barcode) setShowProductDropdown(true); }}
+                                    onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
+                                    placeholder="SCAN OR TYPE..."
                                 />
+                                {showProductDropdown && productSuggestions.length > 0 && (
+                                    <ul className="absolute z-[100] top-[calc(100%+2px)] left-0 right-0 bg-white border border-slate-200 rounded-b-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 custom-scrollbar">
+                                        {productSuggestions.map((prod, index) => (
+                                            <li key={prod.internal_id} 
+                                                id={`product-option-${index}`}
+                                                className={`px-4 py-2 cursor-pointer border-b border-slate-50 last:border-0 hover:bg-blue-50 transition-colors flex justify-between items-center
+                                                    ${index === activeProductIndex ? 'bg-blue-100' : ''}`}
+                                                onMouseDown={() => selectProduct(prod)}
+                                            >
+                                                <span className={`text-[11px] font-bold truncate mr-2 ${index === activeProductIndex ? 'text-blue-800' : 'text-slate-700'}`}>
+                                                    {prod.name}
+                                                </span>
+                                                <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded shrink-0 ${index === activeProductIndex ? 'bg-blue-200 text-blue-800' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {prod.barcode}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
 
                             {/* 2. Cost / Price */}
@@ -1101,7 +1176,7 @@ export default function TransactionForm({ onSuccess }) {
                                 ) : (
                                     <>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Price</label>
-                                        <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm">
+                                        <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm overflow-hidden">
                                             ₱{Number(currentScan.price || 0).toFixed(2)}
                                         </div>
                                     </>
