@@ -498,8 +498,15 @@ export default function TransactionForm({ onSuccess }) {
       if (newVal.trim()) {
           setShowProductDropdown(true);
           setActiveProductIndex(0);
+          
+          // SECURE UI SYNC: Instantly purge stale data locally to prevent index-mismatch 
+          // on rapid typing before the 250ms debounce network fetch completes.
+          setProductSuggestions(prev => 
+              prev.filter(p => p.barcode.toUpperCase().startsWith(newVal))
+          );
       } else {
           setShowProductDropdown(false);
+          setProductSuggestions([]);
       }
       
       window.requestAnimationFrame(() => {
