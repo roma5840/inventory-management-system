@@ -160,12 +160,14 @@ export default function TransactionForm({ onSuccess }) {
     if (!searchVal) return;
 
     try {
-      // Secure limits to prevent DoS via massive search payload processing
+      // SECURE: .ilike provides safe prefix matching (Starts With).
+      // .limit(15) prevents DoS memory exhaustion on broad searches (e.g., typing "A").
       const { data, error } = await supabase
         .from('products')
         .select('internal_id, barcode, name, price, unit_cost, location, accpac_code')
-        .or(`barcode.ilike.%${searchVal}%,name.ilike.%${searchVal}%`)
-        .limit(10);
+        .ilike('barcode', `${searchVal}%`)
+        .order('barcode')
+        .limit(15);
 
       if (error) throw error;
 
@@ -1120,7 +1122,7 @@ export default function TransactionForm({ onSuccess }) {
                         <div className="grid grid-cols-12 gap-3 mb-3">
                             {/* 1. Barcode Field */}
                             <div className="col-span-6 relative">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Barcode / Item Name</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Barcode</label>
                                 <LimitedInput 
                                     maxLength={50}
                                     name="barcodeField" 
@@ -1147,11 +1149,13 @@ export default function TransactionForm({ onSuccess }) {
                                                     ${index === activeProductIndex ? 'bg-blue-100' : ''}`}
                                                 onMouseDown={() => selectProduct(prod)}
                                             >
-                                                <span className={`text-[11px] font-bold truncate mr-2 ${index === activeProductIndex ? 'text-blue-800' : 'text-slate-700'}`}>
-                                                    {prod.name}
-                                                </span>
-                                                <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded shrink-0 ${index === activeProductIndex ? 'bg-blue-200 text-blue-800' : 'bg-slate-100 text-slate-500'}`}>
+                                                {/* Barcode on the Left */}
+                                                <span className={`font-mono text-[12px] font-black shrink-0 ${index === activeProductIndex ? 'text-blue-800' : 'text-slate-800'}`}>
                                                     {prod.barcode}
+                                                </span>
+                                                {/* Item Name on the Right */}
+                                                <span className={`text-[10px] font-semibold truncate ml-3 text-right ${index === activeProductIndex ? 'text-blue-600' : 'text-slate-500'}`} title={prod.name}>
+                                                    {prod.name}
                                                 </span>
                                             </li>
                                         ))}
