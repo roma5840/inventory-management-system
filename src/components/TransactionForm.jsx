@@ -160,8 +160,7 @@ export default function TransactionForm({ onSuccess }) {
     if (!searchVal) return;
 
     try {
-      // SECURE: .ilike provides safe prefix matching (Starts With).
-      // .limit(15) prevents DoS memory exhaustion on broad searches (e.g., typing "A").
+      // SECURE: .ilike provides safe prefix matching. .limit(15) prevents DoS.
       const { data, error } = await supabase
         .from('products')
         .select('internal_id, barcode, name, price, unit_cost, location, accpac_code')
@@ -177,11 +176,21 @@ export default function TransactionForm({ onSuccess }) {
         
         if (exactMatch) {
             setIsNewItem(false);
+            // FIX: Silently auto-populate details so clicking outside doesn't leave data empty
+            setCurrentScan(prev => ({
+                ...prev,
+                itemName: exactMatch.name || "",
+                price: exactMatch.price || "",
+                unitCost: exactMatch.unit_cost || "",
+                location: exactMatch.location || "",
+                accpacCode: exactMatch.accpac_code || ""
+            }));
         } else if (data.length === 0) {
             setIsNewItem(true);
-            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", unitCost: "", location: "" })); 
+            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", unitCost: "", location: "", accpacCode: "" })); 
         } else {
             setIsNewItem(null);
+            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", unitCost: "", location: "", accpacCode: "" }));
         }
       }
     } catch (err) {
@@ -506,15 +515,25 @@ export default function TransactionForm({ onSuccess }) {
       setIsNewItem(null);
       setProductSuggestions([]);
       setCurrentScan(prev => ({
-        ...prev, itemName: "", price: "", unitCost: "", location: "", qty: 1
+        ...prev, itemName: "", price: "", unitCost: "", location: "", accpacCode: "", qty: 1
       }));
       return;
     }
 
+    // FIX: Catch immediate cache hits and auto-populate without a server roundtrip
     const exactMatch = productSuggestions.find(p => p.barcode.toUpperCase() === currentScan.barcode.trim().toUpperCase());
-    if (exactMatch && exactMatch.barcode === currentScan.barcode.trim()) {
+    
+    if (exactMatch) {
         setIsNewItem(false);
-        return;
+        setCurrentScan(prev => ({
+            ...prev,
+            itemName: exactMatch.name || "",
+            price: exactMatch.price || "",
+            unitCost: exactMatch.unit_cost || "",
+            location: exactMatch.location || "",
+            accpacCode: exactMatch.accpac_code || ""
+        }));
+        return; // Skip fetch, data is already loaded in UI state
     }
 
     const timer = setTimeout(() => {
