@@ -1031,7 +1031,7 @@ export default function TransactionForm({ onSuccess }) {
                                 `}
                                 placeholder="Start typing supplier..."
                                 value={headerData.supplier} onChange={handleSupplierChange} onKeyDown={handleSupplierKeyDown}
-                                onFocus={() => { if(headerData.supplier) { checkSupplier(headerData.supplier); setShowSupplierDropdown(true); }}}
+                                onFocus={() => { if(headerData.supplier) setShowSupplierDropdown(true); }}
                                 onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
                             />
                             {showSupplierDropdown && supplierSuggestions.length > 0 && (
