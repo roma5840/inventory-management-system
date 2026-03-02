@@ -292,13 +292,17 @@ export default function InventoryTable({ lastUpdated }) {
     }
   };
 
-  // *Self-Correction for client-side purely:*
   const generateClientBarcode = () => {
-    // High-resolution timestamp + Random 3-digit suffix to prevent collision
-    const seq = Date.now(); 
-    const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `SYS-${seq}-${rand}`;
-  }
+    // Generates a short, secure, collision-resistant barcode.
+    // Uses crypto.randomUUID for entropy, falling back to a time+random hash for non-secure HTTP contexts.
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return `SYS-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
+    }
+    const timeHex = Date.now().toString(36).slice(-4).toUpperCase();
+    const randHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `SYS-${timeHex}${randHex}`;
+  };
+
 
   const handleDownloadTemplate = () => {
     const csvContent = Papa.unparse({
@@ -347,6 +351,7 @@ export default function InventoryTable({ lastUpdated }) {
 
             const validationErrors = [];
 
+            // Prevent CSV Injection (Formula Injection) for future exports
             const sanitize = (str) => {
                 if (typeof str !== 'string') return str !== undefined && str !== null ? String(str).trim() : null;
                 const clean = str.trim();
@@ -430,17 +435,14 @@ export default function InventoryTable({ lastUpdated }) {
             // Global Deduplication Phase (Collapses duplicates before database operations)
             const uniqueMap = new Map();
             rawRows.forEach((r) => {
-                // Uniqueness priority: Barcode -> Accpac -> Name
                 const key = r.barcode || r.accpac || r.name; 
                 
                 if (uniqueMap.has(key)) {
                     const existing = uniqueMap.get(key);
                     const addedStock = r.initialStock || 0;
                     
-                    // Sum the initial stock of the duplicate
                     existing.initialStock = (existing.initialStock || 0) + addedStock;
                     
-                    // If primary lacked a code but duplicate has one, inherit it
                     if (!existing.accpac && r.accpac) existing.accpac = r.accpac;
                     if (!existing.barcode && r.barcode) existing.barcode = r.barcode;
 
@@ -464,24 +466,20 @@ export default function InventoryTable({ lastUpdated }) {
                 
                 const batchBarcodes = batch.map(r => r.barcode).filter(Boolean);
                 const batchAccPacs = batch.map(r => r.accpac).filter(Boolean);
-                // Only match by name if code is completely missing to avoid accidental overwrites
                 const batchNames = batch.filter(r => !r.barcode && !r.accpac).map(r => r.name).filter(Boolean);
 
                 let existingItems = [];
                 
-                // Fetch existing by Barcode
                 if (batchBarcodes.length > 0) {
                     const { data, error } = await supabase.from('products').select('*').in('barcode', batchBarcodes);
                     if (error) throw error;
                     if (data) existingItems.push(...data);
                 }
-                // Fetch existing by Accpac
                 if (batchAccPacs.length > 0) {
                     const { data, error } = await supabase.from('products').select('*').in('accpac_code', batchAccPacs);
                     if (error) throw error;
                     if (data) existingItems.push(...data);
                 }
-                // Fetch existing by Exact Name (Fallback for items with no codes)
                 if (batchNames.length > 0) {
                     const { data, error } = await supabase.from('products').select('*').in('name', batchNames);
                     if (error) throw error;
@@ -501,17 +499,14 @@ export default function InventoryTable({ lastUpdated }) {
                 const toInsert = [];
                 const toUpdate = [];
 
-                batch.forEach((row, index) => {
+                batch.forEach((row) => {
                     let existing = null;
                     let conflictMsg = null;
 
-                    // 1. Strict Match Hierarchy & Conflict Detection
                     if (row.barcode && existingByBarcode.has(row.barcode)) {
                         existing = existingByBarcode.get(row.barcode);
                     } else if (row.accpac && existingByAccPac.has(row.accpac)) {
                         const matchedByAccpac = existingByAccPac.get(row.accpac);
-                        // PREVENT FLIP-FLOPPING: 
-                        // If we matched via AccPac, but the CSV barcode differs from the DB barcode, reject it.
                         if (row.barcode && matchedByAccpac.barcode && matchedByAccpac.barcode !== row.barcode) {
                             conflictMsg = `[${row.barcode}] Conflict: AccPac '${row.accpac}' is already assigned to Barcode '${matchedByAccpac.barcode}'. Row skipped.`;
                         } else {
@@ -523,11 +518,10 @@ export default function InventoryTable({ lastUpdated }) {
 
                     if (conflictMsg) {
                         processErrors.push(conflictMsg);
-                        return; // Skip processing this row entirely
+                        return;
                     }
 
                     if (existing) {
-                        // UPDATE LOGIC (Strictly ignores initial stock)
                         let needsUpdate = false;
                         const updatePayload = { internal_id: existing.internal_id, last_updated: new Date() };
 
@@ -556,8 +550,8 @@ export default function InventoryTable({ lastUpdated }) {
                             unchangedCount++;
                         }
                     } else {
-                        // INSERT LOGIC (Brand new items apply initial stock)
-                        const newBarcode = row.barcode || `SYS-${Date.now()}-${i + index}-${Math.floor(Math.random() * 1000)}`;
+                        // DRY Implementation: Centralized Short Barcode Generator
+                        const newBarcode = row.barcode || generateClientBarcode();
                         
                         toInsert.push({
                             barcode: newBarcode,
