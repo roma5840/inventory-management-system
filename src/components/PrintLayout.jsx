@@ -49,30 +49,47 @@ export default function PrintLayout({ data, elementId }) {
 
       {/* HEADER FIELDS */}
       <div className="flex gap-6 mb-4 uppercase font-medium">
-        <div className="flex-1 flex flex-col gap-1">
-            <div className="flex items-start">
-                <span className="w-28 shrink-0 font-bold text-right pr-2">FULL NAME:</span>
-                <div className="border-b border-black flex-1 pl-1 font-bold break-words min-h-[1.2em]">
-                    {data.studentName || data.supplier || ""}
-                </div>
-            </div>
-            <div className="flex items-start">
-                <span className="w-28 shrink-0 font-bold text-right pr-2">STUDENT #:</span>
-                <div className="border-b border-black flex-1 pl-1 font-mono">
-                    {data.studentId || ""}
-                </div>
-            </div>
-            <div className="flex items-start">
-                <span className="w-28 shrink-0 font-bold text-right pr-2">COURSE/STRAND:</span>
-                <div className="border-b border-black flex-1 pl-1 break-words min-h-[1.2em]">
-                    {data.course || ""}
-                </div>
-            </div>
-            <div className="flex items-start">
-                <span className="w-28 shrink-0 font-bold text-right pr-2">PARENTS NAME:</span>
-                <div className="border-b border-black flex-1 min-h-[1.2em]"></div>
-            </div>
-        </div>
+        {isCostType ? (
+          <div className="flex-1 flex flex-col gap-1">
+              <div className="flex items-start">
+                  <span className="w-28 shrink-0 font-bold text-right pr-2">SUPPLIER:</span>
+                  <div className="border-b border-black flex-1 pl-1 font-bold break-words min-h-[1.2em]">
+                      {data.supplier || ""}
+                  </div>
+              </div>
+              <div className="flex items-start">
+                  <span className="w-28 shrink-0 font-bold text-right pr-2">CONTACT INFO:</span>
+                  <div className="border-b border-black flex-1 pl-1 break-words min-h-[1.2em]">
+                      {data.contactInfo || ""}
+                  </div>
+              </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col gap-1">
+              <div className="flex items-start">
+                  <span className="w-28 shrink-0 font-bold text-right pr-2">FULL NAME:</span>
+                  <div className="border-b border-black flex-1 pl-1 font-bold break-words min-h-[1.2em]">
+                      {data.studentName || ""}
+                  </div>
+              </div>
+              <div className="flex items-start">
+                  <span className="w-28 shrink-0 font-bold text-right pr-2">STUDENT #:</span>
+                  <div className="border-b border-black flex-1 pl-1 font-mono">
+                      {data.studentId || ""}
+                  </div>
+              </div>
+              <div className="flex items-start">
+                  <span className="w-28 shrink-0 font-bold text-right pr-2">COURSE/STRAND:</span>
+                  <div className="border-b border-black flex-1 pl-1 break-words min-h-[1.2em]">
+                      {data.course || ""}
+                  </div>
+              </div>
+              <div className="flex items-start">
+                  <span className="w-28 shrink-0 font-bold text-right pr-2">PARENTS NAME:</span>
+                  <div className="border-b border-black flex-1 min-h-[1.2em]"></div>
+              </div>
+          </div>
+        )}
 
         <div className="w-[32%] flex flex-col gap-1">
             <div className="flex items-start">
@@ -81,12 +98,14 @@ export default function PrintLayout({ data, elementId }) {
                     {data.date ? new Date(data.date).toLocaleDateString() : new Date().toLocaleDateString()}
                 </div>
             </div>
-            <div className="flex items-start">
-                <span className="w-16 shrink-0 text-right pr-2 font-bold">YEAR:</span>
-                <div className="border-b border-black flex-1 pl-1 break-words min-h-[1.2em]">
-                     {data.yearLevel || ""}
+            {!isCostType && (
+                <div className="flex items-start">
+                    <span className="w-16 shrink-0 text-right pr-2 font-bold">YEAR:</span>
+                    <div className="border-b border-black flex-1 pl-1 break-words min-h-[1.2em]">
+                         {data.yearLevel || ""}
+                    </div>
                 </div>
-            </div>
+            )}
             <div className="flex items-start">
                 <span className="w-16 shrink-0 text-right pr-2 font-bold">BIS NO.:</span>
                 <div className="border-b border-black flex-1 pl-1">
@@ -158,8 +177,8 @@ export default function PrintLayout({ data, elementId }) {
 
   return (
     <div id={elementId} className="w-full max-w-[800px] mx-auto bg-white flex flex-col">
-      {/* TOP: STUDENT COPY */}
-      <Slip label="Student Copy" />
+      {/* TOP: STUDENT / SUPPLIER COPY */}
+      <Slip label={isCostType ? "Supplier Copy" : "Student Copy"} />
 
       {/* CUTTING DIVIDER */}
       <div className="relative w-full border-t border-dashed border-black my-2">
