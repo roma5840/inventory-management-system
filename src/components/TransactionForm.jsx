@@ -979,7 +979,7 @@ export default function TransactionForm({ onSuccess }) {
                                 <input 
                                     type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
                                     className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold uppercase disabled:text-slate-500"
-                                    placeholder="Name will auto-fill"
+                                    placeholder="Name will autofill"
                                     value={headerData.studentName}
                                     onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
                                 />
@@ -1302,16 +1302,52 @@ export default function TransactionForm({ onSuccess }) {
             </div>
 
             {/* === SECTION 4: FOOTER (Confirm) === */}
-            <div className="mt-auto pt-2">
-                {error && <div className="alert alert-error text-xs mb-2">{error}</div>}
-                {successMsg && <div className="alert alert-success text-xs mb-2">{successMsg}</div>}
+            <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col gap-3">
+                {/* Feedback Alerts */}
+                {(error || successMsg) && (
+                    <div className={`alert py-2.5 px-4 rounded-xl text-[11px] font-bold border-none shadow-sm flex items-center gap-3 ${error ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 shrink-0">
+                            {error 
+                                ? <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                                : <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            }
+                        </svg>
+                        <span className="uppercase tracking-tight">{error || successMsg}</span>
+                    </div>
+                )}
                 
+                {/* Confirm Action Button */}
                 <button 
                     onClick={handleFinalSubmit} 
                     disabled={loading || queue.length === 0}
-                    className={`btn btn-primary w-full shadow-lg ${loading ? 'loading' : ''}`}
+                    className={`btn btn-primary w-full h-14 rounded-2xl border-none shadow-md transition-all flex items-center justify-between px-6 group
+                        ${loading ? 'opacity-80' : 'hover:shadow-blue-200 hover:-translate-y-0.5 active:scale-[0.98]'}
+                    `}
                 >
-                    {loading ? "Processing Batch..." : `CONFIRM ${queue.length} ITEMS`}
+                    {loading ? (
+                        <div className="flex items-center gap-3 mx-auto">
+                            <span className="loading loading-spinner loading-sm"></span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em]">Processing...</span>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex flex-col items-start leading-tight">
+                                <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-60">Confirm Transaction</span>
+                                <span className="text-sm font-extrabold uppercase tracking-tight">
+                                    {headerData.type?.replace('_', ' ')}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-[11px] font-black tabular-nums backdrop-blur-md">
+                                    {queue.length} {queue.length === 1 ? 'ITEM' : 'ITEMS'}
+                                </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-4 h-4 transition-transform group-hover:translate-x-1">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                </svg>
+                            </div>
+                        </>
+                    )}
                 </button>
             </div>
 
