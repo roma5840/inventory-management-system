@@ -63,6 +63,17 @@ export default function TransactionForm({ onSuccess }) {
   
   const [successMsg, setSuccessMsg] = useState("");
 
+   // --- SEC-FIX: Anti-Race Condition State Tracker ---
+  // Tracks the absolute latest state to prevent in-flight network requests from overwriting UI
+  // after a transaction type switch or rapid input clearing (TOCTOU prevention).
+  const activeStatesRef = useRef({ barcode: "", supplier: "", studentId: "", type: "" });
+  activeStatesRef.current = {
+    barcode: currentScan.barcode,
+    supplier: headerData.supplier,
+    studentId: headerData.studentId,
+    type: headerData.type
+  };
+
   // Focus Logic: Re-run when type changes or item added
   useEffect(() => {
     // Only auto-focus barcode if we are NOT in a mode that requires different inputs first
@@ -86,6 +97,9 @@ export default function TransactionForm({ onSuccess }) {
         .select('name')
         .ilike('name', `${searchVal}%`)
         .order('name');
+
+      // SEC-FIX: Abort if user cleared input or switched transaction types during network fetch
+      if (activeStatesRef.current.supplier?.trim().toUpperCase() !== searchVal.toUpperCase()) return;
 
       if (data) {
         const names = data.map(s => s.name);
@@ -142,6 +156,9 @@ export default function TransactionForm({ onSuccess }) {
         .eq('barcode', barcodeToSearch)
         .maybeSingle(); 
 
+      // SEC-FIX: Abort if user cleared input or switched transaction types during network fetch
+      if (activeStatesRef.current.barcode?.trim().toUpperCase() !== barcodeToSearch.toUpperCase()) return;
+
       if (data) {
         selectProduct(data);
       } else {
@@ -169,6 +186,9 @@ export default function TransactionForm({ onSuccess }) {
         .limit(15);
 
       if (error) throw error;
+
+      // SEC-FIX: Abort if user cleared input or switched transaction types during network fetch
+      if (activeStatesRef.current.barcode?.trim().toUpperCase() !== searchVal.toUpperCase()) return;
 
       if (data) {
         setProductSuggestions(data);
@@ -211,6 +231,9 @@ export default function TransactionForm({ onSuccess }) {
         .select('name, course, year_level')
         .eq('student_id', idToSearch)
         .maybeSingle();
+
+      // SEC-FIX: Abort if user cleared input or switched transaction types during network fetch
+      if (activeStatesRef.current.studentId?.trim().toUpperCase() !== idToSearch.toUpperCase()) return;
 
       if (data) {
         setIsNewStudent(false);
@@ -603,6 +626,12 @@ export default function TransactionForm({ onSuccess }) {
             .eq('bis_number', bisToSearch)
             .eq('type', 'ISSUANCE') 
             .eq('is_voided', false);
+
+        // SEC-FIX: Abort if user switched transaction types during the network fetch
+        if (activeStatesRef.current.type !== 'ISSUANCE_RETURN') {
+            setLookupLoading(false);
+            return;
+        }
 
         if (salesError || !salesData || salesData.length === 0) {
             setHeaderData(prev => ({
