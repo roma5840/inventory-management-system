@@ -195,6 +195,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                    const isVoided = items.some(i => i.is_voided) || !!voidEntry;
                    const isOrphanVoid = items.every(i => i.type === 'VOID'); 
                    const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
+                   const isCashMode = first.transaction_mode === 'CASH';
                    const rowClass = isVoided ? "opacity-50 grayscale bg-gray-50" : "";
 
                    return (
@@ -224,14 +225,21 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                 TRANSACTION
                             </span>
                           ) : (
-                            <span className={`font-bold text-[10px] uppercase px-2 py-1 rounded-full 
-                                ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : 
-                                  first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' :
-                                  first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-700' :
-                                  first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-700' :
-                                  'bg-gray-100 text-gray-700'}`}>
-                                {first.type.replace('_', ' ')}
-                            </span>
+                            <div className="flex flex-col items-start gap-1">
+                              <span className={`font-bold text-[10px] uppercase px-2 py-1 rounded-full 
+                                  ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : 
+                                    first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' :
+                                    first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-700' :
+                                    first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-700' :
+                                    'bg-gray-100 text-gray-700'}`}>
+                                  {first.type.replace('_', ' ')}
+                              </span>
+                              {first.transaction_mode && (
+                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter ml-1">
+                                      {first.transaction_mode}
+                                  </span>
+                              )}
+                            </div>
                           )}
                         </td>
 
@@ -311,9 +319,10 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                        <td className="align-top py-3">
                           <ul className="space-y-2">
                              {displayItems.map((i, idx) => {
+                               const itemIsCashMode = i.transaction_mode === 'CASH';
                                const unitVal = isCostType 
                                  ? (i.unit_cost_snapshot ?? 0)
-                                 : (i.price_snapshot ?? i.price);
+                                 : itemIsCashMode ? (i.cash_price_snapshot ?? 0) : (i.price_snapshot ?? i.price);
 
                                return (
                                  <li key={idx} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
@@ -325,8 +334,8 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                             <span>
                                               {i.qty} x ₱{Number(unitVal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </span>
-                                            {isCostType && (
-                                                <span className="text-[9px] text-gray-400 block -mt-0.5">(Cost)</span>
+                                            {(isCostType || itemIsCashMode) && (
+                                                <span className="text-[9px] text-gray-400 block -mt-0.5">({isCostType ? 'Cost' : 'Cash'})</span>
                                             )}
                                         </div>
                                     </div>

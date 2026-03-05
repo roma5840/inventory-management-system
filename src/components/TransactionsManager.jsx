@@ -189,8 +189,10 @@ export default function TransactionsManager() {
             }
             
             const isCostType = ['RECEIVING', 'PULL_OUT'].includes(actualType);
-            const unitValue = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
+            const isCashMode = item.transaction_mode === 'CASH';
+            const unitValue = isCostType ? (item.unit_cost_snapshot ?? 0) : isCashMode ? (item.cash_price_snapshot ?? 0) : (item.price_snapshot ?? item.price);
             const totalValue = unitValue * item.qty;
+            const valType = isCostType ? "UNIT COST" : isCashMode ? "CASH PRICE" : "UNIT PRICE";
 
             // Resolve BIS display logic using original_bis provided by the view
             const bisColumnValue = isVoid ? (item.original_bis || "---") : (item.bis_number || "---");
@@ -214,7 +216,7 @@ export default function TransactionsManager() {
                 "Accpac Item Code": item.accpac_code_snapshot,
                 "Item Name": item.product_name_snapshot || item.product_name,
                 "Qty": item.qty,
-                "Valuation Type": isCostType ? "UNIT COST" : "UNIT PRICE",
+                "Valuation Type": valType,
                 "Unit Value": unitValue,
                 "Total Amount": totalValue,
                 "Remarks": (isVoid && item.void_reason) ? item.void_reason : (item.remarks || ""),
@@ -357,9 +359,10 @@ export default function TransactionsManager() {
                         const isVoided = items.some(i => i.is_voided) || !!voidRow;
                         const isOrphanVoid = items.every(i => i.type === 'VOID');
                         const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
+                        const isCashMode = first.transaction_mode === 'CASH';
 
                         const totalValue = displayItems.reduce((sum, item) => {
-                            const val = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
+                            const val = isCostType ? (item.unit_cost_snapshot ?? 0) : isCashMode ? (item.cash_price_snapshot ?? 0) : (item.price_snapshot ?? item.price);
                             return sum + (val * item.qty);
                         }, 0);
 
@@ -463,7 +466,8 @@ export default function TransactionsManager() {
                                 <td className="py-2 align-top pr-2">
                                     <div className="space-y-1">
                                         {displayItems.map(item => {
-                                            const itemVal = isCostType ? (item.unit_cost_snapshot ?? 0) : (item.price_snapshot ?? item.price);
+                                            const itemIsCashMode = item.transaction_mode === 'CASH';
+                                            const itemVal = isCostType ? (item.unit_cost_snapshot ?? 0) : itemIsCashMode ? (item.cash_price_snapshot ?? 0) : (item.price_snapshot ?? item.price);
                                             return (
                                                 <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0 gap-2">
                                                     <div className="flex flex-col flex-grow min-w-0">
@@ -481,7 +485,7 @@ export default function TransactionsManager() {
 
                                 <td className="py-2 text-right align-top">
                                     <div className="font-mono font-bold text-sm leading-none">{first.type === 'ISSUANCE_RETURN' ? '-' : ''}{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                    <div className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">{isCostType ? 'Cost' : 'Price'}</div>
+                                    <div className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">{isCostType ? 'Cost' : isCashMode ? 'Cash Price' : 'Price'}</div>
                                 </td>
 
                                 <td className="py-2 text-right align-top">

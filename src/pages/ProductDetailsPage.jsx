@@ -232,8 +232,12 @@ export default function ProductDetailsPage() {
                                 <div className="stat-value text-xl text-slate-500">₱{product.unit_cost?.toLocaleString() || 0}</div>
                             </div>
                             <div className="stat place-items-center">
+                                <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Unit Cash Price</div>
+                                <div className="stat-value text-xl text-slate-600 font-bold">₱{product.cash_price?.toLocaleString() || 0}</div>
+                            </div>
+                            <div className="stat place-items-center">
                                 <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Unit Price</div>
-                                <div className="stat-value text-xl text-slate-700 font-bold">₱{product.price.toLocaleString()}</div>
+                                <div className="stat-value text-xl text-slate-700 font-bold">₱{product.price?.toLocaleString() || 0}</div>
                             </div>
                         </div>
                     </div>
@@ -331,6 +335,7 @@ export default function ProductDetailsPage() {
                                 <th className="bg-slate-50/80">Activity Type</th>
                                 <th className="bg-slate-50/80">Entity / Details</th>
                                 <th className="text-right bg-slate-50/80">Cost</th>
+                                <th className="text-right bg-slate-50/80">Cash Price</th>
                                 <th className="text-right bg-slate-50/80">Price</th>
                                 <th className="text-center bg-slate-50/80">Qty Change</th>
                                 <th className="text-center bg-slate-50/80">Balance</th>
@@ -339,9 +344,9 @@ export default function ProductDetailsPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {tableLoading ? (
-                                <tr><td colSpan="9" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
+                                <tr><td colSpan="10" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                             ) : history.length === 0 ? (
-                                <tr><td colSpan="9" className="text-center py-12 text-slate-400 font-medium">No transactions found for this item.</td></tr>
+                                <tr><td colSpan="10" className="text-center py-12 text-slate-400 font-medium">No transactions found for this item.</td></tr>
                             ) : (
                                 history.map((tx) => {
                                     const isIncoming = (tx.new_stock > tx.previous_stock);
@@ -378,6 +383,7 @@ export default function ProductDetailsPage() {
                                                     tx.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
                                                     tx.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
                                                     tx.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
+                                                    tx.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' :
                                                     'bg-slate-100 text-slate-800'}`}>
                                                     {tx.type.replace('_', ' ')}
                                                 </div>
@@ -448,19 +454,24 @@ export default function ProductDetailsPage() {
                                                 {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
 
-                                            {/* 6. Price */}
+                                            {/* 6. Cash Price */}
+                                            <td className="text-right font-mono text-xs font-semibold text-slate-600">
+                                                {tx.cash_price_snapshot !== null ? `₱${tx.cash_price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
+                                            </td>
+
+                                            {/* 7. Price */}
                                             <td className="text-right font-mono text-xs font-semibold text-slate-700">
                                                 {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
                                             </td>
 
-                                            {/* 7. Qty Change */}
+                                            {/* 8. Qty Change */}
                                             <td className="text-center">
                                                 <span className={`font-black text-base tracking-tighter ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     {isIncoming ? '+' : '-'}{tx.qty}
                                                 </span>
                                             </td>
 
-                                            {/* 8. Balance */}
+                                            {/* 9. Balance */}
                                             <td className="text-center">
                                                 <div className="flex flex-col items-center">
                                                     <span className="font-bold text-slate-700 text-sm">{tx.new_stock}</span>
@@ -468,7 +479,7 @@ export default function ProductDetailsPage() {
                                                 </div>
                                             </td>
 
-                                            {/* 9. Encoder */}
+                                            {/* 10. Encoder */}
                                             <td className="text-right">
                                                 <div className="text-[11px] font-bold text-slate-600">{tx.staff_name}</div>
                                                 {!isVoidRow && tx.is_voided && tx.void_details && (
