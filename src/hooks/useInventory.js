@@ -21,26 +21,17 @@ export const useInventory = () => {
     setError(null);
 
     try {
-      // Generate a Reference Number Client-Side (System ID)
-      const now = new Date();
-      const timestamp = now.toISOString().replace(/[-:T]/g, '').slice(0, 12); 
-      const random = Math.floor(1000 + Math.random() * 9000);
-      const generatedRef = `REF-${timestamp}-${random}`;
-
-      // Attach to headerData
-      const finalHeader = { ...headerData, referenceNo: generatedRef };
-
+      // NOTE: Reference string (generatedRef) is now explicitly handled server-side to prevent client spoofing & ensure atomic race safety
       const { data: rpcData, error: rpcError } = await supabase.rpc('process_inventory_batch', {
-        header_data: finalHeader,
+        header_data: headerData,
         item_queue: queue
       });
 
       if (rpcError) throw rpcError;
 
-      // Return both IDs: BIS (for User), Ref (for System), and Verified Data (from DB)
       return { 
         bis: rpcData?.bis_number || 0,
-        ref: generatedRef,
+        ref: rpcData?.reference_number, // Pulled straight from DB authoritative generation
         verifiedName: rpcData?.verified_name,
         verifiedCourse: rpcData?.verified_course,
         verifiedYear: rpcData?.verified_year
