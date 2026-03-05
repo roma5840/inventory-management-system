@@ -422,12 +422,18 @@ export default function TransactionForm({ onSuccess }) {
         return;
     }
 
+    // STRICT VALIDATION: Require remarks for Pull Out transactions
+    if (headerData.type === 'PULL_OUT' && !headerData.remarks?.trim()) {
+        alert("Cannot finalize: Remarks are strictly required for Pull Out transactions.");
+        return;
+    }
+
     const finalHeaderData = {
         ...headerData,
         studentName: headerData.studentName?.toUpperCase() || "",
         yearLevel: headerData.yearLevel?.toUpperCase() || "",
         course: headerData.course || "", 
-        remarks: headerData.remarks || "",
+        remarks: headerData.remarks?.trim() || "",
         supplier: headerData.supplier?.toUpperCase().trim() || ""
     };
 
