@@ -410,7 +410,6 @@ export default function TransactionForm({ onSuccess }) {
   const handleFinalSubmit = async () => {
     setSuccessMsg("");
 
-    // Final security guard to prevent bypass
     if (['RECEIVING', 'PULL_OUT'].includes(headerData.type) && isNewSupplier !== false) {
         alert("Cannot finalize: A verified supplier is required.");
         return;
@@ -421,7 +420,6 @@ export default function TransactionForm({ onSuccess }) {
         return;
     }
 
-    // Prepare data with Uppercase enforcement
     const finalHeaderData = {
         ...headerData,
         studentName: headerData.studentName?.toUpperCase() || "",
@@ -431,7 +429,15 @@ export default function TransactionForm({ onSuccess }) {
         supplier: headerData.supplier?.toUpperCase().trim() || ""
     };
 
-    const result = await processTransaction(finalHeaderData, queue);
+    // SEC-07: Pass expected exact effective price to backend to prevent TOCTOU race conditions
+    const strictQueuePayload = queue.map(q => ({
+        ...q,
+        expectedPrice: (finalHeaderData.type === 'ISSUANCE' && finalHeaderData.transactionMode === 'CASH') 
+            ? (q.cashPrice || 0) 
+            : (q.price || 0)
+    }));
+
+    const result = await processTransaction(finalHeaderData, strictQueuePayload);
     
     const currentStaffName = currentUser?.full_name || currentUser?.email || "Staff";
 
@@ -451,28 +457,24 @@ export default function TransactionForm({ onSuccess }) {
           remarks: finalHeaderData.remarks,   
           staffName: currentStaffName,        
           date: new Date().toLocaleString(),
-          items: queue.map(q => ({
+          items: strictQueuePayload.map(q => ({
             ...q,
             unitCost: q.unitCost,
-            // Reflect the active effective price on the receipt to avoid confusion
-            price: (finalHeaderData.type === 'ISSUANCE' && finalHeaderData.transactionMode === 'CASH') ? (q.cashPrice || 0) : q.price 
+            price: q.expectedPrice // Enforce the strict UI-verified effective price onto the receipt
           }))
       });
 
-      // 2. CLEAR FORM
       setQueue([]); 
       setPastTransactionItems([]);
       setReturnLookupRef("");
       setSuccessMsg(`Transaction Saved. BIS NO: ${result.bis}`);
       
-      // Reset Header but keep Type
       setHeaderData(prev => ({
         ...initialHeaderState,    
         type: prev.type,          
         transactionMode: prev.transactionMode 
       }));
 
-      // Reset Scanner
       setIsNewStudent(null);
       setIsNewSupplier(null);
       setCurrentScan({
@@ -482,7 +484,6 @@ export default function TransactionForm({ onSuccess }) {
 
       if (onSuccess) onSuccess();
 
-      // Broadcast update
       await supabase.channel('app_updates').send({
         type: 'broadcast', event: 'inventory_update', payload: {} 
       });
