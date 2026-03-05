@@ -431,9 +431,10 @@ export default function TransactionForm({ onSuccess }) {
     };
 
     // SEC-07: Pass expected exact effective price to backend to prevent TOCTOU race conditions
+    // Includes accurate tracking for ISSUANCE_RETURN reverting a CASH receipt
     const strictQueuePayload = queue.map(q => ({
         ...q,
-        expectedPrice: (finalHeaderData.type === 'ISSUANCE' && finalHeaderData.transactionMode === 'CASH') 
+        expectedPrice: (['ISSUANCE', 'ISSUANCE_RETURN'].includes(finalHeaderData.type) && finalHeaderData.transactionMode === 'CASH') 
             ? (q.cashPrice || 0) 
             : (q.price || 0)
     }));
@@ -603,6 +604,7 @@ export default function TransactionForm({ onSuccess }) {
                 studentId: "",
                 course: "",
                 yearLevel: "",
+                transactionMode: "",
                 remarks: ""
             }));
             setQueue([]); 
@@ -675,7 +677,8 @@ export default function TransactionForm({ onSuccess }) {
                 displayBarcode, 
                 price_snapshot: priceSnapshot,
                 cash_price_snapshot: cashPriceSnapshot,
-                cost_snapshot: costSnapshot, 
+                cost_snapshot: costSnapshot,
+                originalMode: saleItem.transaction_mode, // Security/Logic link for accurate value rendering
                 remainingQty 
             };
         }).filter(item => item.remainingQty > 0);
@@ -715,6 +718,7 @@ export default function TransactionForm({ onSuccess }) {
                     studentId: originalId,
                     course: displayCourse,
                     yearLevel: displayYear,
+                    transactionMode: validItems[0].originalMode || "", // Inherit original mode for precise return pricing
                     remarks: ""
                 }));
             }
@@ -1134,7 +1138,7 @@ export default function TransactionForm({ onSuccess }) {
                                                     <span className="text-slate-500 font-bold">{item.qty}</span>
                                                 </div>
                                                 <div className="font-mono font-bold text-[11px] text-slate-700">
-                                                    ₱{(item.price_snapshot !== undefined ? Number(item.price_snapshot) : Number(item.price)).toFixed(2)}
+                                                    ₱{Number(item.originalMode === 'CASH' ? item.cash_price_snapshot : item.price_snapshot).toFixed(2)}
                                                 </div>
                                             </div>
                                             
@@ -1299,7 +1303,7 @@ export default function TransactionForm({ onSuccess }) {
                                     {headerData.type !== 'RECEIVING' && (
                                         <td className="font-mono text-[11px] text-slate-700 font-bold">
                                             ₱{Number(
-                                                (headerData.type === 'ISSUANCE' && headerData.transactionMode === 'CASH') 
+                                                (['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type) && headerData.transactionMode === 'CASH') 
                                                 ? (item.cashPrice || 0) 
                                                 : (item.price || 0)
                                             ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
