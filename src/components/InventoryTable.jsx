@@ -116,15 +116,14 @@ export default function InventoryTable({ lastUpdated }) {
   }, [searchTerm]);
 
   // Handle Fetching (Immediate response to Page or Debounced Term)
-    const fetchInventory = async () => {
+  const fetchInventory = async () => {
     setLoading(true);
     
     let query = supabase
         .from('products')
-        .select('internal_id, id:barcode, accpac_code, name, price, unit_cost, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
+        .select('internal_id, id:barcode, accpac_code, name, price, cash_price, unit_cost, location, currentStock:current_stock, minStockLevel:min_stock_level', { count: 'exact' });
 
     if (debouncedTerm.trim()) {
-        // FIX: Replace commas with '_' to prevent breaking Supabase .or() syntax
         const safeTerm = debouncedTerm.replace(/,/g, '_');
         query = query.or(`name.ilike.%${safeTerm}%,barcode.ilike.%${safeTerm}%,accpac_code.ilike.%${safeTerm}%`);
     } else {
@@ -144,7 +143,7 @@ export default function InventoryTable({ lastUpdated }) {
     }
     
     setLoading(false);
-    };
+  };
 
     // Effect: Triggers on Search, Page Change, or External Updates
   useEffect(() => {
@@ -306,9 +305,9 @@ export default function InventoryTable({ lastUpdated }) {
 
   const handleDownloadTemplate = () => {
     const csvContent = Papa.unparse({
-      fields: ["BARCODE", "ACCPAC ITEM CODE", "ITEM DESCRIPTION", "PRICE", "LOCATION", "INITIAL STOCK", "MIN. STOCK ALERT LEVEL"],
+      fields: ["BARCODE", "ACCPAC ITEM CODE", "ITEM DESCRIPTION", "COST", "PRICE", "CASH", "LOCATION", "INITIAL STOCK", "MIN. STOCK ALERT LEVEL"],
       data: [
-        ["SYS-123456", "SLX-UNI0000", "ADVANCED CALCULUS 3RD ED", "450", "SHELF-A1", "50", "10"]
+        ["SYS-123456", "SLX-UNI0000", "ADVANCED CALCULUS 3RD ED", "400", "450", "420", "SHELF-A1", "50", "10"]
       ]
     });
     
@@ -361,35 +360,49 @@ export default function InventoryTable({ lastUpdated }) {
             const rawRows = rows.map((r, index) => {
                 const keys = Object.keys(r);
                 const getVal = (search) => {
+                    const key = keys.find(k => k.toUpperCase() === search); // EXACT match for COST/CASH to avoid conflicts
+                    return key ? sanitize(r[key]) : null;
+                };
+                const getValFuzzy = (search) => {
                     const key = keys.find(k => k.toUpperCase().includes(search));
                     return key ? sanitize(r[key]) : null;
                 };
 
                 const hasPrice = keys.some(k => k.toUpperCase().includes('PRICE'));
+                const hasCost = keys.some(k => k.toUpperCase() === 'COST');
+                const hasCash = keys.some(k => k.toUpperCase() === 'CASH');
                 const hasLoc = keys.some(k => k.toUpperCase().includes('LOCATION'));
                 const hasInit = keys.some(k => k.toUpperCase().includes('INITIAL STOCK'));
                 const hasMin = keys.some(k => k.toUpperCase().includes('MIN. STOCK'));
 
-                let rawBarcode = getVal('BARCODE');
+                let rawBarcode = getValFuzzy('BARCODE');
                 const barcode = (!rawBarcode || rawBarcode.toUpperCase() === '#N/A' || rawBarcode.toUpperCase() === 'N/A') ? null : rawBarcode.toUpperCase();
                 
-                let rawAccpac = getVal('ACCPAC');
+                let rawAccpac = getValFuzzy('ACCPAC');
                 const accpac = (!rawAccpac || rawAccpac.toUpperCase() === '#N/A' || rawAccpac.toUpperCase() === 'N/A') ? null : rawAccpac.toUpperCase();
                 
-                let rawName = getVal('DESCRIPTION');
+                let rawName = getValFuzzy('DESCRIPTION');
                 const name = (!rawName || rawName.toUpperCase() === '#N/A' || rawName.toUpperCase() === 'N/A') ? null : rawName.toUpperCase();
                 
-                let rawPrice = getVal('PRICE');
+                let rawPrice = getValFuzzy('PRICE');
                 if (!rawPrice || rawPrice.toUpperCase() === '#N/A' || rawPrice.toUpperCase() === 'N/A') rawPrice = '0';
                 const price = hasPrice ? Number(rawPrice.replace(/,/g, '')) : undefined;
+
+                let rawCost = getVal('COST');
+                if (!rawCost || rawCost.toUpperCase() === '#N/A' || rawCost.toUpperCase() === 'N/A') rawCost = '0';
+                const cost = hasCost ? Number(rawCost.replace(/,/g, '')) : undefined;
+
+                let rawCash = getVal('CASH');
+                if (!rawCash || rawCash.toUpperCase() === '#N/A' || rawCash.toUpperCase() === 'N/A') rawCash = '0';
+                const cash = hasCash ? Number(rawCash.replace(/,/g, '')) : undefined;
                 
-                const location = hasLoc ? (getVal('LOCATION')?.toUpperCase() || '') : undefined;
+                const location = hasLoc ? (getValFuzzy('LOCATION')?.toUpperCase() || '') : undefined;
                 
-                let rawInit = getVal('INITIAL STOCK');
+                let rawInit = getValFuzzy('INITIAL STOCK');
                 if (!rawInit || rawInit.toUpperCase() === '#N/A' || rawInit.toUpperCase() === 'N/A') rawInit = '0';
                 const initialStock = hasInit ? parseInt(rawInit.replace(/,/g, ''), 10) : undefined;
                 
-                let rawMin = getVal('MIN. STOCK');
+                let rawMin = getValFuzzy('MIN. STOCK');
                 if (!rawMin || rawMin.toUpperCase() === '#N/A' || rawMin.toUpperCase() === 'N/A') rawMin = '10';
                 const minStockLevel = hasMin ? parseInt(rawMin.replace(/,/g, ''), 10) : undefined;
 
@@ -419,20 +432,28 @@ export default function InventoryTable({ lastUpdated }) {
                     validationErrors.push(`[${rowId}] Invalid price.`);
                     rowValid = false;
                 }
+                if (hasCost && (isNaN(cost) || cost < 0 || cost >= 10000000000)) {
+                    validationErrors.push(`[${rowId}] Invalid cost.`);
+                    rowValid = false;
+                }
+                if (hasCash && (isNaN(cash) || cash < 0 || cash >= 10000000000)) {
+                    validationErrors.push(`[${rowId}] Invalid cash price.`);
+                    rowValid = false;
+                }
                 if ((hasInit && isNaN(initialStock)) || (hasMin && isNaN(minStockLevel))) {
                     validationErrors.push(`[${rowId}] Stock values must be valid numbers.`);
                     rowValid = false;
                 }
 
                 if (!rowValid) return null;
-                return { barcode, accpac, name, price, location, initialStock, minStockLevel };
+                return { barcode, accpac, name, price, cost, cash, location, initialStock, minStockLevel };
             }).filter(Boolean);
 
             if (rawRows.length === 0 && validationErrors.length === 0) {
                 throw new Error("Could not parse columns. Ensure 'ITEM DESCRIPTION' header exists.");
             }
 
-            // Global Deduplication Phase (Collapses duplicates before database operations)
+            // Global Deduplication Phase
             const uniqueMap = new Map();
             rawRows.forEach((r) => {
                 const key = r.barcode || r.accpac || r.name; 
@@ -537,6 +558,10 @@ export default function InventoryTable({ lastUpdated }) {
                         if (row.price !== undefined && existing.price !== row.price) {
                             needsUpdate = true; updatePayload.price = row.price;
                         }
+                        if (row.cash !== undefined && existing.cash_price !== row.cash) {
+                            needsUpdate = true; updatePayload.cash_price = row.cash;
+                        }
+                        // Explicitly omitting 'cost' here. DB remains source of truth for cost unless updated by transaction.
                         if (row.location !== undefined && existing.location !== row.location) {
                             needsUpdate = true; updatePayload.location = row.location;
                         }
@@ -550,7 +575,6 @@ export default function InventoryTable({ lastUpdated }) {
                             unchangedCount++;
                         }
                     } else {
-                        // DRY Implementation: Centralized Short Barcode Generator
                         const newBarcode = row.barcode || generateClientBarcode();
                         
                         toInsert.push({
@@ -558,7 +582,8 @@ export default function InventoryTable({ lastUpdated }) {
                             accpac_code: row.accpac || null,
                             name: row.name,
                             price: row.price !== undefined ? row.price : 0,
-                            unit_cost: 0,
+                            cash_price: row.cash !== undefined ? row.cash : 0,
+                            unit_cost: row.cost !== undefined ? row.cost : 0,
                             min_stock_level: row.minStockLevel !== undefined ? row.minStockLevel : 10,
                             current_stock: row.initialStock !== undefined ? row.initialStock : 0,
                             location: row.location !== undefined ? row.location : 'N/A',
@@ -692,6 +717,7 @@ export default function InventoryTable({ lastUpdated }) {
                 <th className="bg-slate-50/80">Location</th>
                 {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right bg-slate-50/80">Cost</th>}
                 <th className="text-right bg-slate-50/80">Price</th>
+                <th className="text-right bg-slate-50/80">Cash</th>
                 <th className="text-center bg-slate-50/80">Stock</th>
                 <th className="text-center bg-slate-50/80">Status</th>
                 {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="bg-slate-50/80"></th>}
@@ -699,11 +725,10 @@ export default function InventoryTable({ lastUpdated }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {products.length === 0 && !loading ? (
-                <tr><td colSpan="9" className="text-center py-12 text-slate-400 font-medium">No products found matching your search.</td></tr>
+                <tr><td colSpan="10" className="text-center py-12 text-slate-400 font-medium">No products found matching your search.</td></tr>
               ) : (
                 products.map((p) => (
                   <tr key={p.internal_id || p.id} className="hover:bg-slate-50/50 transition-colors group">
-                    {/* Barcode Cell - Handling long custom IDs */}
                     <td className="max-w-[120px]">
                         {['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? (
                             <button 
@@ -721,7 +746,6 @@ export default function InventoryTable({ lastUpdated }) {
                         )}
                     </td>
                     
-                    {/* AccPac Code Cell */}
                     <td className="max-w-[100px]">
                         {p.accpac_code ? (
                             <span className="font-mono text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded break-all inline-block">
@@ -732,14 +756,12 @@ export default function InventoryTable({ lastUpdated }) {
                         )}
                     </td>
 
-                    {/* Product Name */}
                     <td className="min-w-[180px] max-w-[300px]">
                       <div className="font-medium text-slate-700 whitespace-normal break-all leading-tight">
                         {p.name}
                       </div>
                     </td>
 
-                    {/* Location Cell */}
                     <td className="max-w-[120px]">
                       <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-slate-500 whitespace-normal break-all leading-tight">
                         {p.location || "N/A"}
@@ -753,12 +775,14 @@ export default function InventoryTable({ lastUpdated }) {
                     <td className="text-right font-mono text-sm font-semibold text-slate-700">
                       ₱{p.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
+                    <td className="text-right font-mono text-sm font-semibold text-emerald-700">
+                      ₱{(p.cash_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
                     <td className="text-center">
                       <span className={`text-sm font-bold ${p.currentStock <= p.minStockLevel ? 'text-rose-600' : 'text-slate-700'}`}>
                         {p.currentStock}
                       </span>
                     </td>
-                    {/* TABLE STATUS CELL */}
                     <td className="text-center">
                     {p.currentStock <= 0 ? (
                         <span className="text-[10px] font-bold uppercase text-slate-300 tracking-tight">
@@ -1074,8 +1098,8 @@ export default function InventoryTable({ lastUpdated }) {
                <>
                 <h3 className="font-bold text-lg text-gray-700 mb-4">Import Inventory CSV</h3>
                 <p className="text-xs text-gray-500 mb-4">
-                    CSV Format headers: <strong>BARCODE, ACCPAC ITEM CODE, ITEM DESCRIPTION, PRICE, LOCATION, INITIAL STOCK, MIN. STOCK ALERT LEVEL</strong><br/>
-                    Existing items will be updated. Missing barcodes will be auto-generated. Initial stock only applies to new items.
+                    CSV Format headers: <strong>BARCODE, ACCPAC ITEM CODE, ITEM DESCRIPTION, COST, PRICE, CASH, LOCATION, INITIAL STOCK, MIN. STOCK ALERT LEVEL</strong><br/>
+                    Existing items will be updated. Missing barcodes will be auto-generated. Initial stock and cost only applies to new items.
                 </p>
                 
                 <input 

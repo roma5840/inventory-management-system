@@ -103,14 +103,16 @@ export default function TransactionForm({ onSuccess }) {
 
   const selectProduct = (data) => {
     setIsNewItem(false);
-    const cost = data.unit_cost || "";
-    const price = data.price || "";
+    const cost = data.unit_cost || 0;
+    const price = data.price || 0;
+    const cashPrice = data.cash_price || 0;
 
     setCurrentScan(prev => ({
       ...prev, 
       barcode: data.barcode,
       itemName: data.name || "", 
       price: price,
+      cashPrice: cashPrice,
       unitCost: cost,
       location: data.location || "",
       accpacCode: data.accpac_code || "",
@@ -120,7 +122,6 @@ export default function TransactionForm({ onSuccess }) {
     setShowProductDropdown(false);
     setProductSuggestions([]);
 
-    // Intelligent Focus Logic
     setTimeout(() => {
         if (headerData.type === 'RECEIVING' && (!cost || parseFloat(cost) === 0)) {
             document.getElementById('unitCostInput')?.focus();
@@ -137,7 +138,7 @@ export default function TransactionForm({ onSuccess }) {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('internal_id, barcode, name, price, unit_cost, location, accpac_code') 
+        .select('internal_id, barcode, name, price, cash_price, unit_cost, location, accpac_code') 
         .eq('barcode', barcodeToSearch)
         .maybeSingle(); 
 
@@ -146,7 +147,7 @@ export default function TransactionForm({ onSuccess }) {
       } else {
         setIsNewItem(true); 
         setCurrentScan(prev => ({ 
-             ...prev, itemName: "", price: "", unitCost: "", location: ""
+             ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: ""
         })); 
         setShowProductDropdown(false);
       }
@@ -160,10 +161,9 @@ export default function TransactionForm({ onSuccess }) {
     if (!searchVal) return;
 
     try {
-      // SECURE: .ilike provides safe prefix matching. .limit(15) prevents DoS.
       const { data, error } = await supabase
         .from('products')
-        .select('internal_id, barcode, name, price, unit_cost, location, accpac_code')
+        .select('internal_id, barcode, name, price, cash_price, unit_cost, location, accpac_code')
         .ilike('barcode', `${searchVal}%`)
         .order('barcode')
         .limit(15);
@@ -176,21 +176,21 @@ export default function TransactionForm({ onSuccess }) {
         
         if (exactMatch) {
             setIsNewItem(false);
-            // FIX: Silently auto-populate details so clicking outside doesn't leave data empty
             setCurrentScan(prev => ({
                 ...prev,
                 itemName: exactMatch.name || "",
-                price: exactMatch.price || "",
-                unitCost: exactMatch.unit_cost || "",
+                price: exactMatch.price || 0,
+                cashPrice: exactMatch.cash_price || 0,
+                unitCost: exactMatch.unit_cost || 0,
                 location: exactMatch.location || "",
                 accpacCode: exactMatch.accpac_code || ""
             }));
         } else if (data.length === 0) {
             setIsNewItem(true);
-            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", unitCost: "", location: "", accpacCode: "" })); 
+            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "" })); 
         } else {
             setIsNewItem(null);
-            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", unitCost: "", location: "", accpacCode: "" }));
+            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "" }));
         }
       }
     } catch (err) {
@@ -453,7 +453,9 @@ export default function TransactionForm({ onSuccess }) {
           date: new Date().toLocaleString(),
           items: queue.map(q => ({
             ...q,
-            unitCost: q.unitCost 
+            unitCost: q.unitCost,
+            // Reflect the active effective price on the receipt to avoid confusion
+            price: (finalHeaderData.type === 'ISSUANCE' && finalHeaderData.transactionMode === 'CASH') ? (q.cashPrice || 0) : q.price 
           }))
       });
 
@@ -474,7 +476,7 @@ export default function TransactionForm({ onSuccess }) {
       setIsNewStudent(null);
       setIsNewSupplier(null);
       setCurrentScan({
-        barcode: "", qty: 1, price: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
+        barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
       });
       if(barcodeRef.current) barcodeRef.current.focus();
 
@@ -522,12 +524,11 @@ export default function TransactionForm({ onSuccess }) {
       setIsNewItem(null);
       setProductSuggestions([]);
       setCurrentScan(prev => ({
-        ...prev, itemName: "", price: "", unitCost: "", location: "", accpacCode: "", qty: 1
+        ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "", qty: 1
       }));
       return;
     }
 
-    // FIX: Catch immediate cache hits and auto-populate without a server roundtrip
     const exactMatch = productSuggestions.find(p => p.barcode.toUpperCase() === currentScan.barcode.trim().toUpperCase());
     
     if (exactMatch) {
@@ -535,12 +536,13 @@ export default function TransactionForm({ onSuccess }) {
         setCurrentScan(prev => ({
             ...prev,
             itemName: exactMatch.name || "",
-            price: exactMatch.price || "",
-            unitCost: exactMatch.unit_cost || "",
+            price: exactMatch.price || 0,
+            cashPrice: exactMatch.cash_price || 0,
+            unitCost: exactMatch.unit_cost || 0,
             location: exactMatch.location || "",
             accpacCode: exactMatch.accpac_code || ""
         }));
-        return; // Skip fetch, data is already loaded in UI state
+        return; 
     }
 
     const timer = setTimeout(() => {
@@ -785,7 +787,7 @@ export default function TransactionForm({ onSuccess }) {
     setIsNewItem(null);
     
     setCurrentScan({
-        barcode: "", qty: 1, price: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
+        barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
     });
     
     // Intelligent Initial Focus
@@ -1207,7 +1209,11 @@ export default function TransactionForm({ onSuccess }) {
                                     <>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Price</label>
                                         <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm overflow-hidden">
-                                            ₱{Number(currentScan.price || 0).toFixed(2)}
+                                            ₱{Number(
+                                                (headerData.type === 'ISSUANCE' && headerData.transactionMode === 'CASH') 
+                                                ? (currentScan.cashPrice || 0) 
+                                                : (currentScan.price || 0)
+                                            ).toFixed(2)}
                                         </div>
                                     </>
                                 )}
@@ -1286,7 +1292,11 @@ export default function TransactionForm({ onSuccess }) {
                                     )}
                                     {headerData.type !== 'RECEIVING' && (
                                         <td className="font-mono text-[11px] text-slate-700 font-bold">
-                                            ₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            ₱{Number(
+                                                (headerData.type === 'ISSUANCE' && headerData.transactionMode === 'CASH') 
+                                                ? (item.cashPrice || 0) 
+                                                : (item.price || 0)
+                                            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                     )}
                                     <td className="text-right pr-4">
