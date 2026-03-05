@@ -391,13 +391,14 @@ export default function TransactionForm({ onSuccess }) {
             product_name: itemToRemove.itemName,
             displayName: itemToRemove.itemName,
             
-            // FIX 1: Restore price data so re-adding doesn't result in NaN
+            // FIX: Restore BOTH price data snapshots so re-adding doesn't result in NaN/0
             price: itemToRemove.price, 
             price_snapshot: itemToRemove.price,
+            cashPrice: itemToRemove.cashPrice,
+            cash_price_snapshot: itemToRemove.cashPrice,
             cost_snapshot: itemToRemove.unitCost, 
 
-            // FIX 2: Restore the Reference Number
-            // This ensures if we re-add it to the queue, it still knows which receipt it belongs to.
+            // FIX: Restore the Reference Number
             reference_number: itemToRemove.refNumber,
 
             qty: itemToRemove.originalReceiptQty, 
@@ -665,6 +666,7 @@ export default function TransactionForm({ onSuccess }) {
             
             const displayBarcode = saleItem.barcode_snapshot || saleItem.product_id || "Unknown ID"; 
             const priceSnapshot = saleItem.price_snapshot !== null ? saleItem.price_snapshot : saleItem.price;
+            const cashPriceSnapshot = saleItem.cash_price_snapshot !== null ? saleItem.cash_price_snapshot : 0;
             const costSnapshot = saleItem.unit_cost_snapshot !== null ? saleItem.unit_cost_snapshot : 0;
 
             return { 
@@ -672,6 +674,7 @@ export default function TransactionForm({ onSuccess }) {
                 displayName,    
                 displayBarcode, 
                 price_snapshot: priceSnapshot,
+                cash_price_snapshot: cashPriceSnapshot,
                 cost_snapshot: costSnapshot, 
                 remainingQty 
             };
@@ -740,6 +743,7 @@ export default function TransactionForm({ onSuccess }) {
         maxQty: item.remainingQty,
         originalReceiptQty: item.qty,
         price: item.price_snapshot !== undefined ? item.price_snapshot : item.price, 
+        cashPrice: item.cash_price_snapshot !== undefined ? item.cash_price_snapshot : 0,
         unitCost: item.cost_snapshot !== undefined ? item.cost_snapshot : 0,
         originalTransactionId: item.id,
         refNumber: item.reference_number
