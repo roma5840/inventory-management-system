@@ -460,6 +460,7 @@ export default function TransactionForm({ onSuccess }) {
           items: strictQueuePayload.map(q => ({
             ...q,
             unitCost: q.unitCost,
+            cashPrice: q.cashPrice, // Inject explicit cash price for PrintLayout computation
             price: q.expectedPrice // Enforce the strict UI-verified effective price onto the receipt
           }))
       });

@@ -6,9 +6,19 @@ export default function PrintLayout({ data, elementId }) {
   const isCostType = ['RECEIVING', 'PULL_OUT'].includes(data.type);
 
   const getUnitVal = (item) => {
-    return isCostType 
-        ? Number(item.unitCost || item.cost || 0) 
-        : Number(item.priceOverride || item.price || 0);
+    if (isCostType) {
+        return Number(item.unitCost || item.cost || 0);
+    }
+    
+    // Explicit override for Cash mode to automatically use cashPrice
+    if (data.transactionMode === 'CASH') {
+        const cashValue = item.cashPrice !== undefined ? item.cashPrice : item.cash_price_snapshot;
+        if (cashValue !== undefined && cashValue !== null) {
+            return Number(cashValue);
+        }
+    }
+    
+    return Number(item.priceOverride || item.price || 0);
   };
 
   const calculateLineTotal = (item) => {

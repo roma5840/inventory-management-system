@@ -108,12 +108,21 @@ export default function ReceiptLookup() {
         remarks: header.remarks,
         isVoided: isVoided,
         voidReason: header.void_reason,
-        items: items.map(item => ({
-            itemName: item.product_name_snapshot || item.product_name,
-            qty: item.qty,
-            price: item.price_snapshot !== null ? item.price_snapshot : 0,
-            cost: item.unit_cost_snapshot !== null ? item.unit_cost_snapshot : 0
-        }))
+        items: items.map(item => {
+            // Check and compute for cash price if transaction was CASH
+            let effectivePrice = item.price_snapshot !== null ? item.price_snapshot : 0;
+            if (header.transaction_mode === 'CASH' && item.cash_price_snapshot !== null) {
+                effectivePrice = item.cash_price_snapshot;
+            }
+
+            return {
+                itemName: item.product_name_snapshot || item.product_name,
+                qty: item.qty,
+                price: effectivePrice,
+                cashPrice: item.cash_price_snapshot !== null ? item.cash_price_snapshot : 0,
+                cost: item.unit_cost_snapshot !== null ? item.unit_cost_snapshot : 0
+            };
+        })
     };
     setReceiptData(formattedReceipt);
     setSearchResults([]); // Clear selection list if any
