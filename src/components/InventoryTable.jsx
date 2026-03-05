@@ -336,80 +336,74 @@ export default function InventoryTable({ lastUpdated }) {
 
     setImportLoading(true);
 
+    const REQUIRED_HEADERS = [
+      "BARCODE", "ACCPAC ITEM CODE", "ITEM DESCRIPTION", 
+      "COST", "PRICE", "CASH", "LOCATION", 
+      "INITIAL STOCK", "MIN. STOCK ALERT LEVEL"
+    ];
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       beforeFirstChunk: (chunk) => {
         const lines = chunk.split('\n');
         const headerIndex = lines.findIndex(line => 
-            line.toUpperCase().includes('BARCODE') || 
-            line.toUpperCase().includes('ACCPAC ITEM CODE') || 
-            line.toUpperCase().includes('ITEM DESCRIPTION')
+            line.includes('BARCODE') && line.includes('ITEM DESCRIPTION')
         );
         return headerIndex > -1 ? lines.slice(headerIndex).join('\n') : chunk;
       },
       complete: async (results) => {
         try {
+            const headers = results.meta.fields || [];
+
+            const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+            const extraHeaders = headers.filter(h => !REQUIRED_HEADERS.includes(h));
+
+            if (missingHeaders.length > 0 || extraHeaders.length > 0) {
+                let errorMsg = "CSV Format Error. ";
+                if (missingHeaders.length > 0) errorMsg += `Missing/Invalid: [${missingHeaders.join(', ')}]. `;
+                if (extraHeaders.length > 0) errorMsg += `Unknown headers: [${extraHeaders.join(', ')}]. `;
+                throw new Error(errorMsg + "Please ensure exact match with the template (case-sensitive, exact spaces).");
+            }
+
             const rows = results.data;
-            if (rows.length === 0) throw new Error("No data found or invalid header.");
+            if (rows.length === 0) throw new Error("No data found in the CSV.");
 
             const validationErrors = [];
 
-            // Prevent CSV Injection (Formula Injection) for future exports
             const sanitize = (str) => {
                 if (typeof str !== 'string') return str !== undefined && str !== null ? String(str).trim() : null;
                 const clean = str.trim();
                 return /^[=+\-@]/.test(clean) ? "'" + clean : clean;
             };
 
+            // Helper to handle #N/A, N/A, and empty strings for numbers
+            const parseNumeric = (val, defaultVal = 0) => {
+                if (!val) return defaultVal;
+                const upperVal = String(val).trim().toUpperCase();
+                if (upperVal === '#N/A' || upperVal === 'N/A' || upperVal === '') return defaultVal;
+                const num = Number(upperVal.replace(/,/g, ''));
+                return isNaN(num) ? NaN : num;
+            };
+
             const rawRows = rows.map((r, index) => {
-                const keys = Object.keys(r);
-                const getVal = (search) => {
-                    const key = keys.find(k => k.toUpperCase() === search); // EXACT match for COST/CASH to avoid conflicts
-                    return key ? sanitize(r[key]) : null;
-                };
-                const getValFuzzy = (search) => {
-                    const key = keys.find(k => k.toUpperCase().includes(search));
-                    return key ? sanitize(r[key]) : null;
-                };
-
-                const hasPrice = keys.some(k => k.toUpperCase().includes('PRICE'));
-                const hasCost = keys.some(k => k.toUpperCase() === 'COST');
-                const hasCash = keys.some(k => k.toUpperCase() === 'CASH');
-                const hasLoc = keys.some(k => k.toUpperCase().includes('LOCATION'));
-                const hasInit = keys.some(k => k.toUpperCase().includes('INITIAL STOCK'));
-                const hasMin = keys.some(k => k.toUpperCase().includes('MIN. STOCK'));
-
-                let rawBarcode = getValFuzzy('BARCODE');
+                let rawBarcode = sanitize(r['BARCODE']);
                 const barcode = (!rawBarcode || rawBarcode.toUpperCase() === '#N/A' || rawBarcode.toUpperCase() === 'N/A') ? null : rawBarcode.toUpperCase();
                 
-                let rawAccpac = getValFuzzy('ACCPAC');
+                let rawAccpac = sanitize(r['ACCPAC ITEM CODE']);
                 const accpac = (!rawAccpac || rawAccpac.toUpperCase() === '#N/A' || rawAccpac.toUpperCase() === 'N/A') ? null : rawAccpac.toUpperCase();
                 
-                let rawName = getValFuzzy('DESCRIPTION');
+                let rawName = sanitize(r['ITEM DESCRIPTION']);
                 const name = (!rawName || rawName.toUpperCase() === '#N/A' || rawName.toUpperCase() === 'N/A') ? null : rawName.toUpperCase();
                 
-                let rawPrice = getValFuzzy('PRICE');
-                if (!rawPrice || rawPrice.toUpperCase() === '#N/A' || rawPrice.toUpperCase() === 'N/A') rawPrice = '0';
-                const price = hasPrice ? Number(rawPrice.replace(/,/g, '')) : undefined;
-
-                let rawCost = getVal('COST');
-                if (!rawCost || rawCost.toUpperCase() === '#N/A' || rawCost.toUpperCase() === 'N/A') rawCost = '0';
-                const cost = hasCost ? Number(rawCost.replace(/,/g, '')) : undefined;
-
-                let rawCash = getVal('CASH');
-                if (!rawCash || rawCash.toUpperCase() === '#N/A' || rawCash.toUpperCase() === 'N/A') rawCash = '0';
-                const cash = hasCash ? Number(rawCash.replace(/,/g, '')) : undefined;
+                const price = parseNumeric(sanitize(r['PRICE']), 0);
+                const cost = parseNumeric(sanitize(r['COST']), 0);
+                const cash = parseNumeric(sanitize(r['CASH']), 0);
                 
-                const location = hasLoc ? (getValFuzzy('LOCATION')?.toUpperCase() || '') : undefined;
+                const location = sanitize(r['LOCATION'])?.toUpperCase() || '';
                 
-                let rawInit = getValFuzzy('INITIAL STOCK');
-                if (!rawInit || rawInit.toUpperCase() === '#N/A' || rawInit.toUpperCase() === 'N/A') rawInit = '0';
-                const initialStock = hasInit ? parseInt(rawInit.replace(/,/g, ''), 10) : undefined;
-                
-                let rawMin = getValFuzzy('MIN. STOCK');
-                if (!rawMin || rawMin.toUpperCase() === '#N/A' || rawMin.toUpperCase() === 'N/A') rawMin = '10';
-                const minStockLevel = hasMin ? parseInt(rawMin.replace(/,/g, ''), 10) : undefined;
+                const initialStock = parseInt(parseNumeric(sanitize(r['INITIAL STOCK']), 0), 10);
+                const minStockLevel = parseInt(parseNumeric(sanitize(r['MIN. STOCK ALERT LEVEL']), 10), 10);
 
                 const rowId = barcode || accpac || `Row ${index + 2}`;
                 let rowValid = true;
@@ -429,23 +423,23 @@ export default function InventoryTable({ lastUpdated }) {
                     validationErrors.push(`[${rowId}] AccPac Code exceeds 50 characters.`);
                     rowValid = false;
                 }
-                if (hasLoc && location && location.length > 150) {
+                if (location && location.length > 150) {
                     validationErrors.push(`[${rowId}] Location exceeds 150 characters.`);
                     rowValid = false;
                 }
-                if (hasPrice && (isNaN(price) || price < 0 || price >= 10000000000)) {
+                if (isNaN(price) || price < 0 || price >= 10000000000) {
                     validationErrors.push(`[${rowId}] Invalid price.`);
                     rowValid = false;
                 }
-                if (hasCost && (isNaN(cost) || cost < 0 || cost >= 10000000000)) {
+                if (isNaN(cost) || cost < 0 || cost >= 10000000000) {
                     validationErrors.push(`[${rowId}] Invalid cost.`);
                     rowValid = false;
                 }
-                if (hasCash && (isNaN(cash) || cash < 0 || cash >= 10000000000)) {
+                if (isNaN(cash) || cash < 0 || cash >= 10000000000) {
                     validationErrors.push(`[${rowId}] Invalid cash price.`);
                     rowValid = false;
                 }
-                if ((hasInit && isNaN(initialStock)) || (hasMin && isNaN(minStockLevel))) {
+                if (isNaN(initialStock) || isNaN(minStockLevel)) {
                     validationErrors.push(`[${rowId}] Stock values must be valid numbers.`);
                     rowValid = false;
                 }
@@ -455,10 +449,9 @@ export default function InventoryTable({ lastUpdated }) {
             }).filter(Boolean);
 
             if (rawRows.length === 0 && validationErrors.length === 0) {
-                throw new Error("Could not parse columns. Ensure 'ITEM DESCRIPTION' header exists.");
+                throw new Error("Could not parse rows.");
             }
 
-            // Global Deduplication Phase
             const uniqueMap = new Map();
             rawRows.forEach((r) => {
                 const key = r.barcode || r.accpac || r.name; 
@@ -566,7 +559,6 @@ export default function InventoryTable({ lastUpdated }) {
                         if (row.cash !== undefined && existing.cash_price !== row.cash) {
                             needsUpdate = true; updatePayload.cash_price = row.cash;
                         }
-                        // Explicitly omitting 'cost' here. DB remains source of truth for cost unless updated by transaction.
                         if (row.location !== undefined && existing.location !== row.location) {
                             needsUpdate = true; updatePayload.location = row.location;
                         }
@@ -645,11 +637,13 @@ export default function InventoryTable({ lastUpdated }) {
             showToast("Import Failed", err.message, "error");
         } finally {
             setImportLoading(false);
+            e.target.value = null; 
         }
       },
       error: (error) => {
         showToast("Parsing Error", error.message, "error");
         setImportLoading(false);
+        e.target.value = null;
       }
     });
   };
