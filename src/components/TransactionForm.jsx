@@ -398,8 +398,9 @@ export default function TransactionForm({ onSuccess }) {
             cash_price_snapshot: itemToRemove.cashPrice,
             cost_snapshot: itemToRemove.unitCost, 
 
-            // FIX: Restore the Reference Number
+            // FIX: Restore the Reference Number and Transaction Mode context
             reference_number: itemToRemove.refNumber,
+            originalMode: headerData.transactionMode, // Inherit from header to retain UI cash price visibility
 
             qty: itemToRemove.originalReceiptQty, 
             remainingQty: itemToRemove.maxQty 
@@ -1138,7 +1139,7 @@ export default function TransactionForm({ onSuccess }) {
                                                     <span className="text-slate-500 font-bold">{item.qty}</span>
                                                 </div>
                                                 <div className="font-mono font-bold text-[11px] text-slate-700">
-                                                    ₱{Number(item.originalMode === 'CASH' ? item.cash_price_snapshot : item.price_snapshot).toFixed(2)}
+                                                    ₱{Number((item.originalMode || headerData.transactionMode) === 'CASH' ? item.cash_price_snapshot : item.price_snapshot).toFixed(2)}
                                                 </div>
                                             </div>
                                             
