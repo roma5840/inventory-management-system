@@ -23,7 +23,7 @@ export default function InventoryTable({ lastUpdated }) {
 
   // Edit Modal State
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", price: "", unitCost: "", minStockLevel: "", accpacCode: "" });
+  const [editForm, setEditForm] = useState({ name: "", price: "", cashPrice: "", unitCost: "", minStockLevel: "", accpacCode: "" });
   const [updateLoading, setUpdateLoading] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -34,6 +34,7 @@ export default function InventoryTable({ lastUpdated }) {
     accpacCode: "",
     name: "", 
     price: "", 
+    cashPrice: "",
     unitCost: "0",
     minStockLevel: "10",
     location: "",
@@ -79,10 +80,11 @@ export default function InventoryTable({ lastUpdated }) {
             barcode: sanitizedId, 
             accpac_code: sanitizedAccPac,
             name: sanitizedName,
-            price: Number(newItemForm.price),
+            price: Number(newItemForm.price) || 0,
+            cash_price: Number(newItemForm.cashPrice) || 0,
             unit_cost: Number(newItemForm.unitCost || 0),
-            min_stock_level: Number(newItemForm.minStockLevel),
-            current_stock: Number(newItemForm.initialStock), 
+            min_stock_level: Number(newItemForm.minStockLevel) || 0,
+            current_stock: Number(newItemForm.initialStock) || 0, 
             location: sanitizedLocation,
             last_updated: new Date()
         });
@@ -91,7 +93,7 @@ export default function InventoryTable({ lastUpdated }) {
 
         showToast("Registration Success", `${sanitizedName} added to catalog.`);
         setIsAddModalOpen(false);
-        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
+        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
         fetchInventory();
         
         await supabase.channel('app_updates').send({
@@ -199,6 +201,7 @@ export default function InventoryTable({ lastUpdated }) {
     setEditForm({
         name: product.name,
         price: product.price,
+        cashPrice: product.cash_price || "",
         unitCost: product.unit_cost || 0,
         minStockLevel: product.minStockLevel,
         location: product.location || "",
@@ -211,8 +214,9 @@ export default function InventoryTable({ lastUpdated }) {
     e.preventDefault();
     setUpdateLoading(true);
 
-    const newPrice = Number(editForm.price);
-    const newMinLevel = Number(editForm.minStockLevel);
+    const newPrice = Number(editForm.price) || 0;
+    const newCashPrice = Number(editForm.cashPrice) || 0;
+    const newMinLevel = Number(editForm.minStockLevel) || 0;
 
     if (!editingProduct.id || !editingProduct.id.trim()) {
         showToast("Error", "Barcode is required.", "error");
@@ -230,9 +234,10 @@ export default function InventoryTable({ lastUpdated }) {
             .update({
                 barcode: sanitizedBarcode, 
                 name: sanitizedName,
-                price: Number(editForm.price),
-                unit_cost: Number(editForm.unitCost),
-                min_stock_level: Number(editForm.minStockLevel),
+                price: newPrice,
+                cash_price: newCashPrice,
+                unit_cost: Number(editForm.unitCost) || 0,
+                min_stock_level: newMinLevel,
                 location: sanitizedLocation,
                 accpac_code: sanitizedAccPac,
                 last_updated: new Date()
@@ -910,7 +915,7 @@ export default function InventoryTable({ lastUpdated }) {
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Price (₱) *</label>
                         <LimitedInput 
@@ -926,7 +931,21 @@ export default function InventoryTable({ lastUpdated }) {
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert Level *</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Cash Price (₱)</label>
+                        <LimitedInput 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            maxLength={10}
+                            className="input input-bordered w-full border-emerald-200 focus:border-emerald-500" 
+                            value={editForm.cashPrice}
+                            placeholder="Optional"
+                            onChange={e => setEditForm({...editForm, cashPrice: e.target.value})}
+                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                        />
+                    </div>
+                    <div className="form-control md:col-span-1 col-span-2">
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Alert Level *</label>
                         <LimitedInput 
                             type="number" 
                             min="0"
@@ -1029,15 +1048,14 @@ export default function InventoryTable({ lastUpdated }) {
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Location</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Cash Price (₱)</label>
                         <LimitedInput 
-                            type="text" 
-                            maxLength={150}
-                            showCounter={true}
-                            className="input input-bordered w-full uppercase" 
-                            placeholder="Rack/Shelf"
-                            value={newItemForm.location}
-                            onChange={e => setNewItemForm({...newItemForm, location: e.target.value})}
+                            type="number" step="0.01" min="0" maxLength={10}
+                            className="input input-bordered w-full border-emerald-200 focus:border-emerald-500" 
+                            value={newItemForm.cashPrice}
+                            placeholder="Optional"
+                            onChange={e => setNewItemForm({...newItemForm, cashPrice: e.target.value})}
+                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                         />
                     </div>
                 </div>
