@@ -68,7 +68,8 @@ export default function Pagination({
             onChange={(e) => setJumpPage(e.target.value)}
             onKeyDown={handleJump}
             onBlur={applyPageJump}
-            className="w-8 bg-transparent text-center font-bold text-xs text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            style={{ width: `${Math.max(String(jumpPage).length, 1)}ch`, minWidth: '2.5ch' }}
+            className="bg-transparent p-0 border-none text-center font-bold text-xs text-slate-900 focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <span className="text-xs font-bold text-slate-400">/ {maxPages}</span>
         </div>
