@@ -201,7 +201,7 @@ export default function InventoryTable({ lastUpdated }) {
     setEditForm({
         name: product.name,
         price: product.price,
-        cashPrice: product.cash_price || "",
+        cashPrice: product.cash_price ?? 0,
         unitCost: product.unit_cost || 0,
         minStockLevel: product.minStockLevel,
         location: product.location || "",
@@ -925,13 +925,14 @@ export default function InventoryTable({ lastUpdated }) {
                             maxLength={10}
                             className="input input-bordered w-full" 
                             value={editForm.price}
+                            placeholder="0"
                             onChange={e => setEditForm({...editForm, price: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Cash Price (₱)</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Cash Price (₱) *</label>
                         <LimitedInput 
                             type="number" 
                             step="0.01"
@@ -939,9 +940,10 @@ export default function InventoryTable({ lastUpdated }) {
                             maxLength={10}
                             className="input input-bordered w-full border-emerald-200 focus:border-emerald-500" 
                             value={editForm.cashPrice}
-                            placeholder="Optional"
+                            placeholder="0"
                             onChange={e => setEditForm({...editForm, cashPrice: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                            required
                         />
                     </div>
                     <div className="form-control md:col-span-1 col-span-2">
@@ -1042,20 +1044,22 @@ export default function InventoryTable({ lastUpdated }) {
                             type="number" step="0.01" min="0" maxLength={10}
                             className="input input-bordered w-full" 
                             value={newItemForm.price}
+                            placeholder="0"
                             onChange={e => setNewItemForm({...newItemForm, price: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Cash Price (₱)</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Cash Price (₱) *</label>
                         <LimitedInput 
                             type="number" step="0.01" min="0" maxLength={10}
                             className="input input-bordered w-full border-emerald-200 focus:border-emerald-500" 
                             value={newItemForm.cashPrice}
-                            placeholder="Optional"
+                            placeholder="0"
                             onChange={e => setNewItemForm({...newItemForm, cashPrice: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                            required
                         />
                     </div>
                 </div>
