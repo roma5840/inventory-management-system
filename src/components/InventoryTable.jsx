@@ -377,24 +377,38 @@ export default function InventoryTable({ lastUpdated }) {
                 return /^[=+\-@]/.test(clean) ? "'" + clean : clean;
             };
 
-            // Helper to handle #N/A, N/A, and empty strings for numbers
+            // Catch all standard Excel/CSV export error values
+            const isExcelError = (val) => {
+                if (!val) return false;
+                const upper = String(val).trim().toUpperCase();
+                const excelErrors = [
+                    '#N/A', 'N/A', '#REF!', '#DIV/0!', '#VALUE!', 
+                    '#NAME?', '#NUM!', '#NULL!', '#CALC!', '#SPILL!', '-'
+                ];
+                return excelErrors.includes(upper);
+            };
+
+            // Helper to handle Excel errors and empty strings for numbers cleanly
             const parseNumeric = (val, defaultVal = 0) => {
                 if (!val) return defaultVal;
-                const upperVal = String(val).trim().toUpperCase();
-                if (upperVal === '#N/A' || upperVal === 'N/A' || upperVal === '') return defaultVal;
-                const num = Number(upperVal.replace(/,/g, ''));
+                const cleanVal = String(val).trim();
+                if (cleanVal === '' || isExcelError(cleanVal)) return defaultVal;
+                
+                // Strip commas and potential currency symbols before checking isNaN
+                const num = Number(cleanVal.replace(/,/g, '').replace(/[₱$€]/g, ''));
                 return isNaN(num) ? NaN : num;
             };
 
             const rawRows = rows.map((r, index) => {
+                
                 let rawBarcode = sanitize(r['BARCODE']);
-                const barcode = (!rawBarcode || rawBarcode.toUpperCase() === '#N/A' || rawBarcode.toUpperCase() === 'N/A') ? null : rawBarcode.toUpperCase();
+                const barcode = (!rawBarcode || isExcelError(rawBarcode)) ? null : rawBarcode.toUpperCase();
                 
                 let rawAccpac = sanitize(r['ACCPAC ITEM CODE']);
-                const accpac = (!rawAccpac || rawAccpac.toUpperCase() === '#N/A' || rawAccpac.toUpperCase() === 'N/A') ? null : rawAccpac.toUpperCase();
+                const accpac = (!rawAccpac || isExcelError(rawAccpac)) ? null : rawAccpac.toUpperCase();
                 
                 let rawName = sanitize(r['ITEM DESCRIPTION']);
-                const name = (!rawName || rawName.toUpperCase() === '#N/A' || rawName.toUpperCase() === 'N/A') ? null : rawName.toUpperCase();
+                const name = (!rawName || isExcelError(rawName)) ? null : rawName.toUpperCase();
                 
                 const price = parseNumeric(sanitize(r['PRICE']), 0);
                 const cost = parseNumeric(sanitize(r['COST']), 0);
@@ -409,7 +423,7 @@ export default function InventoryTable({ lastUpdated }) {
                 let rowValid = true;
 
                 if (!name) {
-                    validationErrors.push(`[${rowId}] Missing Item Description. Row Skipped.`);
+                    validationErrors.push(`[${rowId}] Missing Item Description (or contains Excel error). Row Skipped.`);
                     rowValid = false;
                 } else if (name.length > 300) {
                     validationErrors.push(`[${rowId}] Name exceeds 300 characters.`);
@@ -428,15 +442,15 @@ export default function InventoryTable({ lastUpdated }) {
                     rowValid = false;
                 }
                 if (isNaN(price) || price < 0 || price >= 10000000000) {
-                    validationErrors.push(`[${rowId}] Invalid price.`);
+                    validationErrors.push(`[${rowId}] Invalid price format.`);
                     rowValid = false;
                 }
                 if (isNaN(cost) || cost < 0 || cost >= 10000000000) {
-                    validationErrors.push(`[${rowId}] Invalid cost.`);
+                    validationErrors.push(`[${rowId}] Invalid cost format.`);
                     rowValid = false;
                 }
                 if (isNaN(cash) || cash < 0 || cash >= 10000000000) {
-                    validationErrors.push(`[${rowId}] Invalid cash price.`);
+                    validationErrors.push(`[${rowId}] Invalid cash price format.`);
                     rowValid = false;
                 }
                 if (isNaN(initialStock) || isNaN(minStockLevel)) {
@@ -452,6 +466,7 @@ export default function InventoryTable({ lastUpdated }) {
                 throw new Error("Could not parse rows.");
             }
 
+            // Global Deduplication Phase (Stock Merging)
             const uniqueMap = new Map();
             rawRows.forEach((r) => {
                 const key = r.barcode || r.accpac || r.name; 
