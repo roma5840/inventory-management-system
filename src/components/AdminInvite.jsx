@@ -17,6 +17,7 @@ export default function AdminInvite({ onSuccess }) {
     
     const makeRequest = (token) => fetch('/api/cf-sync', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}` 
@@ -70,6 +71,7 @@ export default function AdminInvite({ onSuccess }) {
       // 5. CALL SECURE BACKEND EMAIL API
       const emailResponse = await fetch('/api/send-invite-email', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}` // Critical Security Addition

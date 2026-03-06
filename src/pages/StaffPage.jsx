@@ -188,6 +188,7 @@ export default function StaffPage() {
     const makeRequest = async (token) => {
       return fetch('/api/cf-sync', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` 
@@ -217,7 +218,6 @@ export default function StaffPage() {
         throw new Error(errorData.error || "Cloudflare Sync Failed");
     }
   };
-  // ----------------------------------------------------------
 
   const toggleStatus = async (user) => {
     if (!canToggleStatus(user)) return showToast("Permission Denied", "You cannot change this user's status.", "error");
