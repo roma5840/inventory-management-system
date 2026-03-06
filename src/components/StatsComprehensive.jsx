@@ -10,9 +10,15 @@ export default function StatsComprehensive({ lastUpdated }) {
   const SHOW_SENSITIVE_METRICS = false; 
   const LOW_STOCK_PER_PAGE = 30;
 
-  const [dateRange, setDateRange] = useState({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+  const [dateRange, setDateRange] = useState(() => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return {
+      start: `${yyyy}-${mm}-01`,
+      end: `${yyyy}-${mm}-${dd}`
+    };
   });
 
   const [data, setData] = useState({

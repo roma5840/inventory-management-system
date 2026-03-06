@@ -39,10 +39,17 @@ export default function ProductDetailsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  const [statsDateRange, setStatsDateRange] = useState({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+  const [statsDateRange, setStatsDateRange] = useState(() => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return {
+      start: `${yyyy}-${mm}-01`,
+      end: `${yyyy}-${mm}-${dd}`
+    };
   });
+  
   const [statsData, setStatsData] = useState({
     beginning: { qty: 0, val: 0 },
     inflow: { qty: 0, val: 0 },
