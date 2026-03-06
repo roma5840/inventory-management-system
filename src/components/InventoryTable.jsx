@@ -956,7 +956,7 @@ export default function InventoryTable({ lastUpdated }) {
                         />
                     </div>
                     <div className="form-control md:col-span-1 col-span-2">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Alert Level *</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert Level *</label>
                         <LimitedInput 
                             type="number" 
                             min="0"
@@ -985,7 +985,7 @@ export default function InventoryTable({ lastUpdated }) {
       {/* === REGISTER NEW ITEM MODAL === */}
       {isAddModalOpen && (
         <div className="modal modal-open">
-          <div className="modal-box">
+          <div className="modal-box max-w-lg">
             <h3 className="font-bold text-lg text-gray-700 mb-4">
                 Register New Product
             </h3>
@@ -1046,6 +1046,19 @@ export default function InventoryTable({ lastUpdated }) {
                     />
                 </div>
 
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Location / Rack</label>
+                    <LimitedInput 
+                        type="text" 
+                        maxLength={150}
+                        showCounter={true}
+                        className="input input-bordered w-full uppercase"
+                        value={newItemForm.location}
+                        onChange={e => setNewItemForm({...newItemForm, location: e.target.value})}
+                    />
+                </div>
+
+                {/* Pricing Row */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Price (₱) *</label>
@@ -1078,7 +1091,7 @@ export default function InventoryTable({ lastUpdated }) {
                         <label className="label text-xs uppercase font-bold text-gray-500">Initial Stock</label>
                         <LimitedInput 
                             type="number" min="0" step="1" maxLength={10}
-                            className="input input-bordered w-full" 
+                            className="input input-bordered w-full bg-slate-50" 
                             value={newItemForm.initialStock}
                             onChange={e => setNewItemForm({...newItemForm, initialStock: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
@@ -1100,10 +1113,10 @@ export default function InventoryTable({ lastUpdated }) {
                     </div>
                 </div>
 
-                <div className="modal-action">
+                <div className="modal-action mt-2">
                     <button type="button" className="btn btn-ghost" onClick={() => {
                         setIsAddModalOpen(false);
-                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
+                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
                     }}>Cancel</button>
                     <button type="submit" className={`btn btn-primary ${createLoading ? 'loading' : ''}`}>
                         Register Item
