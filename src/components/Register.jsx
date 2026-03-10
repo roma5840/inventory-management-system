@@ -30,13 +30,12 @@ export default function Register() {
     }
 
     try {
-      // 1. Check Invite Status via Secure RPC (Fixes 406 Error)
+      // 1. Check Invite Status via Secure RPC
       const { data: inviteData, error: rpcError } = await supabase
         .rpc('verify_invite_for_registration', { email_input: email });
 
       if (rpcError) throw rpcError;
 
-      // The RPC returns an array of rows. We check the first result.
       const invite = inviteData?.[0];
 
       if (!invite || !invite.invite_exists) {
@@ -51,7 +50,7 @@ export default function Register() {
         throw new Error("This invite has been revoked.");
       }
 
-      // 2. Create Supabase Auth User
+      // 2. Create Supabase Auth User (Backend Enforces Password Policy)
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -63,11 +62,15 @@ export default function Register() {
              navigate("/login");
              return;
         }
+        // DevSecOps: Intercept raw GoTrue password policy error and map to clean UX
+        if (signUpError.message.includes("Password should contain")) {
+             throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
+        }
         throw signUpError;
       }
 
     } catch (err) {
-      console.error(err);
+      console.error("Registration Error:", err.message);
       setError(err.message);
       setLoading(false);
     }

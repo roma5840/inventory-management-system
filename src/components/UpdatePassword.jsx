@@ -24,12 +24,21 @@ export default function UpdatePassword() {
     setError("");
 
     try {
-      const { error } = await supabase.auth.updateUser({ password: password });
-      if (error) throw error;
+      // Backend Enforces Password Policy
+      const { error: updateError } = await supabase.auth.updateUser({ password: password });
+      
+      if (updateError) {
+        // DevSecOps: Intercept raw GoTrue password policy error and map to clean UX
+        if (updateError.message.includes("Password should contain")) {
+             throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
+        }
+        throw updateError;
+      }
       
       alert("Password updated successfully! You will be redirected to the dashboard.");
       navigate("/");
     } catch (err) {
+      console.error("Password Update Error:", err.message);
       setError(err.message);
       setLoading(false);
     }
