@@ -17,11 +17,10 @@ import InventoryPage from "./pages/InventoryPage";
 
 // Helper for Protected Routes with Real-time Status Check
 const ProtectedRoute = ({ children }) => {
-  const { currentUser } = useAuth();
-
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
+  const { currentUser, isRecoveryMode } = useAuth();
+  if (!currentUser) return <Navigate to="/login" replace />;
+  // Lock recovery sessions to the update-password page — on any tab, any route
+  if (isRecoveryMode) return <Navigate to="/update-password" replace />;
   return children;
 };
 
@@ -38,23 +37,8 @@ const GuestRoute = ({ children }) => {
 // 2. OR The URL has the recovery hash (failsafe)
 const RecoveryRoute = ({ children }) => {
   const { currentUser, isRecoveryMode } = useAuth();
-  
-  // 1. Check if Supabase told us this is a recovery session
-  if (isRecoveryMode) {
-    return children;
-  }
-
-  // 2. Failsafe: Check URL Hash just in case context missed it
-  if (window.location.hash.includes('type=recovery')) {
-     return children;
-  }
-
-  // 3. If standard logged-in user tries to access manually -> Dashboard
-  if (currentUser) {
-    return <Navigate to="/" replace />;
-  }
-
-  // 4. If not logged in -> Login
+  if (isRecoveryMode) return children;
+  if (currentUser) return <Navigate to="/" replace />;
   return <Navigate to="/login" replace />;
 };
 

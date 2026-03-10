@@ -7,6 +7,19 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// Decodes a JWT without a library (payload is base64url)
+const decodeJWT = (token) => {
+  try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
+  catch { return null; }
+};
+
+// A recovery session's AMR contains "otp" but NOT "password"
+const isRecoverySession = (session) => {
+  if (!session?.access_token) return false;
+  const amr = decodeJWT(session.access_token)?.amr ?? [];
+  return amr.some(a => a.method === 'otp') && !amr.some(a => a.method === 'password');
+};
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -55,6 +68,8 @@ export function AuthProvider({ children }) {
     // Check active session on load
     const initSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      // Re-hydrate recovery mode from JWT on every cold load/refresh
+      if (isRecoverySession(session)) setIsRecoveryMode(true);
       await handleSession(session);
       setLoading(false);
     };
@@ -63,9 +78,12 @@ export function AuthProvider({ children }) {
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // NEW: Catch the Password Recovery Event
       if (event === 'PASSWORD_RECOVERY') {
         setIsRecoveryMode(true);
+      } else if (event === 'USER_UPDATED' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Once password is updated, Supabase issues a new token with method="password".
+        // Clear recovery lock so user can proceed to dashboard.
+        if (!isRecoverySession(session)) setIsRecoveryMode(false);
       }
       handleSession(session);
     });
@@ -166,6 +184,7 @@ export function AuthProvider({ children }) {
     currentUser,
     userRole,
     isRecoveryMode,
+    clearRecoveryMode: () => setIsRecoveryMode(false),
     login,
     logout
   };

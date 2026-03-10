@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { Logo } from "./Logo";
 
 export default function UpdatePassword() {
   const navigate = useNavigate();
+  const { clearRecoveryMode } = useAuth();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,19 +26,18 @@ export default function UpdatePassword() {
     setError("");
 
     try {
-      // Backend Enforces Password Policy
-      const { error: updateError } = await supabase.auth.updateUser({ password: password });
+      const { error: updateError } = await supabase.auth.updateUser({ password });
       
       if (updateError) {
-        // DevSecOps: Intercept raw GoTrue password policy error and map to clean UX
         if (updateError.message.includes("Password should contain")) {
-             throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
+          throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
         }
         throw updateError;
       }
-      
-      alert("Password updated successfully! You will be redirected to the dashboard.");
-      navigate("/");
+
+      // Synchronously clear recovery lock, then navigate — no race condition
+      clearRecoveryMode();
+      navigate("/", { replace: true });
     } catch (err) {
       console.error("Password Update Error:", err.message);
       setError(err.message);
