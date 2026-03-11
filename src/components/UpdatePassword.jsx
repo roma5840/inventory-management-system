@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Logo } from "./Logo";
+import { PasswordInput } from "./PasswordInput";
 
 export default function UpdatePassword() {
   const navigate = useNavigate();
@@ -57,14 +58,12 @@ export default function UpdatePassword() {
           {error && <div className="alert alert-error text-xs py-2">{error}</div>}
 
           <form onSubmit={handleUpdate}>
-            <div className="form-control">
-              <label className="label"><span className="label-text">New Password</span></label>
-              <input 
-                type="password" required className="input input-bordered" 
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter new password"
-              />
-            </div>
+            <PasswordInput 
+              label="New Password"
+              placeholder="Enter new password"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+            />
             <div className="form-control mt-6">
               <button disabled={loading} className="btn btn-primary">
                 {loading ? "Updating..." : "Update Password"}

@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "./Logo";
+import { PasswordInput } from "./PasswordInput";
 
 export default function Register() {
   const { currentUser } = useAuth(); // Get currentUser to check auth state
@@ -99,33 +100,29 @@ export default function Register() {
           
           {error && <div className="alert alert-error text-xs">{error}</div>}
 
-          <form onSubmit={handleRegister} className="flex flex-col gap-3">
-             <div className="form-control">
+          <form onSubmit={handleRegister} className="flex flex-col gap-1">
+             <div className="form-control w-full">
               <label className="label"><span className="label-text">Email (Must match Invite)</span></label>
               <input 
-                type="email" required className="input input-bordered" 
+                type="email" required className="input input-bordered w-full" 
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
             </div>
-            <div className="form-control">
-              <label className="label"><span className="label-text">Create Password</span></label>
-              <input 
-                type="password" required className="input input-bordered" 
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-              />
-            </div>
-            <div className="form-control">
-              <label className="label"><span className="label-text">Confirm Password</span></label>
-              <input 
-                type="password" required className="input input-bordered" 
-                value={formData.confirmPass}
-                onChange={(e) => setFormData({...formData, confirmPass: e.target.value})}
-              />
-            </div>
 
-            <button disabled={loading} className="btn btn-primary mt-4">
+            <PasswordInput 
+              label="Create Password"
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+            />
+
+            <PasswordInput 
+              label="Confirm Password"
+              value={formData.confirmPass}
+              onChange={(e) => setFormData({...formData, confirmPass: e.target.value})}
+            />
+
+            <button disabled={loading} className="btn btn-primary mt-6">
               {loading ? "Verifying Invite..." : "Complete Registration"}
             </button>
           </form>

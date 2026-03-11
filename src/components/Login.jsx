@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "./Logo";
+import { PasswordInput } from "./PasswordInput";
 
 export default function Login() {
   const { login, currentUser } = useAuth();
@@ -54,27 +55,28 @@ export default function Login() {
           {error && <div className="alert alert-error text-sm py-2">{error}</div>}
 
           <form onSubmit={handleSubmit}>
-            <div className="form-control">
+            <div className="form-control w-full">
               <label className="label"><span className="label-text">Email</span></label>
               <input 
-                type="email" required className="input input-bordered" 
+                type="email" required className="input input-bordered w-full" 
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="form-control mt-2">
-              <label className="label"><span className="label-text">Password</span></label>
-              <input 
-                type="password" required className="input input-bordered" 
-                value={password} onChange={(e) => setPassword(e.target.value)}
-              />
-              <label className="label">
+            
+            <PasswordInput 
+              label="Password"
+              className="mt-2"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              bottomLabel={
                 <Link to="/forgot-password" className="label-text-alt link link-hover text-blue-600">
                   Forgot password?
                 </Link>
-              </label>
-            </div>
+              }
+            />
+
             <div className="form-control mt-6">
-              <button disabled={loading} className="btn btn-primary">
+              <button disabled={loading} className="btn btn-primary w-full">
                 {loading ? "Verifying..." : "Login"}
               </button>
             </div>
