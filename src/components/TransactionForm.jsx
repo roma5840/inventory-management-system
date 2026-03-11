@@ -505,7 +505,15 @@ export default function TransactionForm({ onSuccess }) {
           type: finalHeaderData.type,
           transactionMode: finalHeaderData.transactionMode,
           supplier: finalHeaderData.supplier, 
-          remarks: finalHeaderData.remarks,   
+          remarks: finalHeaderData.remarks,
+
+          // FIX: Pass Transmittal entity mapping directly into Immediate Print State
+          department: finalHeaderData.department,
+          requestedBy: finalHeaderData.requestedBy,
+          releasedBy: finalHeaderData.releasedBy,
+          purpose: finalHeaderData.purpose,
+          chargeTo: finalHeaderData.chargeTo,
+          
           staffName: currentStaffName,        
           date: new Date().toLocaleString(),
           items: strictQueuePayload.map(q => ({
