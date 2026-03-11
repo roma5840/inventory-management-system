@@ -1020,11 +1020,13 @@ export default function TransactionForm({ onSuccess }) {
     {/* TRANSACTION TYPE SELECTOR - REDESIGN */}
         <div className="p-1.5 bg-slate-100/50 flex border-b border-slate-200">
         {[
-            { id: 'RECEIVING', label: 'Receiving' },
-            { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED' },
-            { id: 'ISSUANCE_RETURN', label: 'Return' },
-            { id: 'PULL_OUT', label: 'Pull Out' },
-        ].map((btn) => (
+            { id: 'RECEIVING', label: 'Receiving', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
+            { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
+            { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
+            { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
+        ]
+        .filter(btn => btn.allowedRoles.includes(currentUser?.role || 'EMPLOYEE'))
+        .map((btn) => (
             <button
             key={btn.id}
             type="button"
