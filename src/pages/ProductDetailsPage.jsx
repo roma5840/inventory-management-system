@@ -411,7 +411,18 @@ export default function ProductDetailsPage() {
                                                         </div>
                                                     ) : (
                                                         <>
-                                                            {tx.student_name ? (
+                                                            {tx.transaction_mode === 'TRANSMITTAL' ? (
+                                                                <div>
+                                                                    <span className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest block mb-0.5">Transmittal / Dept</span>
+                                                                    <div className="font-bold text-xs text-slate-700 leading-snug mb-1">{tx.department}</div>
+                                                                    <div className="text-[10px] text-slate-500 space-y-0.5 leading-tight">
+                                                                        {tx.requested_by && <div><span className="font-semibold text-slate-400">Req:</span> {tx.requested_by}</div>}
+                                                                        {tx.released_by && <div><span className="font-semibold text-slate-400">Rel:</span> {tx.released_by}</div>}
+                                                                        {tx.charge_to && <div><span className="font-semibold text-slate-400">Chg:</span> {tx.charge_to}</div>}
+                                                                        {tx.purpose && <div className="italic text-slate-400 mt-1">"{tx.purpose}"</div>}
+                                                                    </div>
+                                                                </div>
+                                                            ) : tx.student_name ? (
                                                                 <div>
                                                                     <div className="font-bold text-xs text-slate-700 leading-snug mb-0.5">
                                                                         {tx.student_name}
@@ -434,7 +445,7 @@ export default function ProductDetailsPage() {
                                                         </>
                                                     )}
 
-                                                    {/* LINKED BIS # (For Returns) - Styled to match TransactionHistory */}
+                                                    {/* LINKED BIS # (For Returns) */}
                                                     {tx.type === 'ISSUANCE_RETURN' && tx.original_bis && (
                                                         <div className="mt-2 flex items-center gap-1.5">
                                                             <div className="p-1 bg-sky-50 rounded text-sky-600">
@@ -449,8 +460,8 @@ export default function ProductDetailsPage() {
                                                     )}
 
                                                     {tx.remarks && !isVoidRow && (
-                                                        <div className="text-[10px] text-amber-600 font-medium leading-snug">
-                                                            Note: {tx.remarks}
+                                                        <div className="mt-2 text-[10px] text-amber-600 font-medium leading-snug bg-amber-50/50 p-1.5 rounded border border-amber-100">
+                                                            <span className="font-bold">Note:</span> {tx.remarks}
                                                         </div>
                                                     )}
                                                 </div>

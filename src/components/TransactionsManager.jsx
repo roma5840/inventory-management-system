@@ -153,7 +153,6 @@ export default function TransactionsManager() {
         const { data: rawData, error } = await buildQuery(true).limit(100000);
         if (error) throw error;
 
-        // Fetch original types for VOID transactions via reference_number
         const voidRefs = [...new Set(rawData.filter(t => t.type === 'VOID').map(t => t.reference_number).filter(Boolean))];
         let voidOriginalTypeMap = {};
         
@@ -166,7 +165,7 @@ export default function TransactionsManager() {
             const missingRefs = voidRefs.filter(ref => !voidOriginalTypeMap[ref]);
             if (missingRefs.length > 0) {
                 const { data: missingOrigs } = await supabase
-                    .from('vw_transaction_history') // CHANGED to View
+                    .from('vw_transaction_history')
                     .select('reference_number, type')
                     .in('reference_number', missingRefs)
                     .neq('type', 'VOID');
@@ -181,10 +180,8 @@ export default function TransactionsManager() {
             const dateObj = new Date(item.timestamp);
             const isVoid = item.type === 'VOID';
             
-            // Resolve actual transaction type for VOIDs
             let actualType = item.type;
             if (isVoid) {
-                // original_type comes natively from the view now!
                 actualType = item.original_type || voidOriginalTypeMap[item.reference_number] || 'VOID';
             }
             
@@ -194,7 +191,6 @@ export default function TransactionsManager() {
             const totalValue = unitValue * item.qty;
             const valType = isCostType ? "UNIT COST" : isCashMode ? "CASH PRICE" : "UNIT PRICE";
 
-            // Resolve BIS display logic using original_bis provided by the view
             const bisColumnValue = isVoid ? (item.original_bis || "---") : (item.bis_number || "---");
             const linkedColumnValue = isVoid ? "" : (item.original_bis || "");
 
@@ -205,13 +201,18 @@ export default function TransactionsManager() {
                 "Date Encoded": dateObj.toLocaleDateString(),
                 "Time Encoded": dateObj.toLocaleTimeString(),
                 "Month": dateObj.toLocaleString('default', { month: 'long' }),
-                "Encoder": item.staff_name, // comes natively from the view!
+                "Encoder": item.staff_name,
                 "Ref #": item.reference_number,
                 "Linked BIS #": linkedColumnValue,
                 "Student ID": item.student_id || "",
                 "Student Name": item.student_name || "",
                 "Year Level": item.year_level || "",
                 "Course": item.course || "",
+                "Department": item.department || "",
+                "Requested By": item.requested_by || "",
+                "Released By": item.released_by || "",
+                "Charge To": item.charge_to || "",
+                "Purpose": item.purpose || "",
                 "Supplier": item.supplier || "",
                 "Accpac Item Code": item.accpac_code_snapshot,
                 "Item Name": item.product_name_snapshot || item.product_name,
@@ -424,9 +425,21 @@ export default function TransactionsManager() {
                                     {first.student_id || "-"}
                                 </td>
 
-                                {/* 5. Name / Supplier Column */}
+                                {/* 5. Name / Supplier / Transmittal Column */}
                                 <td className="py-2 align-top pr-2">
-                                    {first.student_name ? (
+                                    {first.transaction_mode === 'TRANSMITTAL' ? (
+                                        <div className="whitespace-normal break-words">
+                                            <div className="font-bold text-xs text-indigo-700 leading-tight mb-1">
+                                                {first.department} <span className="text-[10px] text-gray-500 font-normal ml-0.5">(Dept)</span>
+                                            </div>
+                                            <div className="text-[10px] text-gray-600 space-y-0.5">
+                                                {first.requested_by && <div><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
+                                                {first.released_by && <div><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}
+                                                {first.charge_to && <div><span className="font-semibold text-gray-400">Chg:</span> {first.charge_to}</div>}
+                                                {first.purpose && <div className="italic text-gray-500 mt-1">"{first.purpose}"</div>}
+                                            </div>
+                                        </div>
+                                    ) : first.student_name ? (
                                         <div className="whitespace-normal break-words">
                                             <div className="font-bold text-xs leading-tight">{first.student_name}</div>
                                             <div className="text-[10px] text-gray-500 leading-tight mt-0.5">

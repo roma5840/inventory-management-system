@@ -245,8 +245,21 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
 
                        {/* Column 4: Context / Details */}
                        <td className="align-top py-3 max-w-[300px] md:max-w-[400px]">
+                          {/* Transmittal Info */}
+                          {first.transaction_mode === 'TRANSMITTAL' && (
+                             <div className="mb-2">
+                                <div className="font-bold text-xs text-indigo-700">{first.department} <span className="text-[10px] text-gray-400 font-normal">Department</span></div>
+                                <div className="text-[10px] text-gray-600 mt-0.5 space-y-0.5">
+                                    {first.requested_by && <div><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
+                                    {first.released_by && <div><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}
+                                    {first.charge_to && <div><span className="font-semibold text-gray-400">Charge:</span> {first.charge_to}</div>}
+                                    {first.purpose && <div className="italic text-gray-500 mt-1">"{first.purpose}"</div>}
+                                </div>
+                             </div>
+                          )}
+
                           {/* Student Info */}
-                          {first.student_name && (
+                          {first.student_name && first.transaction_mode !== 'TRANSMITTAL' && (
                              <div className="mb-1">
                                <div className="font-bold text-xs">{first.student_name}</div>
                                <div className="text-[10px] text-gray-500">
