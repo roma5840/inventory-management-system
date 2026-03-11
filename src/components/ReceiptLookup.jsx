@@ -104,6 +104,14 @@ export default function ReceiptLookup() {
         course: header.course,
         yearLevel: header.year_level,
         supplier: header.supplier,
+        
+        // --- SEC-FIX: Map Transmittal Fields for Print Rehydration ---
+        department: header.department,
+        requestedBy: header.requested_by,
+        releasedBy: header.released_by,
+        purpose: header.purpose,
+        chargeTo: header.charge_to,
+        
         staffName: resolvedStaffName,
         remarks: header.remarks,
         isVoided: isVoided,
@@ -225,7 +233,7 @@ export default function ReceiptLookup() {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500 group-hover:text-blue-100 truncate max-w-[180px]">
-                          {h.student_name || h.supplier || "N/A"}
+                          {h.transaction_mode === 'TRANSMITTAL' ? h.department : (h.student_name || h.supplier || "N/A")}
                         </span>
                         <span className="text-[10px] text-slate-400 group-hover:text-blue-200">
                           {new Date(h.timestamp).toLocaleDateString()}

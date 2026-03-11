@@ -1,7 +1,130 @@
 import React from 'react';
 
+const TransmittalLayout = ({ data, elementId }) => (
+    <div id={elementId} className="w-full max-w-[800px] mx-auto bg-white text-black p-6 font-sans text-[12px] leading-tight flex flex-col min-h-[500px]">
+        {/* HEADER */}
+        <div className="text-center mb-6">
+            <h2 className="font-bold text-[13px] uppercase tracking-wide">PHINMA EDUCATION</h2>
+            <h1 className="font-bold text-[15px] uppercase mt-1">University of Pangasinan</h1>
+            <div className="mt-6 mb-4">
+                <h3 className="font-bold text-[13px] uppercase">BUSINESS CENTER</h3>
+                <h3 className="font-bold text-[13px] uppercase">TRANSMITTAL FORM</h3>
+            </div>
+        </div>
+
+        {/* METADATA GRID */}
+        <div className="flex justify-between mb-4">
+            <div className="flex flex-col gap-1 w-1/3">
+                <div className="flex">
+                    <span className="w-12 shrink-0 text-left">Dept:</span>
+                    <div className="border-b border-black flex-1 pl-2 font-bold uppercase min-h-[1.2em]">
+                        {data.department || ""}
+                    </div>
+                </div>
+                <div className="flex mt-1">
+                    <span className="w-12 shrink-0 text-left">Date:</span>
+                    <div className="border-b border-black flex-1 pl-2 uppercase min-h-[1.2em]">
+                        {data.date ? new Date(data.date).toLocaleDateString() : new Date().toLocaleDateString()}
+                    </div>
+                </div>
+            </div>
+            <div className="flex flex-col gap-1 w-1/3">
+                <div className="flex">
+                    <span className="w-10 shrink-0 text-right pr-2">TR #:</span>
+                    <div className="border-b border-black flex-1 pl-2 font-bold uppercase min-h-[1.2em]">
+                        {data.refNumber || ""}
+                    </div>
+                </div>
+                <div className="flex mt-1">
+                    <span className="w-10 shrink-0 text-right pr-2">IS #</span>
+                    <div className="border-b border-black flex-1 pl-2 uppercase min-h-[1.2em]">
+                        {data.bisNumber || ""}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* ITEMS TABLE */}
+        <div className="mb-8 flex-1">
+            <table className="w-full text-[12px] border-collapse border border-black">
+                <thead>
+                    <tr>
+                        <th className="py-1 px-2 text-center w-16 uppercase font-bold border border-black">UNIT</th>
+                        <th className="py-1 px-2 text-left uppercase font-bold border border-black">PARTICULARS</th>
+                        <th className="py-1 px-2 text-center w-24 uppercase font-bold border border-black">PRICE</th>
+                        <th className="py-1 px-2 text-center w-24 uppercase font-bold border border-black">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {data.items.map((item, idx) => (
+                        <tr key={idx} className="align-top h-6">
+                            <td className="py-1 px-2 text-center border border-black font-mono">
+                                {data.type === 'ISSUANCE_RETURN' ? `(${item.qty})` : item.qty}
+                            </td>
+                            <td className="py-1 px-2 text-left border border-black uppercase font-medium">
+                                {item.itemName}
+                            </td>
+                            <td className="py-1 px-2 border border-black"></td>
+                            <td className="py-1 px-2 border border-black"></td>
+                        </tr>
+                    ))}
+                    {/* Filler Rows to match Excel aesthetic */}
+                    {Array.from({ length: Math.max(5, 8 - data.items.length) }).map((_, i) => (
+                        <tr key={`filler-${i}`} className="h-6">
+                            <td className="py-1 border border-black">&nbsp;</td>
+                            <td className="py-1 border border-black">&nbsp;</td>
+                            <td className="py-1 border border-black">&nbsp;</td>
+                            <td className="py-1 border border-black">&nbsp;</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+
+        {/* FOOTER SIGNATURES */}
+        <div className="flex flex-col gap-4 text-[11px]">
+            <div className="flex items-end">
+                <span className="w-24 shrink-0 text-left">Released by:</span>
+                <div className="border-b border-black w-72 pl-2 uppercase font-medium">
+                    {data.releasedBy || ""}
+                </div>
+            </div>
+            <div className="flex items-end mt-2">
+                <span className="w-24 shrink-0 text-left">Requested by:</span>
+                <div className="border-b border-black w-72 pl-2 uppercase font-medium">
+                    {data.requestedBy || ""}
+                </div>
+            </div>
+            <div className="flex items-end mt-2">
+                <span className="w-24 shrink-0 text-left">Received by:</span>
+                <div className="flex flex-col items-center w-72">
+                    <div className="border-b border-black w-full min-h-[1.5rem]"></div>
+                    <span className="text-[9px] mt-0.5">Signature Over Printed Name</span>
+                </div>
+            </div>
+            <div className="flex items-end mt-4">
+                <span className="w-24 shrink-0 text-left">Purpose:</span>
+                <div className="border-b border-black w-96 pl-2 uppercase font-medium">
+                    {data.purpose || ""}
+                </div>
+            </div>
+            <div className="flex items-end mt-2">
+                <span className="w-24 shrink-0 text-left">Charge to:</span>
+                <div className="border-b border-black w-96 pl-2 uppercase font-medium">
+                    {data.chargeTo || ""}
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+
 export default function PrintLayout({ data, elementId }) {
   if (!data) return null;
+
+  if (data.transactionMode === 'TRANSMITTAL') {
+      return <TransmittalLayout data={data} elementId={elementId} />;
+  }
 
   const isCostType = ['RECEIVING', 'PULL_OUT'].includes(data.type);
 

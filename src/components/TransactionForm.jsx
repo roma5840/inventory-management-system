@@ -43,7 +43,12 @@ export default function TransactionForm({ onSuccess }) {
     supplier: "", 
     remarks: "",
     reason: "",       
-    referenceNo: "",  
+    referenceNo: "",
+    department: "",
+    requestedBy: "",
+    releasedBy: "",
+    purpose: "",
+    chargeTo: ""
   };
   const [headerData, setHeaderData] = useState(initialHeaderState);
 
@@ -66,12 +71,13 @@ export default function TransactionForm({ onSuccess }) {
    // --- SEC-FIX: Anti-Race Condition State Tracker ---
   // Tracks the absolute latest state to prevent in-flight network requests from overwriting UI
   // after a transaction type switch or rapid input clearing (TOCTOU prevention).
-  const activeStatesRef = useRef({ barcode: "", supplier: "", studentId: "", type: "" });
+  const activeStatesRef = useRef({ barcode: "", supplier: "", studentId: "", type: "", mode: "" });
   activeStatesRef.current = {
     barcode: currentScan.barcode,
     supplier: headerData.supplier,
     studentId: headerData.studentId,
-    type: headerData.type
+    type: headerData.type,
+    mode: headerData.transactionMode
   };
 
   // Focus Logic: Re-run when type changes or item added
@@ -313,7 +319,7 @@ export default function TransactionForm({ onSuccess }) {
         return;
     }
 
-    if (headerData.type === 'ISSUANCE' && isNewStudent !== false) {
+    if (headerData.type === 'ISSUANCE' && headerData.transactionMode !== 'TRANSMITTAL' && isNewStudent !== false) {
         alert("Cannot process Issuance: Student ID not found in records.");
         return;
     }
@@ -440,9 +446,16 @@ export default function TransactionForm({ onSuccess }) {
         return;
     }
     
-    if (headerData.type === 'ISSUANCE' && isNewStudent !== false) {
-        alert("Cannot finalize: A verified Student ID is required.");
-        return;
+    if (headerData.type === 'ISSUANCE') {
+        if (headerData.transactionMode === 'TRANSMITTAL') {
+            if (!headerData.department?.trim()) {
+                alert("Cannot finalize: Department is required for Transmittals.");
+                return;
+            }
+        } else if (isNewStudent !== false) {
+            alert("Cannot finalize: A verified Student ID is required.");
+            return;
+        }
     }
 
     // STRICT VALIDATION: Require remarks for Pull Out transactions
@@ -453,9 +466,15 @@ export default function TransactionForm({ onSuccess }) {
 
     const finalHeaderData = {
         ...headerData,
-        studentName: headerData.studentName?.toUpperCase() || "",
-        yearLevel: headerData.yearLevel?.toUpperCase() || "",
-        course: headerData.course || "", 
+        studentName: headerData.transactionMode === 'TRANSMITTAL' ? "" : (headerData.studentName?.toUpperCase() || ""),
+        yearLevel: headerData.transactionMode === 'TRANSMITTAL' ? "" : (headerData.yearLevel?.toUpperCase() || ""),
+        course: headerData.transactionMode === 'TRANSMITTAL' ? "" : (headerData.course || ""), 
+        studentId: headerData.transactionMode === 'TRANSMITTAL' ? "" : headerData.studentId,
+        department: headerData.department?.toUpperCase().trim() || "",
+        requestedBy: headerData.requestedBy?.toUpperCase().trim() || "",
+        releasedBy: headerData.releasedBy?.toUpperCase().trim() || "",
+        purpose: headerData.purpose?.toUpperCase().trim() || "",
+        chargeTo: headerData.chargeTo?.toUpperCase().trim() || "",
         remarks: headerData.remarks?.trim() || "",
         supplier: headerData.supplier?.toUpperCase().trim() || ""
     };
@@ -725,38 +744,52 @@ export default function TransactionForm({ onSuccess }) {
             setPastTransactionItems(validItems);
             
             if(validItems[0]) {
-                const originalId = validItems[0].student_id || "";
+                const isTransmittal = validItems[0].originalMode === 'TRANSMITTAL' || validItems[0].transaction_mode === 'TRANSMITTAL';
                 
-                let displayStudentName = validItems[0].student_name || "";
-                let displayCourse = validItems[0].course || "";
-                let displayYear = validItems[0].year_level || "";
-                
-                if (originalId) {
-                    const { data: currentStudent } = await supabase
-                        .from('students')
-                        .select('name, course, year_level')
-                        .eq('student_id', originalId)
-                        .maybeSingle();
+                if (isTransmittal) {
+                    setHeaderData(prev => ({
+                        ...prev,
+                        department: validItems[0].department || "",
+                        requestedBy: validItems[0].requested_by || "",
+                        releasedBy: validItems[0].released_by || "",
+                        purpose: validItems[0].purpose || "",
+                        chargeTo: validItems[0].charge_to || "",
+                        transactionMode: "TRANSMITTAL",
+                        remarks: ""
+                    }));
+                } else {
+                    const originalId = validItems[0].student_id || "";
+                    let displayStudentName = validItems[0].student_name || "";
+                    let displayCourse = validItems[0].course || "";
+                    let displayYear = validItems[0].year_level || "";
+                    
+                    if (originalId) {
+                        const { data: currentStudent } = await supabase
+                            .from('students')
+                            .select('name, course, year_level')
+                            .eq('student_id', originalId)
+                            .maybeSingle();
 
-                    if (currentStudent) {
-                        displayStudentName = currentStudent.name;
-                        displayCourse = currentStudent.course;
-                        displayYear = currentStudent.year_level;
-                        setIsNewStudent(false); 
-                    } else {
-                        setIsNewStudent(true); 
+                        if (currentStudent) {
+                            displayStudentName = currentStudent.name;
+                            displayCourse = currentStudent.course;
+                            displayYear = currentStudent.year_level;
+                            setIsNewStudent(false); 
+                        } else {
+                            setIsNewStudent(true); 
+                        }
                     }
-                }
 
-                setHeaderData(prev => ({
-                    ...prev,
-                    studentName: displayStudentName,
-                    studentId: originalId,
-                    course: displayCourse,
-                    yearLevel: displayYear,
-                    transactionMode: validItems[0].originalMode || "", // Inherit original mode for precise return pricing
-                    remarks: ""
-                }));
+                    setHeaderData(prev => ({
+                        ...prev,
+                        studentName: displayStudentName,
+                        studentId: originalId,
+                        course: displayCourse,
+                        yearLevel: displayYear,
+                        transactionMode: validItems[0].originalMode || "", 
+                        remarks: ""
+                    }));
+                }
             }
         }
     } catch (err) {
@@ -1000,75 +1033,142 @@ export default function TransactionForm({ onSuccess }) {
                 
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-3">
                     {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? (
-                        <>
-                            <div className="md:col-span-2">
-                                <label className="flex justify-between items-center mb-1">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Student ID</span>
-                                    {isNewStudent === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
-                                    {isNewStudent === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
-                                </label>
-                                <LimitedInput 
-                                    id="studentIdInput" 
-                                    maxLength={50}
-                                    className={`w-full h-9 px-3 rounded-lg border text-sm font-mono transition-all outline-none
-                                        ${isNewStudent === true ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 focus:border-blue-500'}
-                                        ${isNewStudent === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
-                                        ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-slate-100 text-slate-400' : 'bg-white'}
-                                    `}
-                                    placeholder="Search ID..."
-                                    value={headerData.studentId} 
-                                    onChange={e => { if(isNewStudent !== null) setIsNewStudent(null); setHeaderData({...headerData, studentId: e.target.value}); }}
-                                    readOnly={headerData.type === 'ISSUANCE_RETURN'}
-                                />
-                            </div>
-
-                            <div className="md:col-span-4">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Full Name</label>
-                                <input 
-                                    type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold uppercase disabled:text-slate-500"
-                                    placeholder="Name will autofill"
-                                    value={headerData.studentName}
-                                    onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Course</label>
-                                <input 
-                                    type="text" 
-                                    disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase disabled:text-slate-500"
-                                    placeholder="e.g. BSCS"
-                                    value={headerData.course}
-                                    onChange={e => setHeaderData({...headerData, course: e.target.value})} 
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Year/Sem</label>
-                                <input 
-                                    type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase"
-                                    placeholder="Y1S1"
-                                    value={headerData.yearLevel}
-                                    onChange={e => setHeaderData({...headerData, yearLevel: e.target.value})} 
-                                />
-                            </div>
-
-                            {headerData.type === 'ISSUANCE' && (
-                                <div className="md:col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Trans. Mode</label>
-                                    <select className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-blue-700" 
-                                        value={headerData.transactionMode} onChange={e => setHeaderData({...headerData, transactionMode: e.target.value})}>
-                                        <option value="CHARGED">Charged</option>
-                                        <option value="CASH">Cash</option>
-                                        <option value="SIP">SIP</option>
-                                        <option value="TRANSMITTAL">Transmittal</option>
-                                    </select>
+                        headerData.transactionMode === 'TRANSMITTAL' ? (
+                            <>
+                                <div className="md:col-span-3">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Department <span className="text-rose-500">*</span></label>
+                                    <LimitedInput 
+                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                        placeholder="e.g. CELA"
+                                        value={headerData.department}
+                                        onChange={e => setHeaderData({...headerData, department: e.target.value})} 
+                                    />
                                 </div>
-                            )}
-                        </>
+                                <div className="md:col-span-3">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Requested By</label>
+                                    <LimitedInput 
+                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                        placeholder="Name or Dept"
+                                        value={headerData.requestedBy}
+                                        onChange={e => setHeaderData({...headerData, requestedBy: e.target.value})} 
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
+                                    <LimitedInput 
+                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                        placeholder="Name"
+                                        value={headerData.releasedBy}
+                                        onChange={e => setHeaderData({...headerData, releasedBy: e.target.value})} 
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Purpose</label>
+                                    <LimitedInput 
+                                        maxLength={250} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
+                                        placeholder="Reason for Transmittal"
+                                        value={headerData.purpose}
+                                        onChange={e => setHeaderData({...headerData, purpose: e.target.value})} 
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Charge To</label>
+                                    <LimitedInput 
+                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
+                                        placeholder="Account"
+                                        value={headerData.chargeTo}
+                                        onChange={e => setHeaderData({...headerData, chargeTo: e.target.value})} 
+                                    />
+                                </div>
+                                {headerData.type === 'ISSUANCE' && (
+                                    <div className="md:col-span-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Trans. Mode</label>
+                                        <select className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-blue-700" 
+                                            value={headerData.transactionMode} onChange={e => handleSwitchType(headerData.type, e.target.value)}>
+                                            <option value="CHARGED">Charged</option>
+                                            <option value="CASH">Cash</option>
+                                            <option value="SIP">SIP</option>
+                                            <option value="TRANSMITTAL">Transmittal</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <div className="md:col-span-2">
+                                    <label className="flex justify-between items-center mb-1">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Student ID</span>
+                                        {isNewStudent === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
+                                        {isNewStudent === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
+                                    </label>
+                                    <LimitedInput 
+                                        id="studentIdInput" 
+                                        maxLength={50}
+                                        className={`w-full h-9 px-3 rounded-lg border text-sm font-mono transition-all outline-none
+                                            ${isNewStudent === true ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 focus:border-blue-500'}
+                                            ${isNewStudent === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
+                                            ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-slate-100 text-slate-400' : 'bg-white'}
+                                        `}
+                                        placeholder="Search ID..."
+                                        value={headerData.studentId} 
+                                        onChange={e => { if(isNewStudent !== null) setIsNewStudent(null); setHeaderData({...headerData, studentId: e.target.value}); }}
+                                        readOnly={headerData.type === 'ISSUANCE_RETURN'}
+                                    />
+                                </div>
+
+                                <div className="md:col-span-4">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Full Name</label>
+                                    <input 
+                                        type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold uppercase disabled:text-slate-500"
+                                        placeholder="Name will autofill"
+                                        value={headerData.studentName}
+                                        onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Course</label>
+                                    <input 
+                                        type="text" 
+                                        disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase disabled:text-slate-500"
+                                        placeholder="e.g. BSCS"
+                                        value={headerData.course}
+                                        onChange={e => setHeaderData({...headerData, course: e.target.value})} 
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Year/Sem</label>
+                                    <input 
+                                        type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase"
+                                        placeholder="Y1S1"
+                                        value={headerData.yearLevel}
+                                        onChange={e => setHeaderData({...headerData, yearLevel: e.target.value})} 
+                                    />
+                                </div>
+
+                                {headerData.type === 'ISSUANCE' && (
+                                    <div className="md:col-span-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Trans. Mode</label>
+                                        <select className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-blue-700" 
+                                            value={headerData.transactionMode} onChange={e => handleSwitchType(headerData.type, e.target.value)}>
+                                            <option value="CHARGED">Charged</option>
+                                            <option value="CASH">Cash</option>
+                                            <option value="SIP">SIP</option>
+                                            <option value="TRANSMITTAL">Transmittal</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </>
+                        )
                     ) : (
                         <div className="md:col-span-4 relative">
                             <label className="flex justify-between items-center mb-1">
@@ -1306,7 +1406,7 @@ export default function TransactionForm({ onSuccess }) {
                             <th className="py-3 text-slate-500 tracking-tighter">BARCODE</th>
                             <th className="py-3 text-slate-500 tracking-tighter">QTY</th>
                             {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && <th className="py-3 text-orange-600 tracking-tighter uppercase">Cost</th>}
-                            {headerData.type !== 'RECEIVING' && <th className="py-3 text-slate-500 tracking-tighter uppercase">Price</th>}
+                            {headerData.type !== 'RECEIVING' && headerData.transactionMode !== 'TRANSMITTAL' && <th className="py-3 text-slate-500 tracking-tighter uppercase">Price</th>}
                             <th className="py-3 text-right text-slate-500"></th>
                         </tr>
                     </thead>
@@ -1336,7 +1436,7 @@ export default function TransactionForm({ onSuccess }) {
                                             ₱{Number(item.unitCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                     )}
-                                    {headerData.type !== 'RECEIVING' && (
+                                    {headerData.type !== 'RECEIVING' && headerData.transactionMode !== 'TRANSMITTAL' && (
                                         <td className="font-mono text-[11px] text-slate-700 font-bold">
                                             ₱{Number(
                                                 (['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type) && headerData.transactionMode === 'CASH') 
