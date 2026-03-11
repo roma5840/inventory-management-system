@@ -151,19 +151,22 @@ export default function TransactionForm({ onSuccess }) {
     }, 50); 
   };
 
-  const checkProduct = async (barcodeInput) => {
-    const barcodeToSearch = barcodeInput?.trim();
-    if (!barcodeToSearch) return;
+  const checkProduct = async (searchInput) => {
+    const searchToSearch = searchInput?.trim();
+    if (!searchToSearch) return;
 
     try {
+      // Escape double quotes to prevent PostgREST syntax errors if names contain them
+      const safeVal = searchToSearch.replace(/"/g, '""');
+
       const { data, error } = await supabase
         .from('products')
         .select('internal_id, barcode, name, price, cash_price, unit_cost, location, accpac_code') 
-        .eq('barcode', barcodeToSearch)
+        .or(`barcode.eq."${safeVal}",name.ilike."${safeVal}"`)
         .maybeSingle(); 
 
       // SEC-FIX: Abort if user cleared input or switched transaction types during network fetch
-      if (activeStatesRef.current.barcode?.trim().toUpperCase() !== barcodeToSearch.toUpperCase()) return;
+      if (activeStatesRef.current.barcode?.trim().toUpperCase() !== searchToSearch.toUpperCase()) return;
 
       if (data) {
         selectProduct(data);
@@ -184,12 +187,15 @@ export default function TransactionForm({ onSuccess }) {
     if (!searchVal) return;
 
     try {
+      // Escape double quotes for safe PostgREST .or() query strings
+      const safeVal = searchVal.replace(/"/g, '""');
+
       const { data, error } = await supabase
         .from('products')
         .select('internal_id, barcode, name, price, cash_price, unit_cost, location, accpac_code')
-        .ilike('barcode', `${searchVal}%`)
-        .order('barcode')
-        .limit(15);
+        .or(`barcode.ilike."${safeVal}%",name.ilike."${safeVal}%"`)
+        .order('name')
+        .limit(30);
 
       if (error) throw error;
 
@@ -198,7 +204,10 @@ export default function TransactionForm({ onSuccess }) {
 
       if (data) {
         setProductSuggestions(data);
-        const exactMatch = data.find(p => p.barcode.toUpperCase() === searchVal.toUpperCase());
+        const exactMatch = data.find(p => 
+            p.barcode.toUpperCase() === searchVal.toUpperCase() || 
+            (p.name && p.name.toUpperCase() === searchVal.toUpperCase())
+        );
         
         if (exactMatch) {
             setIsNewItem(false);
@@ -563,9 +572,12 @@ export default function TransactionForm({ onSuccess }) {
           setActiveProductIndex(0);
           
           // SECURE UI SYNC: Instantly purge stale data locally to prevent index-mismatch 
-          // on rapid typing before the 250ms debounce network fetch completes.
+          // Check both Barcode and Name for seamless fallback filtering
           setProductSuggestions(prev => 
-              prev.filter(p => p.barcode.toUpperCase().startsWith(newVal))
+              prev.filter(p => 
+                  p.barcode.toUpperCase().startsWith(newVal) || 
+                  (p.name && p.name.toUpperCase().startsWith(newVal))
+              )
           );
       } else {
           setShowProductDropdown(false);
@@ -590,7 +602,10 @@ export default function TransactionForm({ onSuccess }) {
       return;
     }
 
-    const exactMatch = productSuggestions.find(p => p.barcode.toUpperCase() === currentScan.barcode.trim().toUpperCase());
+    const exactMatch = productSuggestions.find(p => 
+        p.barcode.toUpperCase() === currentScan.barcode.trim().toUpperCase() || 
+        (p.name && p.name.toUpperCase() === currentScan.barcode.trim().toUpperCase())
+    );
     
     if (exactMatch) {
         setIsNewItem(false);
@@ -1329,11 +1344,11 @@ export default function TransactionForm({ onSuccess }) {
                     /* --- STANDARD SCANNER UI (Receiving/Issuance) --- */
                     <>
                         <div className="grid grid-cols-12 gap-3 mb-3">
-                            {/* 1. Barcode Field */}
+                            {/* 1. Item Name / Barcode Field */}
                             <div className="col-span-6 relative">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Barcode</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Item Name / Barcode</label>
                                 <LimitedInput 
-                                    maxLength={50}
+                                    maxLength={100}
                                     name="barcodeField" 
                                     as="input" 
                                     ref={barcodeRef} 
@@ -1347,7 +1362,7 @@ export default function TransactionForm({ onSuccess }) {
                                     onKeyDown={handleKeyDown} 
                                     onFocus={() => { if(currentScan.barcode) setShowProductDropdown(true); }}
                                     onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
-                                    placeholder="SCAN OR TYPE..."
+                                    placeholder="SCAN BARCODE OR TYPE NAME..."
                                 />
                                 {showProductDropdown && productSuggestions.length > 0 && (
                                     <ul className="absolute z-[100] top-[calc(100%+2px)] left-0 right-0 bg-white border border-slate-200 rounded-b-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 custom-scrollbar">
@@ -1358,13 +1373,13 @@ export default function TransactionForm({ onSuccess }) {
                                                     ${index === activeProductIndex ? 'bg-blue-100' : ''}`}
                                                 onMouseDown={() => selectProduct(prod)}
                                             >
-                                                {/* Barcode on the Left */}
-                                                <span className={`font-mono text-[12px] font-black shrink-0 ${index === activeProductIndex ? 'text-blue-800' : 'text-slate-800'}`}>
-                                                    {prod.barcode}
+                                                {/* Item Name on the Left */}
+                                                <span className={`text-[11px] font-bold truncate ${index === activeProductIndex ? 'text-blue-800' : 'text-slate-800'}`} title={prod.name}>
+                                                    {prod.name || "UNNAMED ITEM"}
                                                 </span>
-                                                {/* Item Name on the Right */}
-                                                <span className={`text-[10px] font-semibold truncate ml-3 text-right ${index === activeProductIndex ? 'text-blue-600' : 'text-slate-500'}`} title={prod.name}>
-                                                    {prod.name}
+                                                {/* Barcode on the Right */}
+                                                <span className={`font-mono text-[10px] font-semibold shrink-0 ml-3 text-right ${index === activeProductIndex ? 'text-blue-600' : 'text-slate-400'}`}>
+                                                    {prod.barcode}
                                                 </span>
                                             </li>
                                         ))}
