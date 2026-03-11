@@ -1073,7 +1073,7 @@ export default function TransactionForm({ onSuccess }) {
                                 <div className="md:col-span-3">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Department <span className="text-rose-500">*</span></label>
                                     <LimitedInput 
-                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
                                         className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
                                         placeholder="e.g. CELA"
                                         value={headerData.department}
@@ -1083,7 +1083,7 @@ export default function TransactionForm({ onSuccess }) {
                                 <div className="md:col-span-3">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Requested By</label>
                                     <LimitedInput 
-                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
                                         className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
                                         placeholder="Name or Dept"
                                         value={headerData.requestedBy}
@@ -1093,7 +1093,7 @@ export default function TransactionForm({ onSuccess }) {
                                 <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
                                     <LimitedInput 
-                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
                                         className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
                                         placeholder="Name"
                                         value={headerData.releasedBy}
@@ -1103,7 +1103,7 @@ export default function TransactionForm({ onSuccess }) {
                                 <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Purpose</label>
                                     <LimitedInput 
-                                        maxLength={250} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        maxLength={250} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
                                         className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                         placeholder="Reason for Transmittal"
                                         value={headerData.purpose}
@@ -1113,7 +1113,7 @@ export default function TransactionForm({ onSuccess }) {
                                 <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Charge To</label>
                                     <LimitedInput 
-                                        maxLength={150} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
                                         className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                         placeholder="Account"
                                         value={headerData.chargeTo}
