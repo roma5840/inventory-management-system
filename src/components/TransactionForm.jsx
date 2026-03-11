@@ -859,6 +859,31 @@ export default function TransactionForm({ onSuccess }) {
   };
 
   const handleSwitchType = (newType, newMode = "") => {
+    // Check if this is merely a mode change within ISSUANCE that shouldn't clear the form
+    const isModeSwitchOnly = headerData.type === newType && newType === 'ISSUANCE';
+    const isFromTransmittal = headerData.transactionMode === 'TRANSMITTAL';
+    const isToTransmittal = newMode === 'TRANSMITTAL';
+
+    // RETAIN DATA: If switching between CASH / CHARGED / SIP, do not clear fields
+    if (isModeSwitchOnly && !isFromTransmittal && !isToTransmittal) {
+        setHeaderData(prev => ({
+            ...prev,
+            transactionMode: newMode
+        }));
+        
+        setSuccessMsg(""); // Clear any old success messages
+
+        // SEC-FIX: Anti-Race Condition - Immediately sync the active mode reference
+        activeStatesRef.current.mode = newMode;
+        
+        // Maintain focus on the scanner when rapidly switching modes
+        setTimeout(() => {
+            if (barcodeRef.current) barcodeRef.current.focus();
+        }, 100);
+        return;
+    }
+
+    // FULL RESET: Triggers on transmittal changes or completely different transaction types
     setHeaderData({
         ...initialHeaderState,
         type: newType,
