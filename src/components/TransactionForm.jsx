@@ -129,6 +129,7 @@ export default function TransactionForm({ onSuccess }) {
 
     setCurrentScan(prev => ({
       ...prev, 
+      internalId: data.internal_id, // SEC-FIX: Pass exact UUID to DB to prevent text-fallback
       barcode: data.barcode,
       itemName: data.name || "", 
       price: price,
@@ -492,6 +493,7 @@ export default function TransactionForm({ onSuccess }) {
     // Includes accurate tracking for ISSUANCE_RETURN reverting a CASH receipt
     const strictQueuePayload = queue.map(q => ({
         ...q,
+        qty: parseInt(q.qty, 10) || 1, // SEC-FIX: Guarantee numeric integer to pass RPC regex ^[0-9]+$
         expectedPrice: (['ISSUANCE', 'ISSUANCE_RETURN'].includes(finalHeaderData.type) && finalHeaderData.transactionMode === 'CASH') 
             ? (q.cashPrice || 0) 
             : (q.price || 0)
