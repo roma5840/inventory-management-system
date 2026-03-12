@@ -86,7 +86,17 @@ export function AuthProvider({ children }) {
         // Clear recovery lock so user can proceed to dashboard.
         if (!isRecoverySession(session)) setIsRecoveryMode(false);
       }
-      handleSession(session);
+
+      // SEC-FIX: Prevent network race conditions during background token refreshes
+      if (event === 'TOKEN_REFRESHED') {
+        // Silently update user state without triggering a database check.
+        // The real-time channel handles instant demotions/deactivations.
+        if (session?.user) {
+           setCurrentUser(prev => prev ? { ...prev, ...session.user } : null);
+        }
+      } else {
+        handleSession(session);
+      }
     });
 
     return () => subscription.unsubscribe();
