@@ -28,11 +28,12 @@ export function AuthProvider({ children }) {
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   // Login Function
-  async function login(email, password) {
+  async function login(email, password, captchaToken) {
     // 1. Authenticate with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
-      password
+      password,
+      options: { captchaToken }
     });
     if (authError) throw authError;
 

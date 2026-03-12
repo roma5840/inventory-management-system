@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef(null);
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -19,12 +22,15 @@ export default function ForgotPassword() {
       // Directs the user to the update-password route after clicking the email link
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/update-password`,
+        captchaToken,
       });
 
       if (error) throw error;
       setMsg("Check your email for the password reset link.");
     } catch (err) {
       setError(err.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
     } finally {
       setLoading(false);
     }
@@ -51,8 +57,18 @@ export default function ForgotPassword() {
                   value={email} onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-              <div className="form-control mt-6">
-                <button disabled={loading} className="btn btn-primary">
+
+              <div className="flex justify-center mt-4 min-h-[65px]">
+                <Turnstile 
+                  ref={turnstileRef}
+                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  options={{ theme: 'light' }}
+                />
+              </div>
+
+              <div className="form-control mt-4">
+                <button disabled={loading || !captchaToken} className="btn btn-primary">
                   {loading ? "Sending..." : "Send Reset Link"}
                 </button>
               </div>

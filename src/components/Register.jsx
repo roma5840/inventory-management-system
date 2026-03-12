@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "./Logo";
 import { PasswordInput } from "./PasswordInput";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function Register() {
   const { currentUser } = useAuth(); // Get currentUser to check auth state
@@ -11,6 +12,8 @@ export default function Register() {
   const [formData, setFormData] = useState({ email: "", password: "", confirmPass: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef(null);
 
   // If manually navigating to /register while logged in
   useEffect(() => {
@@ -26,6 +29,8 @@ export default function Register() {
 
     if (password !== confirmPass) {
       setError("Passwords do not match.");
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
       setLoading(false);
       return;
     }
@@ -51,10 +56,11 @@ export default function Register() {
         throw new Error("This invite has been revoked.");
       }
 
-      // 2. Create Supabase Auth User (Backend Enforces Password Policy)
+      // 2. Create Supabase Auth User (Backend Enforces Password Policy & Turnstile)
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: { captchaToken }
       });
 
       if (signUpError) {
@@ -73,6 +79,8 @@ export default function Register() {
     } catch (err) {
       console.error("Registration Error:", err.message);
       setError(err.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
       setLoading(false);
     }
   };
@@ -122,7 +130,16 @@ export default function Register() {
               onChange={(e) => setFormData({...formData, confirmPass: e.target.value})}
             />
 
-            <button disabled={loading} className="btn btn-primary mt-6">
+            <div className="flex justify-center mt-4 min-h-[65px]">
+              <Turnstile 
+                ref={turnstileRef}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
+                onSuccess={(token) => setCaptchaToken(token)}
+                options={{ theme: 'light' }}
+              />
+            </div>
+
+            <button disabled={loading || !captchaToken} className="btn btn-primary mt-4">
               {loading ? "Verifying Invite..." : "Complete Registration"}
             </button>
           </form>

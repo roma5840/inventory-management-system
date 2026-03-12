@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "./Logo";
 import { PasswordInput } from "./PasswordInput";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function Login() {
   const { login, currentUser } = useAuth();
@@ -11,6 +12,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef(null);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -23,9 +26,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password, captchaToken);
     } catch (err) {
       setError("Failed to sign in. Check email/password.");
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
       setLoading(false); 
     }
   }
@@ -75,8 +80,17 @@ export default function Login() {
               }
             />
 
-            <div className="form-control mt-6">
-              <button disabled={loading} className="btn btn-primary w-full">
+            <div className="flex justify-center mt-4 min-h-[65px]">
+              <Turnstile 
+                ref={turnstileRef}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
+                onSuccess={(token) => setCaptchaToken(token)}
+                options={{ theme: 'light' }}
+              />
+            </div>
+
+            <div className="form-control mt-4">
+              <button disabled={loading || !captchaToken} className="btn btn-primary w-full">
                 {loading ? "Verifying..." : "Login"}
               </button>
             </div>

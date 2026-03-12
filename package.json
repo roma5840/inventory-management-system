@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@marsidev/react-turnstile": "^1.4.2",
     "@supabase/supabase-js": "^2.90.1",
     "firebase": "^12.7.0",
     "he": "^1.2.0",
