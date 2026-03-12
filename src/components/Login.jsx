@@ -84,7 +84,18 @@ export default function Login() {
               <Turnstile 
                 ref={turnstileRef}
                 siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
-                onSuccess={(token) => setCaptchaToken(token)}
+                onSuccess={(token) => {
+                  setCaptchaToken(token);
+                  setError("");
+                }}
+                onError={() => {
+                  setCaptchaToken("");
+                  setError("Security verification failed. Please refresh or try again.");
+                }}
+                onExpire={() => {
+                  setCaptchaToken("");
+                  setError("Security verification expired. Please check the box again.");
+                }}
                 options={{ theme: 'light' }}
               />
             </div>
