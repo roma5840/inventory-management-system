@@ -7,7 +7,7 @@ import { PasswordInput } from "./PasswordInput";
 import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function Register() {
-  const { currentUser } = useAuth(); // Get currentUser to check auth state
+  const { currentUser } = useAuth(); 
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: "", password: "", confirmPass: "" });
   const [error, setError] = useState("");
@@ -15,7 +15,6 @@ export default function Register() {
   const [captchaToken, setCaptchaToken] = useState("");
   const turnstileRef = useRef(null);
 
-  // If manually navigating to /register while logged in
   useEffect(() => {
     if (currentUser) navigate("/");
   }, [currentUser, navigate]);
@@ -26,6 +25,7 @@ export default function Register() {
     setLoading(true);
 
     const { email, password, confirmPass } = formData;
+    const cleanEmail = email.trim().toLowerCase();
 
     if (password !== confirmPass) {
       setError("Passwords do not match.");
@@ -36,52 +36,39 @@ export default function Register() {
     }
 
     try {
-      // 1. Check Invite Status via Secure RPC
-      const { data: inviteData, error: rpcError } = await supabase
-        .rpc('verify_invite_for_registration', { email_input: email });
-
-      if (rpcError) throw rpcError;
-
-      const invite = inviteData?.[0];
-
-      if (!invite || !invite.invite_exists) {
-        throw new Error("ACCESS DENIED: This email has not been invited by Admin.");
-      }
-      
-      if (invite.user_status === "REGISTERED") {
-        throw new Error("This account is already registered. Please Login.");
-      }
-
-      if (invite.user_status === "INACTIVE") {
-        throw new Error("This invite has been revoked.");
-      }
-
-      // 2. Create Supabase Auth User (Backend Enforces Password Policy & Turnstile)
       const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
+        email: cleanEmail,
+        password: password,
         options: { captchaToken }
       });
 
       if (signUpError) {
+        // Supabase masks custom trigger exceptions as "Database error saving new user"
+        if (signUpError.message.includes('Database error saving new user') || signUpError.message.includes('Security Policy:')) {
+            throw new Error("ACCESS DENIED: This email has not been invited, or the invite is invalid/revoked.");
+        }
         if (signUpError.message.includes("already registered")) {
              alert("Account exists!\n\nPlease go to Login and use your previous password.");
              navigate("/login");
              return;
         }
-        // DevSecOps: Intercept raw GoTrue password policy error and map to clean UX
         if (signUpError.message.includes("Password should contain")) {
              throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
         }
         throw signUpError;
       }
 
+      // SUCCESS:
+      // We do NOT use alert() or navigate("/login") here. 
+      // Supabase has already logged the user in. We leave setLoading(true) 
+      // so the UI shows the spinner while AuthContext automatically routes them to the Dashboard!
+
     } catch (err) {
       console.error("Registration Error:", err.message);
       setError(err.message);
       turnstileRef.current?.reset();
       setCaptchaToken("");
-      setLoading(false);
+      setLoading(false); // Only stop loading if there is an error
     }
   };
 
