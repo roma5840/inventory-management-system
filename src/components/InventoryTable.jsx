@@ -35,10 +35,10 @@ export default function InventoryTable({ lastUpdated }) {
     name: "", 
     price: "", 
     cashPrice: "",
-    unitCost: "0",
+    unitCost: "",
     minStockLevel: "10",
     location: "",
-    initialStock: "0" 
+    initialStock: ""
   });
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -93,7 +93,7 @@ export default function InventoryTable({ lastUpdated }) {
 
         showToast("Registration Success", `${sanitizedName} added to catalog.`);
         setIsAddModalOpen(false);
-        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
+        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "", minStockLevel: "10", location: "", initialStock: "" });
         fetchInventory();
         
         await supabase.channel('app_updates').send({
@@ -1091,8 +1091,9 @@ export default function InventoryTable({ lastUpdated }) {
                         <label className="label text-xs uppercase font-bold text-gray-500">Initial Stock</label>
                         <LimitedInput 
                             type="number" min="0" step="1" maxLength={10}
-                            className="input input-bordered w-full bg-slate-50" 
+                            className="input input-bordered w-full" 
                             value={newItemForm.initialStock}
+                            placeholder="0"
                             onChange={e => setNewItemForm({...newItemForm, initialStock: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
                         />
@@ -1116,7 +1117,7 @@ export default function InventoryTable({ lastUpdated }) {
                 <div className="modal-action mt-2">
                     <button type="button" className="btn btn-ghost" onClick={() => {
                         setIsAddModalOpen(false);
-                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "0", minStockLevel: "10", location: "", initialStock: "0" });
+                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "", minStockLevel: "10", location: "", initialStock: "" });
                     }}>Cancel</button>
                     <button type="submit" className={`btn btn-primary ${createLoading ? 'loading' : ''}`}>
                         Register Item
