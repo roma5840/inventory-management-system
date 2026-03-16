@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext();
@@ -7,28 +7,22 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Decodes a JWT without a library (payload is base64url)
-const decodeJWT = (token) => {
-  try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
-  catch { return null; }
-};
-
-// A recovery session's AMR contains "otp" but NOT "password"
-const isRecoverySession = (session) => {
-  if (!session?.access_token) return false;
-  const amr = decodeJWT(session.access_token)?.amr ?? [];
-  return amr.some(a => a.method === 'otp') && !amr.some(a => a.method === 'password');
-};
-
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  // NEW: Track if the user arrived via a recovery link
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+
+  // Safely clear recovery lock across states
+  const clearRecoveryMode = useCallback(() => {
+    localStorage.removeItem("recoveryMode");
+    setIsRecoveryMode(false);
+  }, []);
 
   // Login Function
   async function login(email, password, captchaToken) {
+    clearRecoveryMode(); // Safety clear on standard login
+    
     // 1. Authenticate with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
@@ -58,10 +52,9 @@ export function AuthProvider({ children }) {
     return authData;
   }
 
-
   // Logout Function
   function logout() {
-    setIsRecoveryMode(false); // Reset mode on logout
+    clearRecoveryMode();
     return supabase.auth.signOut();
   }
 
@@ -69,28 +62,37 @@ export function AuthProvider({ children }) {
     // Check active session on load
     const initSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      // Re-hydrate recovery mode from JWT on every cold load/refresh
-      if (isRecoverySession(session)) setIsRecoveryMode(true);
+      
+      // Re-hydrate recovery mode safely from localStorage
+      if (localStorage.getItem("recoveryMode") === "true") {
+        setIsRecoveryMode(true);
+      }
+      
       await handleSession(session);
       setLoading(false);
     };
 
     initSession();
 
+    // Listen for cross-tab storage changes to seamlessly sync dashboard redirects
+    const handleStorageChange = (e) => {
+      if (e.key === "recoveryMode") {
+        setIsRecoveryMode(e.newValue === "true");
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
+        localStorage.setItem("recoveryMode", "true");
         setIsRecoveryMode(true);
-      } else if (event === 'USER_UPDATED' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Once password is updated, Supabase issues a new token with method="password".
-        // Clear recovery lock so user can proceed to dashboard.
-        if (!isRecoverySession(session)) setIsRecoveryMode(false);
+      } else if (event === 'SIGNED_OUT') {
+        clearRecoveryMode();
       }
 
       // SEC-FIX: Prevent network race conditions during background token refreshes
       if (event === 'TOKEN_REFRESHED') {
-        // Silently update user state without triggering a database check.
-        // The real-time channel handles instant demotions/deactivations.
         if (session?.user) {
            setCurrentUser(prev => prev ? { ...prev, ...session.user } : null);
         }
@@ -99,14 +101,16 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   // REAL-TIME SECURITY: Listen for status changes while logged in
   useEffect(() => {
     if (!currentUser) return;
 
-    // Listen to changes on 'authorized_users' table for this specific user ID
     const channel = supabase
       .channel(`security_watch_${currentUser.id}`)
       .on(
@@ -118,15 +122,13 @@ export function AuthProvider({ children }) {
           filter: `id=eq.${currentUser.id}` 
         },
         async (payload) => {
-          // 1. Trigger logout if row is deleted OR status is changed to INACTIVE
           if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new.status === 'INACTIVE')) {
             alert("Session Terminated: Your access has been deactivated or revoked.");
-            await supabase.auth.signOut();
+            await logout();
             setCurrentUser(null);
             setUserRole(null);
             window.location.href = '/login'; 
           } 
-          // 2. Real-time Role Updates (Immediate Demotion/Promotion)
           else if (payload.eventType === 'UPDATE' && payload.new.role !== userRole) {
             setUserRole(payload.new.role);
             setCurrentUser(prev => ({ ...prev, role: payload.new.role }));
@@ -144,7 +146,6 @@ export function AuthProvider({ children }) {
   // Helper to sync Auth User with Whitelist Data
   const handleSession = async (session) => {
     if (session?.user) {
-      
       const { data, error } = await supabase
         .from('authorized_users')
         .select('*')
@@ -160,28 +161,21 @@ export function AuthProvider({ children }) {
 
       if (data) {
         if (data.status === 'INACTIVE') {
-            await supabase.auth.signOut();
+            await logout();
             setCurrentUser(null);
             return;
         }
 
-        // --- UPDATED LOGIC START ---
-        // We removed the client-side UPDATE here.
-        // The SQL Trigger 'on_auth_user_created' now handles the 
-        // PENDING -> REGISTERED switch automatically upon sign-up.
-        
-        // Just set the user state based on what the DB says
         setCurrentUser({ 
           ...session.user, 
           ...data,
           fullName: data.full_name 
         });
         setUserRole(data.role);
-        // --- UPDATED LOGIC END ---
 
       } else {
         console.warn("User no longer in whitelist. Logging out.");
-        await supabase.auth.signOut();
+        await logout();
         setCurrentUser(null);
       }
     } else {
@@ -190,12 +184,11 @@ export function AuthProvider({ children }) {
     }
   };
 
-
   const value = {
     currentUser,
     userRole,
     isRecoveryMode,
-    clearRecoveryMode: () => setIsRecoveryMode(false),
+    clearRecoveryMode,
     login,
     logout
   };

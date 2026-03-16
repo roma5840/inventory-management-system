@@ -23,16 +23,20 @@ export default function UpdatePassword() {
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (error) {
           console.error("Code exchange failed:", error.message);
+          clearRecoveryMode();
           navigate("/login");
         }
       });
     } else {
       // No code in URL — session must already exist (refresh/new-tab)
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session) navigate("/login");
+        if (!session) {
+          clearRecoveryMode();
+          navigate("/login");
+        }
       });
     }
-  }, [navigate]);
+  }, [navigate, clearRecoveryMode]);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -42,10 +46,9 @@ export default function UpdatePassword() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Session expired. Please request a new link.");
-      
-      const email = session.user.email;
 
       const { error: updateError } = await supabase.auth.updateUser({ password });
+      
       if (updateError) {
         if (updateError.message.includes("Password should contain")) {
           throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
@@ -53,9 +56,7 @@ export default function UpdatePassword() {
         throw updateError;
       }
 
-      // Force fresh JWT with method="password" — guarantees isRecoveryMode clears on all tabs
-      await supabase.auth.signInWithPassword({ email, password });
-      
+      // Automatically removes lock from memory, localStorage, and forces all open tabs securely to Dashboard!
       clearRecoveryMode();
       navigate("/", { replace: true });
     } catch (err) {
