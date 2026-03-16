@@ -16,18 +16,22 @@ export default function UpdatePassword() {
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code');
 
-    if (!code) return; // No code = session already exists (refresh/new-tab), AuthContext handles it
-
-    // First arrival — exchange code, then clean URL so refresh never re-attempts exchange
-    supabase.auth.exchangeCodeForSession(code)
-      .then(({ error }) => {
+    if (code) {
+      // First arrival — strip code from URL immediately so refresh/StrictMode never re-attempts exchange
+      window.history.replaceState({}, '', '/update-password');
+      
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (error) {
           console.error("Code exchange failed:", error.message);
           navigate("/login");
-          return;
         }
-        window.history.replaceState({}, '', '/update-password'); // Strip ?code= from URL
       });
+    } else {
+      // No code in URL — session must already exist (refresh/new-tab)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) navigate("/login");
+      });
+    }
   }, [navigate]);
 
   const handleUpdate = async (e) => {
