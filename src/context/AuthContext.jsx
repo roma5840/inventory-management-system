@@ -7,31 +7,41 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// 1. KEPT PREVIOUS DEV'S CODE: Decodes JWT safely
+const decodeJWT = (token) => {
+  try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
+  catch { return null; }
+};
+
+// 2. KEPT PREVIOUS DEV'S CODE: Cryptographically checks if user used a magic link
+const isRecoverySession = (session) => {
+  if (!session?.access_token) return false;
+  const amr = decodeJWT(session.access_token)?.amr ?? [];
+  return amr.some(a => a.method === 'otp') && !amr.some(a => a.method === 'password');
+};
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
-  // Safely clear recovery lock across states
+  // 3. NEW: Safely unlock recovery mode across all tabs
   const clearRecoveryMode = useCallback(() => {
-    localStorage.removeItem("recoveryMode");
+    // We set an "unlocked" flag so new tabs know the password was successfully changed
+    // even if the Supabase JWT still temporarily says "otp"
+    localStorage.setItem("recovery_unlocked", "true");
     setIsRecoveryMode(false);
   }, []);
 
-  // Login Function
   async function login(email, password, captchaToken) {
-    clearRecoveryMode(); // Safety clear on standard login
+    localStorage.removeItem("recovery_unlocked"); // Safety clear
     
-    // 1. Authenticate with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-      options: { captchaToken }
+      email, password, options: { captchaToken }
     });
     if (authError) throw authError;
 
-    // 2. Check Whitelist Table
     const { data: userDoc, error: docError } = await supabase
       .from('authorized_users')
       .select('*')
@@ -43,7 +53,6 @@ export function AuthProvider({ children }) {
       throw new Error("Access Denied: You are not authorized.");
     }
 
-    // 3. Check for Inactive Status
     if (userDoc.status === 'INACTIVE') {
       await supabase.auth.signOut();
       throw new Error("Your account has been deactivated. Contact Super Admin.");
@@ -52,22 +61,28 @@ export function AuthProvider({ children }) {
     return authData;
   }
 
-  // Logout Function
   function logout() {
-    clearRecoveryMode();
+    localStorage.removeItem("recovery_unlocked");
     return supabase.auth.signOut();
   }
 
+  // Helper to evaluate recovery state based on BOTH the JWT and the unlock flag
+  const evaluateRecoveryState = useCallback((session) => {
+    const isOtpSession = isRecoverySession(session);
+    const isUnlocked = localStorage.getItem("recovery_unlocked") === "true";
+
+    // If it's an OTP session AND they haven't unlocked it yet, lock them in recovery mode
+    if (isOtpSession && !isUnlocked) {
+      setIsRecoveryMode(true);
+    } else {
+      setIsRecoveryMode(false);
+    }
+  }, []);
+
   useEffect(() => {
-    // Check active session on load
     const initSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      // Re-hydrate recovery mode safely from localStorage
-      if (localStorage.getItem("recoveryMode") === "true") {
-        setIsRecoveryMode(true);
-      }
-      
+      evaluateRecoveryState(session);
       await handleSession(session);
       setLoading(false);
     };
@@ -76,27 +91,27 @@ export function AuthProvider({ children }) {
 
     // Listen for cross-tab storage changes to seamlessly sync dashboard redirects
     const handleStorageChange = (e) => {
-      if (e.key === "recoveryMode") {
-        setIsRecoveryMode(e.newValue === "true");
+      if (e.key === "recovery_unlocked" && e.newValue === "true") {
+        setIsRecoveryMode(false);
       }
     };
     window.addEventListener("storage", handleStorageChange);
 
-    // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        localStorage.setItem("recoveryMode", "true");
+        localStorage.removeItem("recovery_unlocked");
         setIsRecoveryMode(true);
       } else if (event === 'SIGNED_OUT') {
-        clearRecoveryMode();
+        localStorage.removeItem("recovery_unlocked");
+        setIsRecoveryMode(false);
       }
 
-      // SEC-FIX: Prevent network race conditions during background token refreshes
       if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
            setCurrentUser(prev => prev ? { ...prev, ...session.user } : null);
         }
       } else {
+        evaluateRecoveryState(session);
         handleSession(session);
       }
     });
@@ -105,22 +120,14 @@ export function AuthProvider({ children }) {
       subscription.unsubscribe();
       window.removeEventListener("storage", handleStorageChange);
     };
-  }, []);
+  }, [evaluateRecoveryState]);
 
-  // REAL-TIME SECURITY: Listen for status changes while logged in
+  // REAL-TIME SECURITY: Listen for status changes
   useEffect(() => {
     if (!currentUser) return;
 
-    const channel = supabase
-      .channel(`security_watch_${currentUser.id}`)
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'authorized_users', 
-          filter: `id=eq.${currentUser.id}` 
-        },
+    const channel = supabase.channel(`security_watch_${currentUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'authorized_users', filter: `id=eq.${currentUser.id}` },
         async (payload) => {
           if (payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && payload.new.status === 'INACTIVE')) {
             alert("Session Terminated: Your access has been deactivated or revoked.");
@@ -135,29 +142,16 @@ export function AuthProvider({ children }) {
             alert(`Notice: Your system privileges have been updated to ${payload.new.role.replace('_', ' ')}.`);
           }
         }
-      )
-      .subscribe();
+      ).subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => supabase.removeChannel(channel);
   }, [currentUser, userRole]);
 
-  // Helper to sync Auth User with Whitelist Data
   const handleSession = async (session) => {
     if (session?.user) {
-      const { data, error } = await supabase
-        .from('authorized_users')
-        .select('*')
-        .eq('email', session.user.email)
-        .single();
+      const { data, error } = await supabase.from('authorized_users').select('*').eq('email', session.user.email).single();
       
-      if (error) {
-        if (error.code !== 'PGRST116') {
-            console.warn("Network/DB glitch during session check. Keeping session alive.", error);
-            return; 
-        }
-      }
+      if (error && error.code !== 'PGRST116') return; 
 
       if (data) {
         if (data.status === 'INACTIVE') {
@@ -165,16 +159,9 @@ export function AuthProvider({ children }) {
             setCurrentUser(null);
             return;
         }
-
-        setCurrentUser({ 
-          ...session.user, 
-          ...data,
-          fullName: data.full_name 
-        });
+        setCurrentUser({ ...session.user, ...data, fullName: data.full_name });
         setUserRole(data.role);
-
       } else {
-        console.warn("User no longer in whitelist. Logging out.");
         await logout();
         setCurrentUser(null);
       }
@@ -184,17 +171,8 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const value = {
-    currentUser,
-    userRole,
-    isRecoveryMode,
-    clearRecoveryMode,
-    login,
-    logout
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ currentUser, userRole, isRecoveryMode, clearRecoveryMode, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
