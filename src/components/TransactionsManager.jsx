@@ -272,9 +272,9 @@ export default function TransactionsManager() {
                 >
                     <option value="ALL">All Types</option>
                     <option value="ISSUANCE">Issuance</option>
-                    <option value="RECEIVING">Receiving</option>
+                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <option value="RECEIVING">Receiving</option>}
                     <option value="ISSUANCE_RETURN">Return</option>
-                    <option value="PULL_OUT">Pull Out</option>
+                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <option value="PULL_OUT">Pull Out</option>}
                 </select>
 
                 {/* Mode Filter */}
