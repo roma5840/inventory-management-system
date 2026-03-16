@@ -14,11 +14,20 @@ export default function UpdatePassword() {
 
   // Ensure user is authenticated (via the magic link) before showing form
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/login");
-      }
-    });
+    const code = new URLSearchParams(window.location.search).get('code');
+
+    if (!code) return; // No code = session already exists (refresh/new-tab), AuthContext handles it
+
+    // First arrival — exchange code, then clean URL so refresh never re-attempts exchange
+    supabase.auth.exchangeCodeForSession(code)
+      .then(({ error }) => {
+        if (error) {
+          console.error("Code exchange failed:", error.message);
+          navigate("/login");
+          return;
+        }
+        window.history.replaceState({}, '', '/update-password'); // Strip ?code= from URL
+      });
   }, [navigate]);
 
   const handleUpdate = async (e) => {
@@ -27,8 +36,12 @@ export default function UpdatePassword() {
     setError("");
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Session expired. Please request a new link.");
       
+      const email = session.user.email;
+
+      const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
         if (updateError.message.includes("Password should contain")) {
           throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
@@ -36,7 +49,9 @@ export default function UpdatePassword() {
         throw updateError;
       }
 
-      // Synchronously clear recovery lock, then navigate — no race condition
+      // Force fresh JWT with method="password" — guarantees isRecoveryMode clears on all tabs
+      await supabase.auth.signInWithPassword({ email, password });
+      
       clearRecoveryMode();
       navigate("/", { replace: true });
     } catch (err) {
