@@ -1159,7 +1159,9 @@ export default function TransactionForm({ onSuccess }) {
                                             <option value="CHARGED">Charged</option>
                                             <option value="CASH">Cash</option>
                                             <option value="SIP">SIP</option>
-                                            <option value="TRANSMITTAL">Transmittal</option>
+                                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole || currentUser?.role) && (
+                                                <option value="TRANSMITTAL">Transmittal</option>
+                                            )}
                                         </select>
                                     </div>
                                 )}
@@ -1229,7 +1231,9 @@ export default function TransactionForm({ onSuccess }) {
                                             <option value="CHARGED">Charged</option>
                                             <option value="CASH">Cash</option>
                                             <option value="SIP">SIP</option>
-                                            <option value="TRANSMITTAL">Transmittal</option>
+                                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole || currentUser?.role) && (
+                                                <option value="TRANSMITTAL">Transmittal</option>
+                                            )}
                                         </select>
                                     </div>
                                 )}

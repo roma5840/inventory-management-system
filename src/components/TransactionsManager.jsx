@@ -289,7 +289,9 @@ export default function TransactionsManager() {
                         <option value="CASH">Cash</option>
                         <option value="CHARGED">Charged</option>
                         <option value="SIP">SIP</option>
-                        <option value="TRANSMITTAL">Transmittal</option>
+                        {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                            <option value="TRANSMITTAL">Transmittal</option>
+                        )}
                     </select>
                 )}
 
