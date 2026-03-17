@@ -44,6 +44,7 @@ export default function TransactionForm({ onSuccess }) {
     remarks: "",
     reason: "",       
     referenceNo: "",
+    transmittalNo: "",
     department: "",
     requestedBy: "",
     releasedBy: "",
@@ -480,6 +481,7 @@ export default function TransactionForm({ onSuccess }) {
         yearLevel: headerData.transactionMode === 'TRANSMITTAL' ? "" : (headerData.yearLevel?.toUpperCase() || ""),
         course: headerData.transactionMode === 'TRANSMITTAL' ? "" : (headerData.course || ""), 
         studentId: headerData.transactionMode === 'TRANSMITTAL' ? "" : headerData.studentId,
+        transmittalNo: headerData.transmittalNo?.toUpperCase().trim() || "",
         department: headerData.department?.toUpperCase().trim() || "",
         requestedBy: headerData.requestedBy?.toUpperCase().trim() || "",
         releasedBy: headerData.releasedBy?.toUpperCase().trim() || "",
@@ -519,6 +521,7 @@ export default function TransactionForm({ onSuccess }) {
           remarks: finalHeaderData.remarks,
 
           // FIX: Pass Transmittal entity mapping directly into Immediate Print State
+          transmittalNo: finalHeaderData.transmittalNo,
           department: finalHeaderData.department,
           requestedBy: finalHeaderData.requestedBy,
           releasedBy: finalHeaderData.releasedBy,
@@ -774,6 +777,7 @@ export default function TransactionForm({ onSuccess }) {
                 if (isTransmittal) {
                     setHeaderData(prev => ({
                         ...prev,
+                        transmittalNo: validItems[0].transmittal_no || "",
                         department: validItems[0].department || "",
                         requestedBy: validItems[0].requested_by || "",
                         releasedBy: validItems[0].released_by || "",
@@ -1087,7 +1091,17 @@ export default function TransactionForm({ onSuccess }) {
                     {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? (
                         headerData.transactionMode === 'TRANSMITTAL' ? (
                             <>
-                                <div className="md:col-span-3">
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">TR #</label>
+                                    <LimitedInput 
+                                        maxLength={50} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase font-mono text-blue-800"
+                                        placeholder="Manual TR#"
+                                        value={headerData.transmittalNo}
+                                        onChange={e => setHeaderData({...headerData, transmittalNo: e.target.value})} 
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Department <span className="text-rose-500">*</span></label>
                                     <LimitedInput 
                                         maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
@@ -1097,7 +1111,7 @@ export default function TransactionForm({ onSuccess }) {
                                         onChange={e => setHeaderData({...headerData, department: e.target.value})} 
                                     />
                                 </div>
-                                <div className="md:col-span-3">
+                                <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Requested By</label>
                                     <LimitedInput 
                                         maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}

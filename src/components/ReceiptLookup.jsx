@@ -106,6 +106,7 @@ export default function ReceiptLookup() {
         supplier: header.supplier,
         
         // --- SEC-FIX: Map Transmittal Fields for Print Rehydration ---
+        transmittalNo: header.transmittal_no,
         department: header.department,
         requestedBy: header.requested_by,
         releasedBy: header.released_by,

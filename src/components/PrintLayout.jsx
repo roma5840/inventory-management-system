@@ -29,13 +29,13 @@ const TransmittalLayout = ({ data, elementId }) => (
                 </div>
             </div>
             <div className="flex flex-col gap-1 w-1/3">
-                <div className="flex">
+                <div className="flex items-end">
                     <span className="w-10 shrink-0 text-right pr-2">TR #:</span>
                     <div className="border-b border-black flex-1 pl-2 font-bold uppercase min-h-[1.2em]">
-                        {data.refNumber || ""}
+                        {data.transmittalNo || ""}
                     </div>
                 </div>
-                <div className="flex mt-1">
+                <div className="flex mt-1 items-end">
                     <span className="w-10 shrink-0 text-right pr-2">IS #</span>
                     <div className="border-b border-black flex-1 pl-2 uppercase min-h-[1.2em]">
                         {data.bisNumber || ""}
