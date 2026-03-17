@@ -7,7 +7,7 @@ import PrintLayout from "./PrintLayout";
 import LimitedInput from "./LimitedInput";
 
 export default function TransactionForm({ onSuccess }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
   const { processTransaction, loading, error } = useInventory();
   const barcodeRef = useRef(null);
 
@@ -1042,7 +1042,7 @@ export default function TransactionForm({ onSuccess }) {
             { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
             { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
         ]
-        .filter(btn => btn.allowedRoles.includes(currentUser?.role || 'EMPLOYEE'))
+        .filter(btn => btn.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
         .map((btn) => (
             <button
             key={btn.id}

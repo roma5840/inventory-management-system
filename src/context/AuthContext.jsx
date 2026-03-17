@@ -108,7 +108,8 @@ export function AuthProvider({ children }) {
 
       if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
-           setCurrentUser(prev => prev ? { ...prev, ...session.user } : null);
+           // FIX: Prevent Supabase's default session.user.role ("authenticated") from overwriting our DB role
+           setCurrentUser(prev => prev ? { ...prev, ...session.user, role: prev.role } : null);
         }
       } else {
         evaluateRecoveryState(session);
