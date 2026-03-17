@@ -71,8 +71,8 @@ export default function TransactionsManager() {
     if (searchRef) {
         // FIX: Replace commas with '_' to prevent breaking Supabase .or() syntax
         const safeRef = searchRef.replace(/,/g, '_');
-        // Includes Student Name, Student ID, and Supplier in search (Removed Reference Number)
-        query = query.or(`student_name.ilike.%${safeRef}%,student_id.ilike.%${safeRef}%,supplier.ilike.%${safeRef}%`);
+        // Includes Student Name, Student ID, Supplier, and Department in search
+        query = query.or(`student_name.ilike.%${safeRef}%,student_id.ilike.%${safeRef}%,supplier.ilike.%${safeRef}%,department.ilike.%${safeRef}%`);
     }
 
     return query;
@@ -197,6 +197,7 @@ export default function TransactionsManager() {
             return {
                 "Type": item.type,
                 "BIS #": bisColumnValue,
+                "Transmittal No": item.transmittal_no || "",
                 "Transac Mode": item.transaction_mode || "N/A",
                 "Date Encoded": dateObj.toLocaleDateString(),
                 "Time Encoded": dateObj.toLocaleTimeString(),
@@ -322,7 +323,7 @@ export default function TransactionsManager() {
              </div>
              <input 
               type="text" 
-              placeholder="Search Student Name, No., or Supplier..." 
+              placeholder="Search Name, No., Supplier, or Dept..." 
               className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
               value={localSearch}
               onChange={e => setLocalSearch(e.target.value)}
@@ -432,6 +433,11 @@ export default function TransactionsManager() {
                                             <div className="font-bold text-xs text-indigo-700 leading-tight mb-1">
                                                 {first.department} <span className="text-[10px] text-gray-500 font-normal ml-0.5">(Dept)</span>
                                             </div>
+                                            {first.transmittal_no && (
+                                                <div className="text-[10px] font-mono text-indigo-500 font-semibold mb-1">
+                                                    TR #: {first.transmittal_no}
+                                                </div>
+                                            )}
                                             <div className="text-[10px] text-gray-600 space-y-0.5">
                                                 {first.requested_by && <div><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
                                                 {first.released_by && <div><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}

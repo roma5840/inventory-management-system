@@ -249,6 +249,11 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           {first.transaction_mode === 'TRANSMITTAL' && (
                              <div className="mb-2">
                                 <div className="font-bold text-xs text-indigo-700">{first.department} <span className="text-[10px] text-gray-400 font-normal">Department</span></div>
+                                {first.transmittal_no && (
+                                    <div className="text-[10px] font-mono text-indigo-500 font-semibold mt-0.5 mb-1">
+                                        TR #: {first.transmittal_no}
+                                    </div>
+                                )}
                                 <div className="text-[10px] text-gray-600 mt-0.5 space-y-0.5">
                                     {first.requested_by && <div><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
                                     {first.released_by && <div><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}

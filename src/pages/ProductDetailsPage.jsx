@@ -415,6 +415,11 @@ export default function ProductDetailsPage() {
                                                                 <div>
                                                                     <span className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest block mb-0.5">Transmittal / Dept</span>
                                                                     <div className="font-bold text-xs text-slate-700 leading-snug mb-1">{tx.department}</div>
+                                                                    {tx.transmittal_no && (
+                                                                        <div className="text-[10px] font-mono text-indigo-500 font-semibold mb-1">
+                                                                            TR #: {tx.transmittal_no}
+                                                                        </div>
+                                                                    )}
                                                                     <div className="text-[10px] text-slate-500 space-y-0.5 leading-tight">
                                                                         {tx.requested_by && <div><span className="font-semibold text-slate-400">Req:</span> {tx.requested_by}</div>}
                                                                         {tx.released_by && <div><span className="font-semibold text-slate-400">Rel:</span> {tx.released_by}</div>}
