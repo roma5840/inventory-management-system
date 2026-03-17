@@ -38,7 +38,7 @@ const TransmittalLayout = ({ data, elementId }) => (
                 <div className="flex mt-1 items-end">
                     <span className="w-10 shrink-0 text-right pr-2">IS #</span>
                     <div className="border-b border-black flex-1 pl-2 uppercase min-h-[1.2em]">
-                        {data.bisNumber || ""}
+                        {/* Intentionally left blank */}
                     </div>
                 </div>
             </div>
