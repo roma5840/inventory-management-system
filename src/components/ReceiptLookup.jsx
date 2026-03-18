@@ -24,7 +24,9 @@ export default function ReceiptLookup() {
     setSearchResults([]); // Clear previous disambiguation list
     
     try {
-      let query = supabase.from('transactions').select('*');
+      // BUG FIX: Query vw_transaction_history instead of transactions base table
+      // This applies the correct security_invoker RLS policies and pre-resolves staff_name.
+      let query = supabase.from('vw_transaction_history').select('*');
       
       // LOGIC: If input is numeric -> Search BIS. If alphanumeric -> Search Reference #
       const isBisSearch = /^\d+$/.test(term);
@@ -80,17 +82,8 @@ export default function ReceiptLookup() {
     
     const header = items[0];
 
-    // Fetch Staff Name
-    let resolvedStaffName = "Unknown Staff";
-    if (header.user_id) {
-        const { data: userData } = await supabase
-            .from('authorized_users')
-            .select('full_name')
-            .eq('auth_uid', header.user_id)
-            .maybeSingle();
-        if (userData?.full_name) resolvedStaffName = userData.full_name;
-    }
-
+    // Staff name is automatically provided by vw_transaction_history, bypassing the need for an extra query
+    const resolvedStaffName = header.staff_name || "Unknown Staff";
     const isVoided = items.some(d => d.is_voided);
 
     const formattedReceipt = {
@@ -125,7 +118,7 @@ export default function ReceiptLookup() {
             }
 
             return {
-                itemName: item.product_name_snapshot || item.product_name,
+                itemName: item.product_name_snapshot,
                 qty: item.qty,
                 price: effectivePrice,
                 cashPrice: item.cash_price_snapshot !== null ? item.cash_price_snapshot : 0,
