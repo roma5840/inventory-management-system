@@ -447,6 +447,13 @@ export default function ProductDetailsPage() {
                                                             ) : (
                                                                 <span className="text-slate-300 italic text-[10px]">N/A</span>
                                                             )}
+
+                                                            {/* Released By (For Non-Transmittal) */}
+                                                            {tx.released_by && tx.transaction_mode !== 'TRANSMITTAL' && (
+                                                                <div className="text-[10px] text-slate-500 leading-tight mt-1">
+                                                                    <span className="font-semibold text-slate-400">Rel:</span> {tx.released_by}
+                                                                </div>
+                                                            )}
                                                         </>
                                                     )}
 

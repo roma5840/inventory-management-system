@@ -278,6 +278,20 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                              </div>
                           )}
 
+                          {/* Supplier */}
+                          {first.supplier && (
+                             <div className="text-xs mb-1 break-all">
+                                <span className="font-semibold text-gray-500">Supp:</span> {first.supplier}
+                             </div>
+                          )}
+
+                          {/* Released By (For Non-Transmittal) */}
+                          {first.released_by && first.transaction_mode !== 'TRANSMITTAL' && (
+                             <div className="text-[10px] text-gray-600 mb-1">
+                                <span className="font-semibold text-gray-400">Rel:</span> {first.released_by}
+                             </div>
+                          )}
+
                           {/* LINKED BIS # (For Returns) */}
                           {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
                              <div className="mb-2 flex items-center gap-1.5">
@@ -292,13 +306,6 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                              </div>
                           )}
                           
-                          {/* Supplier */}
-                          {first.supplier && (
-                             <div className="text-xs mb-1 break-all">
-                                <span className="font-semibold text-gray-500">Supp:</span> {first.supplier}
-                             </div>
-                          )}
-
                           {/* Remarks */}
                           {first.remarks && (
                              <div className="text-[10px] italic text-gray-600 mb-1 bg-yellow-50 p-2 rounded border border-yellow-100 block whitespace-normal break-words max-h-24 overflow-y-auto">

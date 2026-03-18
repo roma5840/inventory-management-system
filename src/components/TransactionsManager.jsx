@@ -463,6 +463,13 @@ export default function TransactionsManager() {
                                         <span className="text-gray-400 italic text-xs">N/A</span>
                                     )}
 
+                                    {/* Released By (For Non-Transmittal) */}
+                                    {first.released_by && first.transaction_mode !== 'TRANSMITTAL' && (
+                                        <div className="mt-1 text-[10px] text-gray-600 leading-tight">
+                                            <span className="font-semibold text-gray-400">Rel:</span> {first.released_by}
+                                        </div>
+                                    )}
+
                                     {/* LINKED BIS # (For Returns) */}
                                     {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
                                         <div className="mt-2 flex items-center gap-1.5">
