@@ -247,7 +247,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                        <td className="align-top py-3 max-w-[300px] md:max-w-[400px]">
                           {/* Transmittal Info */}
                           {first.transaction_mode === 'TRANSMITTAL' && (
-                             <div className="mb-2">
+                             <div className="mb-2 whitespace-normal break-words">
                                 <div className="font-bold text-xs text-indigo-700">{first.department} <span className="text-[10px] text-gray-400 font-normal">Department</span></div>
                                 {first.transmittal_no && (
                                     <div className="text-[10px] font-mono text-indigo-500 font-semibold mt-0.5 mb-1">
@@ -265,7 +265,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
 
                           {/* Student Info */}
                           {first.student_name && first.transaction_mode !== 'TRANSMITTAL' && (
-                             <div className="mb-1">
+                             <div className="mb-1 whitespace-normal break-words">
                                <div className="font-bold text-xs">{first.student_name}</div>
                                <div className="text-[10px] text-gray-500">
                                   {first.student_id && (
@@ -280,27 +280,27 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
 
                           {/* Supplier */}
                           {first.supplier && (
-                             <div className="text-xs mb-1 break-all">
+                             <div className="text-xs mb-1 whitespace-normal break-words">
                                 <span className="font-semibold text-gray-500">Supp:</span> {first.supplier}
                              </div>
                           )}
 
                           {/* Released By (For Non-Transmittal) */}
                           {first.released_by && first.transaction_mode !== 'TRANSMITTAL' && (
-                             <div className="text-[10px] text-gray-600 mb-1">
+                             <div className="text-[10px] text-gray-600 mb-1 whitespace-normal break-words">
                                 <span className="font-semibold text-gray-400">Rel:</span> {first.released_by}
                              </div>
                           )}
 
                           {/* LINKED BIS # (For Returns) */}
                           {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
-                             <div className="mb-2 flex items-center gap-1.5">
-                                <div className="p-1 bg-sky-50 rounded text-sky-600">
+                             <div className="mb-2 flex items-start gap-1.5 whitespace-normal break-words">
+                                <div className="p-1 bg-sky-50 rounded text-sky-600 shrink-0">
                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                                       <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
                                    </svg>
                                 </div>
-                                <div className="text-[10px] font-medium text-sky-700">
+                                <div className="text-[10px] font-medium text-sky-700 mt-0.5">
                                    Issuance Link: <span className="font-black text-xs">#{first.original_bis}</span>
                                 </div>
                              </div>
@@ -314,16 +314,16 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           )}
 
                           {/* Staff Info */}
-                          <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                          <div className="text-[10px] text-gray-400 mt-1 flex items-start gap-1 whitespace-normal break-words">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 shrink-0 mt-[2px]">
                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.793 2.39A9.916 9.916 0 0010 18c2.695 0 5.145-1.052 6.793-2.61A5.99 5.99 0 0010 12z" clipRule="evenodd" />
                              </svg>
-                             Encoder: <span className="font-semibold">{first.staff_name}</span>
+                             <span>Encoder: <span className="font-semibold">{first.staff_name}</span></span>
                           </div>
 
                           {/* VOID DETAILS */}
                           {(isVoided || voidEntry) && (
-                              <div className="mt-2 p-2 border-l-2 border-red-500 bg-red-50 text-[10px] rounded-r">
+                              <div className="mt-2 p-2 border-l-2 border-red-500 bg-red-50 text-[10px] rounded-r whitespace-normal break-words">
                                   <div className="font-bold text-red-600 uppercase tracking-wider mb-1">VOID DETAILS</div>
                                   <div className="text-gray-700">
                                       <span className="font-semibold">Reason:</span> {voidEntry?.void_reason || first.void_reason || "N/A"}

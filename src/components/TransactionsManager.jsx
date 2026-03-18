@@ -429,7 +429,7 @@ export default function TransactionsManager() {
                                 </td>
 
                                 {/* 5. Name / Supplier / Transmittal Column */}
-                                <td className="py-2 align-top pr-2">
+                                <td className="py-2 align-top pr-2 max-w-[250px]">
                                     {first.transaction_mode === 'TRANSMITTAL' ? (
                                         <div className="whitespace-normal break-words">
                                             <div className="font-bold text-xs text-indigo-700 leading-tight mb-1">
@@ -441,10 +441,10 @@ export default function TransactionsManager() {
                                                 </div>
                                             )}
                                             <div className="text-[10px] text-gray-600 space-y-0.5">
-                                                {first.requested_by && <div><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
-                                                {first.released_by && <div><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}
-                                                {first.charge_to && <div><span className="font-semibold text-gray-400">Chg:</span> {first.charge_to}</div>}
-                                                {first.purpose && <div className="italic text-gray-500 mt-1">"{first.purpose}"</div>}
+                                                {first.requested_by && <div className="break-words"><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
+                                                {first.released_by && <div className="break-words"><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}
+                                                {first.charge_to && <div className="break-words"><span className="font-semibold text-gray-400">Chg:</span> {first.charge_to}</div>}
+                                                {first.purpose && <div className="italic text-gray-500 mt-1 break-words">"{first.purpose}"</div>}
                                             </div>
                                         </div>
                                     ) : first.student_name ? (
@@ -465,20 +465,20 @@ export default function TransactionsManager() {
 
                                     {/* Released By (For Non-Transmittal) */}
                                     {first.released_by && first.transaction_mode !== 'TRANSMITTAL' && (
-                                        <div className="mt-1 text-[10px] text-gray-600 leading-tight">
+                                        <div className="mt-1 text-[10px] text-gray-600 leading-tight whitespace-normal break-words">
                                             <span className="font-semibold text-gray-400">Rel:</span> {first.released_by}
                                         </div>
                                     )}
 
                                     {/* LINKED BIS # (For Returns) */}
                                     {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
-                                        <div className="mt-2 flex items-center gap-1.5">
-                                            <div className="p-1 bg-sky-50 rounded text-sky-600">
+                                        <div className="mt-2 flex items-start gap-1.5 whitespace-normal break-words">
+                                            <div className="p-1 bg-sky-50 rounded text-sky-600 shrink-0">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                                                     <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
                                                 </svg>
                                             </div>
-                                            <div className="text-[10px] font-medium text-sky-700">
+                                            <div className="text-[10px] font-medium text-sky-700 mt-0.5">
                                                 Issuance Link: <span className="font-black text-xs">#{first.original_bis}</span>
                                             </div>
                                         </div>
