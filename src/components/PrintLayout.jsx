@@ -295,7 +295,9 @@ export default function PrintLayout({ data, elementId }) {
       <div className="flex justify-between items-end mt-4">
           <div className="w-[38%]">
               <div className="text-[10px] font-bold mb-6">RELEASED BY:</div>
-              <div className="border-b border-black w-full"></div>
+              <div className="border-b border-black w-full text-center font-bold uppercase min-h-[1.2em] leading-tight text-[11px]">
+                  {data.releasedBy || ""}
+              </div>
           </div>
           <div className="w-[45%] flex flex-col justify-end">
               <p className="text-[9px] italic mb-6 text-left leading-tight">

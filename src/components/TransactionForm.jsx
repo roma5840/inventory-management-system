@@ -816,6 +816,7 @@ export default function TransactionForm({ onSuccess }) {
                         course: displayCourse,
                         yearLevel: displayYear,
                         transactionMode: validItems[0].originalMode || "", 
+                        releasedBy: "",
                         remarks: ""
                     }));
                 }
@@ -1223,6 +1224,17 @@ export default function TransactionForm({ onSuccess }) {
                                     />
                                 </div>
 
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
+                                    <LimitedInput 
+                                        maxLength={150} showCounter={true} 
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
+                                        placeholder="Name"
+                                        value={headerData.releasedBy}
+                                        onChange={e => setHeaderData({...headerData, releasedBy: e.target.value})} 
+                                    />
+                                </div>
+
                                 {headerData.type === 'ISSUANCE' && (
                                     <div className="md:col-span-2">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Trans. Mode</label>
@@ -1240,39 +1252,51 @@ export default function TransactionForm({ onSuccess }) {
                             </>
                         )
                     ) : (
-                        <div className="md:col-span-4 relative">
-                            <label className="flex justify-between items-center mb-1">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Supplier / Source</span>
-                                {isNewSupplier === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
-                                {isNewSupplier === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
-                            </label>
-                            <LimitedInput 
-                                id="supplierInput" 
-                                maxLength={150}
-                                autoComplete="off"
-                                className={`w-full h-9 px-3 rounded-lg border text-sm uppercase font-semibold transition-all outline-none
-                                    ${isNewSupplier === true ? 'border-rose-300 bg-rose-50/30 text-rose-900' : 'border-slate-200 bg-white focus:border-blue-500'}
-                                    ${isNewSupplier === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
-                                `}
-                                placeholder="Start typing supplier..."
-                                value={headerData.supplier} onChange={handleSupplierChange} onKeyDown={handleSupplierKeyDown}
-                                onFocus={() => { if(headerData.supplier) setShowSupplierDropdown(true); }}
-                                onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
-                            />
-                            {showSupplierDropdown && supplierSuggestions.length > 0 && (
-                                <ul className="absolute z-[100] top-full left-0 right-0 bg-white border border-slate-200 rounded-b-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 mt-0.5 custom-scrollbar">
-                                    {supplierSuggestions.map((sup, index) => (
-                                        <li key={index} 
-                                            id={`supplier-option-${index}`}
-                                            className={`px-4 py-2 text-[11px] cursor-pointer border-b border-slate-50 last:border-0 hover:bg-blue-50 transition-colors ${index === activeSupplierIndex ? 'bg-blue-100 font-bold text-blue-800' : 'text-slate-600'}`}
-                                            onMouseDown={() => selectSupplier(sup)}
-                                        >
-                                            {sup}
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
+                        <>
+                            <div className="md:col-span-4 relative">
+                                <label className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Supplier / Source</span>
+                                    {isNewSupplier === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
+                                    {isNewSupplier === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
+                                </label>
+                                <LimitedInput 
+                                    id="supplierInput" 
+                                    maxLength={150}
+                                    autoComplete="off"
+                                    className={`w-full h-9 px-3 rounded-lg border text-sm uppercase font-semibold transition-all outline-none
+                                        ${isNewSupplier === true ? 'border-rose-300 bg-rose-50/30 text-rose-900' : 'border-slate-200 bg-white focus:border-blue-500'}
+                                        ${isNewSupplier === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
+                                    `}
+                                    placeholder="Start typing supplier..."
+                                    value={headerData.supplier} onChange={handleSupplierChange} onKeyDown={handleSupplierKeyDown}
+                                    onFocus={() => { if(headerData.supplier) setShowSupplierDropdown(true); }}
+                                    onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
+                                />
+                                {showSupplierDropdown && supplierSuggestions.length > 0 && (
+                                    <ul className="absolute z-[100] top-full left-0 right-0 bg-white border border-slate-200 rounded-b-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 mt-0.5 custom-scrollbar">
+                                        {supplierSuggestions.map((sup, index) => (
+                                            <li key={index} 
+                                                id={`supplier-option-${index}`}
+                                                className={`px-4 py-2 text-[11px] cursor-pointer border-b border-slate-50 last:border-0 hover:bg-blue-50 transition-colors ${index === activeSupplierIndex ? 'bg-blue-100 font-bold text-blue-800' : 'text-slate-600'}`}
+                                                onMouseDown={() => selectSupplier(sup)}
+                                            >
+                                                {sup}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
+                                <LimitedInput 
+                                    maxLength={150} showCounter={true} 
+                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                    placeholder="Name"
+                                    value={headerData.releasedBy}
+                                    onChange={e => setHeaderData({...headerData, releasedBy: e.target.value})} 
+                                />
+                            </div>
+                        </>
                     )}
                     
                     <div className="md:col-span-6 mt-1">
