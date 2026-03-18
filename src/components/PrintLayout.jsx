@@ -49,10 +49,9 @@ const TransmittalLayout = ({ data, elementId }) => (
             <table className="w-full text-[12px] border-collapse border border-black">
                 <thead>
                     <tr>
+                        <th className="py-1 px-2 text-center w-16 uppercase font-bold border border-black">QTY</th>
                         <th className="py-1 px-2 text-center w-16 uppercase font-bold border border-black">UNIT</th>
                         <th className="py-1 px-2 text-left uppercase font-bold border border-black">PARTICULARS</th>
-                        <th className="py-1 px-2 text-center w-24 uppercase font-bold border border-black">PRICE</th>
-                        <th className="py-1 px-2 text-center w-24 uppercase font-bold border border-black">TOTAL</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,17 +60,17 @@ const TransmittalLayout = ({ data, elementId }) => (
                             <td className="py-1 px-2 text-center border border-black font-mono">
                                 {data.type === 'ISSUANCE_RETURN' ? `(${item.qty})` : item.qty}
                             </td>
+                            <td className="py-1 px-2 text-center border border-black font-medium uppercase">
+                                PCS
+                            </td>
                             <td className="py-1 px-2 text-left border border-black uppercase font-medium">
                                 {item.itemName}
                             </td>
-                            <td className="py-1 px-2 border border-black"></td>
-                            <td className="py-1 px-2 border border-black"></td>
                         </tr>
                     ))}
                     {/* Filler Rows to match Excel aesthetic */}
                     {Array.from({ length: Math.max(5, 8 - data.items.length) }).map((_, i) => (
                         <tr key={`filler-${i}`} className="h-6">
-                            <td className="py-1 border border-black">&nbsp;</td>
                             <td className="py-1 border border-black">&nbsp;</td>
                             <td className="py-1 border border-black">&nbsp;</td>
                             <td className="py-1 border border-black">&nbsp;</td>
