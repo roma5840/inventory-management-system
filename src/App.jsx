@@ -65,22 +65,40 @@ const SessionGuard = () => {
     leaderElection: true,
     syncTimers: 200,
     disabled: !currentUser,
+    // EXPLICITLY whitelist only clicks, touches, and tab switches (NO mousemove, NO scroll)
+    events: ['mousedown', 'touchstart'], 
   });
+
+  // Custom keydown listener to ignore modifier keys (Alt, Tab, Shift, etc.)
+  useEffect(() => {
+    if (!currentUser || showModal) return;
+
+    const handleKeyDown = (e) => {
+      const ignoredKeys = [
+        'Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Escape',
+        'F1', 'F2', 'F3', 'F4', 
+        'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'
+      ];
+      if (!ignoredKeys.includes(e.key)) {
+        activate(); // Manually reset the idle timer for valid keystrokes
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentUser, activate, showModal]);
 
   // Track remaining time for UI AND save a heartbeat for closed-browser scenarios
   useEffect(() => {
     if (!currentUser) return;
     
     const interval = setInterval(() => {
-      // 1. Update UI Countdown
       if (showModal) {
         setRemaining(Math.max(0, Math.ceil(getRemainingTime() / 1000)));
-      }
-      // 2. Heartbeat: Save activity timestamp for next-morning checks
-      if (!showModal) {
+      } else {
         localStorage.setItem('app_last_active', Date.now().toString());
       }
-    }, 1000); 
+    }, 500); // Polling at 500ms fixes the visual "jumping" by keeping the UI tightly synced
 
     return () => clearInterval(interval);
   }, [showModal, getRemainingTime, currentUser]);
