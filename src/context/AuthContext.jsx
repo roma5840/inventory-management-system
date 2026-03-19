@@ -81,6 +81,17 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const initSession = async () => {
+      // --- NEW: Next Morning / Closed-Browser Check ---
+      const lastActive = localStorage.getItem('app_last_active');
+      const now = Date.now();
+      
+      // If they were gone for more than 10 mins (600,000 ms), destroy the session immediately
+      if (lastActive && (now - parseInt(lastActive, 10)) > 600000) {
+        localStorage.removeItem('app_last_active');
+        await supabase.auth.signOut();
+      }
+      // ------------------------------------------------
+
       const { data: { session } } = await supabase.auth.getSession();
       evaluateRecoveryState(session);
       await handleSession(session);
@@ -103,12 +114,12 @@ export function AuthProvider({ children }) {
         setIsRecoveryMode(true);
       } else if (event === 'SIGNED_OUT') {
         localStorage.removeItem("recovery_unlocked");
+        localStorage.removeItem('app_last_active'); // Clean up heartbeat on logout
         setIsRecoveryMode(false);
       }
 
       if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
-           // FIX: Prevent Supabase's default session.user.role ("authenticated") from overwriting our DB role
            setCurrentUser(prev => prev ? { ...prev, ...session.user, role: prev.role } : null);
         }
       } else {
