@@ -48,6 +48,10 @@ const SessionGuard = () => {
   const [showModal, setShowModal] = useState(false);
   const [remaining, setRemaining] = useState(0);
 
+  // Easily change these for testing (e.g., 20000 and 10000)
+  const TIMEOUT_MS = 600000; // 10 minutes
+  const PROMPT_MS = 30000; // 30 seconds
+
   const onPrompt = () => setShowModal(true);
   const onIdle = () => {
     setShowModal(false);
@@ -59,17 +63,16 @@ const SessionGuard = () => {
     onPrompt,
     onIdle,
     onActive,
-    timeout: 600000,          // 10 minutes
-    promptBeforeIdle: 30000,  // 30 seconds warning
+    timeout: TIMEOUT_MS,
+    promptBeforeIdle: PROMPT_MS,
     crossTab: true,
-    leaderElection: true,
+    leaderElection: true, // Kept true to prevent duplicate Supabase API calls across tabs
     syncTimers: 200,
     disabled: !currentUser,
-    // EXPLICITLY whitelist only clicks, touches, and tab switches (NO mousemove, NO scroll)
     events: ['mousedown', 'touchstart'], 
   });
 
-  // Custom keydown listener to ignore modifier keys (Alt, Tab, Shift, etc.)
+  // Custom keydown listener
   useEffect(() => {
     if (!currentUser || showModal) return;
 
@@ -80,7 +83,7 @@ const SessionGuard = () => {
         'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'
       ];
       if (!ignoredKeys.includes(e.key)) {
-        activate(); // Manually reset the idle timer for valid keystrokes
+        activate(); 
       }
     };
 
@@ -88,17 +91,25 @@ const SessionGuard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentUser, activate, showModal]);
 
-  // Track remaining time for UI AND save a heartbeat for closed-browser scenarios
+  // Track remaining time & FORCE sync the UI modal state
   useEffect(() => {
     if (!currentUser) return;
     
     const interval = setInterval(() => {
+      const timeLeft = getRemainingTime();
+
       if (showModal) {
-        setRemaining(Math.max(0, Math.ceil(getRemainingTime() / 1000)));
+        // THE FIX: If Tab A refreshed, Tab B's time jumps back up to max. 
+        // If the time left is greater than the prompt window, another tab woke us up! Hide the modal instantly.
+        if (timeLeft > PROMPT_MS) {
+          setShowModal(false);
+        } else {
+          setRemaining(Math.max(0, Math.ceil(timeLeft / 1000)));
+        }
       } else {
         localStorage.setItem('app_last_active', Date.now().toString());
       }
-    }, 500); // Polling at 500ms fixes the visual "jumping" by keeping the UI tightly synced
+    }, 500); 
 
     return () => clearInterval(interval);
   }, [showModal, getRemainingTime, currentUser]);
