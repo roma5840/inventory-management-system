@@ -95,19 +95,24 @@ const SessionGuard = () => {
   useEffect(() => {
     if (!currentUser) return;
     
+    let lastWriteTime = 0; // NEW: Track last write
+    
     const interval = setInterval(() => {
       const timeLeft = getRemainingTime();
 
       if (showModal) {
-        // THE FIX: If Tab A refreshed, Tab B's time jumps back up to max. 
-        // If the time left is greater than the prompt window, another tab woke us up! Hide the modal instantly.
         if (timeLeft > PROMPT_MS) {
           setShowModal(false);
         } else {
           setRemaining(Math.max(0, Math.ceil(timeLeft / 1000)));
         }
       } else {
-        localStorage.setItem('app_last_active', Date.now().toString());
+        // NEW: Only write to localStorage every 5 seconds (5000ms)
+        const now = Date.now();
+        if (now - lastWriteTime >= 5000) {
+          localStorage.setItem('app_last_active', now.toString());
+          lastWriteTime = now;
+        }
       }
     }, 500); 
 
