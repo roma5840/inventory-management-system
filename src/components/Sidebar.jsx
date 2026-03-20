@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Logo } from "./Logo";
@@ -6,11 +6,26 @@ import { Logo } from "./Logo";
 export default function Sidebar() {
   const { currentUser, userRole, logout } = useAuth();
   const location = useLocation();
+  const menuRef = useRef(null);
   
-  // Persist state in localStorage so it doesn't reset on page navigation
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem("sidebar_collapsed") === "true";
   });
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isUserMenuOpen]);
+
 
   const toggleSidebar = () => {
     setIsCollapsed((prev) => {
@@ -75,22 +90,61 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 mt-auto">
-        {!isCollapsed && (
-          <div className="bg-slate-800/50 rounded-xl p-3 mb-4 overflow-hidden text-ellipsis">
-            <div className="text-xs font-bold text-white truncate">{currentUser?.fullName || currentUser?.email}</div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-tighter mt-1">{userRole.replace('_', ' ')}</div>
-          </div>
-        )}
-        <button 
-          onClick={logout} 
-          className={`btn btn-sm btn-outline btn-block border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white hover:border-slate-600 normal-case flex items-center justify-center gap-2 ${isCollapsed ? "border-none hover:bg-red-500/10 hover:text-red-500" : ""}`}
-          title={isCollapsed ? "Sign Out" : ""}
+      <div className="p-4 border-t border-slate-800/50 mt-auto relative" ref={menuRef}>
+        {/* Compact Pull-up Menu */}
+        <div 
+          className={`absolute bottom-full ${isCollapsed ? "left-2 right-2" : "left-4 right-4"} -mb-2 bg-slate-800 border border-slate-700/60 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] z-50 ${
+            isUserMenuOpen 
+              ? "opacity-100 translate-y-0 scale-100 pointer-events-auto" 
+              : "opacity-0 translate-y-1 scale-95 pointer-events-none"
+          }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-          </svg>
-          {!isCollapsed && <span>Sign Out</span>}
+          <div className="p-1.5">
+            <button 
+              onClick={() => {
+                setIsUserMenuOpen(false);
+                logout();
+              }}
+              title={isCollapsed ? "Log Out" : ""}
+              className={`w-full flex items-center rounded-lg text-slate-300 hover:bg-rose-500/10 hover:text-rose-400 transition-all text-xs font-semibold group ${
+                isCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 transition-transform group-hover:translate-x-0.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              </svg>
+              {!isCollapsed && <span>Log Out</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* Profile Trigger Tab */}
+        <button 
+          onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+          title={isCollapsed ? currentUser?.fullName || "Account" : ""}
+          className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent ${
+            isUserMenuOpen ? 'bg-slate-800 border-slate-700/50' : 'hover:bg-slate-800/40'
+          } ${isCollapsed ? "justify-center" : ""}`}
+        >
+          <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 font-bold text-[11px] shrink-0 border border-slate-700/50 uppercase shadow-inner">
+            {(currentUser?.fullName || currentUser?.email || "??").slice(0, 2)}
+          </div>
+
+          {!isCollapsed && (
+            <>
+              <div className="flex-1 min-w-0 text-left">
+                <div className="text-[13px] font-bold text-white truncate leading-none">
+                  {currentUser?.fullName || "User Account"}
+                </div>
+                <div className="text-[10px] text-slate-500 truncate mt-1.5 font-bold uppercase tracking-tighter opacity-70">
+                  {userRole?.replace('_', ' ') || 'Guest'}
+                </div>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 text-slate-600 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`}>
+                <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+              </svg>
+            </>
+          )}
         </button>
       </div>
     </aside>
