@@ -16,6 +16,16 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 20;
 
+  const [expandedCards, setExpandedCards] = useState(new Set());
+  const toggleCard = (refNo) => {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(refNo)) next.delete(refNo);
+      else next.add(refNo);
+      return next;
+    });
+  };
+
   const [voidModalRef, setVoidModalRef] = useState(null);
   const [voidReason, setVoidReason] = useState("");
   const [voidError, setVoidError] = useState("");
@@ -130,266 +140,245 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   }, {});
 
   return (
-    <div className="card bg-base-100 shadow-xl">
-      <div className="card-body p-4">
-        <div className="flex justify-between items-end mb-4">
+    <div className="card bg-white border border-slate-200 shadow-sm rounded-xl">
+      <div className="card-body p-6">
+        <div className="flex justify-between items-end mb-6 pb-4 border-b border-slate-100">
             <div>
-                <h2 className="card-title text-lg">Daily Activity Log</h2>
-                <div className="text-xs text-gray-500 mt-1">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Daily Activity Log</h2>
+                <div className="text-xs font-medium text-slate-500 mt-1 uppercase tracking-wider">
                     {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>
             </div>
             
-            <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-gray-400">
-                        {totalCount > 0 
-                            ? `Page ${page} of ${Math.ceil(totalCount / ITEMS_PER_PAGE)}`
-                            : "No records found"}
-                    </span>
-                    <div className="flex gap-2">
-                        <button 
-                            className="btn btn-xs btn-outline" 
-                            disabled={page === 1 || loading} 
-                            onClick={()=>setPage(p=>p-1)}
-                        >
-                            « Previous
-                        </button>
-                        <button 
-                            className="btn btn-xs btn-outline"
-                            disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading} 
-                            onClick={()=>setPage(p=>p+1)}
-                        >
-                            Next »
-                        </button>
-                    </div>
+            <div className="flex items-center gap-4">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {totalCount > 0 
+                        ? `Page ${page} of ${Math.ceil(totalCount / ITEMS_PER_PAGE)}`
+                        : "No records found"}
+                </span>
+                <div className="flex gap-1.5">
+                    <button 
+                        className="btn btn-xs bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors rounded-md px-3" 
+                        disabled={page === 1 || loading} 
+                        onClick={()=>setPage(p=>p-1)}
+                    >
+                        Prev
+                    </button>
+                    <button 
+                        className="btn btn-xs bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors rounded-md px-3"
+                        disabled={(page * ITEMS_PER_PAGE) >= totalCount || loading} 
+                        onClick={()=>setPage(p=>p+1)}
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="table table-xs w-full">
-            <thead>
-              <tr className="bg-base-200">
-                <th>Date / BIS #</th>
-                <th>Reference #</th>
-                <th>Type</th>
-                <th>Details</th>
-                <th className="text-center">Items</th>
-                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right">Action</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                 <tr><td colSpan="6" className="text-center py-4">Loading...</td></tr>
-              ) : Object.keys(groupedTransactions).length === 0 ? (
-                 <tr><td colSpan="6" className="text-center py-4">No history found.</td></tr>
-              ) : (
-                Object.entries(groupedTransactions).map(([refNo, items]) => {
-                   const voidEntry = items.find(i => i.type === 'VOID');
-                   const nonVoidItems = items.filter(i => i.type !== 'VOID');
-                   
-                   const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
-                   const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
-                   
-                   const isVoided = items.some(i => i.is_voided) || !!voidEntry;
-                   const isOrphanVoid = items.every(i => i.type === 'VOID'); 
-                   const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
-                   const isCashMode = first.transaction_mode === 'CASH';
-                   const rowClass = isVoided ? "opacity-50 grayscale bg-gray-50" : "";
+        <div className="space-y-4">
+          {loading ? (
+            <div className="py-12 text-center text-slate-400">
+                <span className="loading loading-spinner loading-md mb-2"></span>
+                <p className="text-xs font-bold uppercase tracking-widest">Loading Activity...</p>
+            </div>
+          ) : Object.keys(groupedTransactions).length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+                <p className="text-xs font-bold uppercase tracking-widest">No history found</p>
+            </div>
+          ) : (
+            Object.entries(groupedTransactions).map(([refNo, items]) => {
+                const voidEntry = items.find(i => i.type === 'VOID');
+                const nonVoidItems = items.filter(i => i.type !== 'VOID');
+                
+                const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
+                const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
+                
+                const isVoided = items.some(i => i.is_voided) || !!voidEntry;
+                const isOrphanVoid = items.every(i => i.type === 'VOID'); 
+                const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
+                const isExpanded = expandedCards.has(refNo);
 
-                   return (
-                     <tr key={refNo} className={`border-b border-gray-100 ${rowClass}`}>
-                       {/* Column 1: Date & BIS # */}
-                       <td className="align-top py-3">
-                          <div className="text-[10px] text-gray-500 mb-1">
-                            {new Date(first.timestamp).toLocaleString()}
-                          </div>
-                          <div className="font-black text-lg text-slate-700 leading-none">
-                              #{first.bis_number || "---"}
-                          </div>
-                          {isVoided && <span className="badge badge-xs badge-error mt-1">VOIDED</span>}
-                       </td>
+                // Styling logic based on transaction type
+                const getTypeStyles = (type, isVoid) => {
+                    if (isVoid) return { bar: 'bg-slate-300', badge: 'bg-slate-100 text-slate-500' };
+                    switch(type) {
+                        case 'RECEIVING': return { bar: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-800' };
+                        case 'ISSUANCE': return { bar: 'bg-rose-500', badge: 'bg-rose-100 text-rose-800' };
+                        case 'ISSUANCE_RETURN': return { bar: 'bg-sky-500', badge: 'bg-sky-100 text-sky-800' };
+                        case 'PULL_OUT': return { bar: 'bg-amber-500', badge: 'bg-amber-100 text-amber-800' };
+                        default: return { bar: 'bg-slate-300', badge: 'bg-slate-100 text-slate-800' };
+                    }
+                };
 
-                       {/* Column 2: Ref # */}
-                       <td className="align-top py-3">
-                          <div className="font-mono text-[10px] text-gray-400 select-all break-all max-w-[100px]">
-                              {refNo}
-                          </div>
-                       </td>
+                const styles = getTypeStyles(first.type, isVoided);
+                
+                // Determine primary entity string for summary view
+                let entityName = "Unknown Entity";
+                if (first.transaction_mode === 'TRANSMITTAL') entityName = `Dept: ${first.department}`;
+                else if (first.student_name) entityName = first.student_name;
+                else if (first.supplier) entityName = first.supplier;
+                else if (isOrphanVoid) entityName = "System Reversal";
 
-                       {/* Column 3: Type */}
-                        <td className="align-top py-3">
-                          {isOrphanVoid ? (
-                            <span className="font-bold text-[10px] uppercase px-2 py-1 rounded-full bg-gray-200 text-gray-600">
-                                TRANSACTION
-                            </span>
-                          ) : (
-                            <div className="flex flex-col items-start gap-1">
-                              <span className={`font-bold text-[10px] uppercase px-2 py-1 rounded-full 
-                                  ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : 
-                                    first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' :
-                                    first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-700' :
-                                    first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-700' :
-                                    'bg-gray-100 text-gray-700'}`}>
-                                  {first.type.replace('_', ' ')}
+                return (
+                  <div key={refNo} className={`bg-white border border-slate-200 rounded-xl shadow-sm flex overflow-hidden transition-all hover:shadow-md relative ${isVoided ? 'bg-slate-50/80 grayscale-[50%]' : ''}`}>
+                    {/* Left edge colored bar */}
+                    <div className={`w-1.5 shrink-0 ${styles.bar}`} />
+                    
+                    {isVoided && (
+                        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 2px, transparent 2px, transparent 8px)' }}></div>
+                    )}
+
+                    <div className="flex-1 p-5">
+                      {/* Top Header Row */}
+                      <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                          <div className="flex items-center gap-3">
+                              <span className="font-mono text-xl font-bold text-slate-900 tracking-tight">#{first.bis_number || "---"}</span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${styles.badge}`}>
+                                  {isOrphanVoid ? 'TRANSACTION' : first.type.replace('_', ' ')}
                               </span>
-                              {first.transaction_mode && (
-                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter ml-1">
+                              {first.transaction_mode && !isOrphanVoid && (
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-200 rounded-md px-1.5 py-0.5">
                                       {first.transaction_mode}
                                   </span>
                               )}
-                            </div>
-                          )}
-                        </td>
-
-                       {/* Column 4: Context / Details */}
-                       <td className="align-top py-3 max-w-[300px] md:max-w-[400px]">
-                          {/* Transmittal Info */}
-                          {first.transaction_mode === 'TRANSMITTAL' && (
-                             <div className="mb-2 whitespace-normal break-words">
-                                <div className="font-bold text-xs text-indigo-700">{first.department} <span className="text-[10px] text-gray-400 font-normal">Department</span></div>
-                                {first.transmittal_no && (
-                                    <div className="text-[10px] font-mono text-indigo-500 font-semibold mt-0.5 mb-1">
-                                        TR #: {first.transmittal_no}
-                                    </div>
-                                )}
-                                <div className="text-[10px] text-gray-600 mt-0.5 space-y-0.5">
-                                    {first.requested_by && <div><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
-                                    {first.released_by && <div><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}
-                                    {first.charge_to && <div><span className="font-semibold text-gray-400">Charge:</span> {first.charge_to}</div>}
-                                    {first.purpose && <div className="italic text-gray-500 mt-1">"{first.purpose}"</div>}
-                                </div>
-                             </div>
-                          )}
-
-                          {/* Student Info */}
-                          {first.student_name && first.transaction_mode !== 'TRANSMITTAL' && (
-                             <div className="mb-1 whitespace-normal break-words">
-                               <div className="font-bold text-xs">{first.student_name}</div>
-                               <div className="text-[10px] text-gray-500">
-                                  {first.student_id && (
-                                      <span className="font-mono bg-gray-100 px-1 rounded mr-1 text-gray-600">
-                                          {first.student_id}
-                                      </span>
-                                  )}
-                                  {first.course} {first.year_level}
-                               </div>
-                             </div>
-                          )}
-
-                          {/* Supplier */}
-                          {first.supplier && (
-                             <div className="text-xs mb-1 whitespace-normal break-words">
-                                <span className="font-semibold text-gray-500">Supp:</span> {first.supplier}
-                             </div>
-                          )}
-
-                          {/* Released By (For Non-Transmittal) */}
-                          {first.released_by && first.transaction_mode !== 'TRANSMITTAL' && (
-                             <div className="text-[10px] text-gray-600 mb-1 whitespace-normal break-words">
-                                <span className="font-semibold text-gray-400">Rel:</span> {first.released_by}
-                             </div>
-                          )}
-
-                          {/* LINKED BIS # (For Returns) */}
-                          {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
-                             <div className="mb-2 flex items-start gap-1.5 whitespace-normal break-words">
-                                <div className="p-1 bg-sky-50 rounded text-sky-600 shrink-0">
-                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                                      <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
-                                   </svg>
-                                </div>
-                                <div className="text-[10px] font-medium text-sky-700 mt-0.5">
-                                   Issuance Link: <span className="font-black text-xs">#{first.original_bis}</span>
-                                </div>
-                             </div>
-                          )}
-                          
-                          {/* Remarks */}
-                          {first.remarks && (
-                             <div className="text-[10px] italic text-gray-600 mb-1 bg-yellow-50 p-2 rounded border border-yellow-100 block whitespace-normal break-words max-h-24 overflow-y-auto">
-                                <span className="font-bold not-italic">Note:</span> {first.remarks}
-                             </div>
-                          )}
-
-                          {/* Staff Info */}
-                          <div className="text-[10px] text-gray-400 mt-1 flex items-start gap-1 whitespace-normal break-words">
-                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 shrink-0 mt-[2px]">
-                               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-5.5-2.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zM10 12a5.99 5.99 0 00-4.793 2.39A9.916 9.916 0 0010 18c2.695 0 5.145-1.052 6.793-2.61A5.99 5.99 0 0010 12z" clipRule="evenodd" />
-                             </svg>
-                             <span>Encoder: <span className="font-semibold">{first.staff_name}</span></span>
+                              {isVoided && <span className="badge badge-error badge-sm text-[10px] font-bold uppercase tracking-widest border-none">VOIDED</span>}
                           </div>
+                          <div className="text-right">
+                              <div className="text-xs font-bold text-slate-700">{new Date(first.timestamp).toLocaleDateString()}</div>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(first.timestamp).toLocaleTimeString()}</div>
+                          </div>
+                      </div>
 
-                          {/* VOID DETAILS */}
-                          {(isVoided || voidEntry) && (
-                              <div className="mt-2 p-2 border-l-2 border-red-500 bg-red-50 text-[10px] rounded-r whitespace-normal break-words">
-                                  <div className="font-bold text-red-600 uppercase tracking-wider mb-1">VOID DETAILS</div>
-                                  <div className="text-gray-700">
-                                      <span className="font-semibold">Reason:</span> {voidEntry?.void_reason || first.void_reason || "N/A"}
-                                  </div>
-                                  {voidEntry && (
-                                      <div className="text-gray-700 mt-1">
-                                          <div><span className="font-semibold">Voided By:</span> {voidEntry.staff_name}</div>
-                                          <div className="text-gray-400 mt-0.5">
-                                              {new Date(voidEntry.timestamp).toLocaleString()}
-                                          </div>
-                                      </div>
-                                  )}
+                      {/* Body Row (always visible) */}
+                      <div className="flex justify-between items-end">
+                          <div>
+                              <div className="text-sm font-semibold text-slate-800">{entityName}</div>
+                              <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-2">
+                                  <span>Enc: <span className="font-bold text-slate-700">{first.staff_name}</span></span>
+                                  <span className="text-slate-300">•</span>
+                                  <span>Ref: <span className="font-mono text-slate-600 font-medium">{refNo}</span></span>
                               </div>
-                          )}
-                       </td>
-
-                      {/* Column 5: Item Summary */}
-                       <td className="align-top py-3">
-                          <ul className="space-y-2">
-                             {displayItems.map((i, idx) => {
-                               const itemIsCashMode = i.transaction_mode === 'CASH';
-                               const unitVal = isCostType 
-                                 ? (i.unit_cost_snapshot ?? 0)
-                                 : itemIsCashMode ? (i.cash_price_snapshot ?? 0) : (i.price_snapshot ?? i.price);
-
-                               return (
-                                 <li key={idx} className="flex flex-col text-[10px] border-b border-dashed border-gray-200 pb-1">
-                                    <div className="flex justify-between font-medium">
-                                        <span className="truncate max-w-[150px]" title={i.product_name_snapshot}>
-                                          {i.product_name_snapshot || "Item"}
-                                        </span>
-                                        <div className="text-right">
-                                            <span>
-                                              {i.qty} x ₱{Number(unitVal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </span>
-                                            {(isCostType || itemIsCashMode) && (
-                                                <span className="text-[9px] text-gray-400 block -mt-0.5">({isCostType ? 'Cost' : 'Cash'})</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                 </li>
-                               );
-                             })}
-                          </ul>
-                       </td>
-
-                       {/* Column 6: Actions */}
-                        {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                          <td className="align-top text-right py-3">
-                              {!isVoided && !isOrphanVoid && (
+                          </div>
+                          
+                          <div className="flex items-center gap-3 relative z-10">
+                              {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && !isVoided && !isOrphanVoid && (
                                   <button 
-                                    onClick={() => handleVoidClick(refNo, first.bis_number)}
-                                    className="btn btn-xs btn-outline btn-error hover:shadow-md transition-all"
-                                    title="Void this entire receipt"
+                                      onClick={(e) => { e.stopPropagation(); handleVoidClick(refNo, first.bis_number); }}
+                                      className="text-[10px] font-bold text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 px-2 py-1 rounded transition-colors uppercase tracking-widest"
                                   >
-                                    VOID
+                                      Void Receipt
                                   </button>
                               )}
-                          </td>
-                        )}
-                     </tr>
-                   );
-                })
-              )}
-            </tbody>
-          </table>
+                              <button 
+                                  onClick={() => toggleCard(refNo)} 
+                                  className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 uppercase tracking-widest transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200"
+                              >
+                                  {isExpanded ? 'Hide Details' : 'View Details'}
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                  </svg>
+                              </button>
+                          </div>
+                      </div>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                          <div className="mt-5 pt-5 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-5">
+                              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                                  
+                                  {/* Left Col: Context Details */}
+                                  <div className="lg:col-span-2 space-y-4">
+                                      {/* Transmittal Specifics */}
+                                      {first.transaction_mode === 'TRANSMITTAL' && (
+                                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-2">Transmittal Details</span>
+                                              {first.transmittal_no && <div className="text-xs font-mono font-bold text-slate-700 mb-1">TR #: {first.transmittal_no}</div>}
+                                              <div className="space-y-1 text-[11px] text-slate-600">
+                                                  {first.requested_by && <div><span className="font-bold text-slate-400">Req:</span> {first.requested_by}</div>}
+                                                  {first.released_by && <div><span className="font-bold text-slate-400">Rel:</span> {first.released_by}</div>}
+                                                  {first.charge_to && <div><span className="font-bold text-slate-400">Charge:</span> {first.charge_to}</div>}
+                                                  {first.purpose && <div className="italic text-slate-500 mt-2">"{first.purpose}"</div>}
+                                              </div>
+                                          </div>
+                                      )}
+
+                                      {/* Link / Remarks */}
+                                      {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
+                                          <div className="bg-sky-50 border border-sky-100 p-3 rounded-lg text-sky-800 text-xs flex items-start gap-2">
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0 mt-0.5">
+                                                  <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
+                                              </svg>
+                                              <div><span className="font-bold uppercase tracking-widest text-[10px] block mb-0.5">Linked Issuance</span> <span className="font-mono font-bold">#{first.original_bis}</span></div>
+                                          </div>
+                                      )}
+
+                                      {first.remarks && (
+                                          <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg text-amber-800 text-xs">
+                                              <span className="font-bold uppercase tracking-widest text-[10px] block mb-1">Remarks</span>
+                                              <div className="italic">"{first.remarks}"</div>
+                                          </div>
+                                      )}
+
+                                      {/* Void Callout */}
+                                      {(isVoided || voidEntry) && (
+                                          <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                                              <span className="font-black text-red-600 uppercase tracking-widest text-[10px] block mb-1.5">Reversal Information</span>
+                                              <div className="text-xs text-red-900 font-medium mb-1">Reason: <span className="font-normal italic">"{voidEntry?.void_reason || first.void_reason || "N/A"}"</span></div>
+                                              {voidEntry && (
+                                                  <div className="text-[10px] text-red-700 mt-2 uppercase tracking-widest font-bold">
+                                                      Voided by {voidEntry.staff_name} <span className="text-red-400 font-normal ml-1">({new Date(voidEntry.timestamp).toLocaleString()})</span>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
+
+                                  {/* Right Col: Items List */}
+                                  <div className="lg:col-span-3 bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3 border-b border-slate-100 pb-2">Item Breakdown</span>
+                                      <ul className="space-y-2.5">
+                                         {displayItems.map((i, idx) => {
+                                           const itemIsCashMode = i.transaction_mode === 'CASH';
+                                           const unitVal = isCostType 
+                                             ? (i.unit_cost_snapshot ?? 0)
+                                             : itemIsCashMode ? (i.cash_price_snapshot ?? 0) : (i.price_snapshot ?? i.price);
+
+                                           return (
+                                             <li key={idx} className="flex justify-between items-start text-xs group">
+                                                <div className="flex-1 min-w-0 pr-4">
+                                                    <div className="font-medium text-slate-800 truncate" title={i.product_name_snapshot}>{i.product_name_snapshot || "Item"}</div>
+                                                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">{i.barcode_snapshot || i.product_id}</div>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <div className="font-mono text-slate-700 font-medium">
+                                                      {i.qty} <span className="text-slate-400 px-1">×</span> ₱{Number(unitVal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </div>
+                                                    <div className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5 font-bold">
+                                                        Total: ₱{(i.qty * unitVal).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </div>
+                                                </div>
+                                             </li>
+                                           );
+                                         })}
+                                      </ul>
+                                      <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
+                                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Transaction Total</span>
+                                          <span className="font-mono font-bold text-sm text-slate-900">
+                                              ₱{displayItems.reduce((sum, item) => {
+                                                  const val = isCostType ? (item.unit_cost_snapshot ?? 0) : item.transaction_mode === 'CASH' ? (item.cash_price_snapshot ?? 0) : (item.price_snapshot ?? item.price);
+                                                  return sum + (val * item.qty);
+                                              }, 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                          </span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+                    </div>
+                  </div>
+                );
+            })
+          )}
         </div>
       </div>
       {/* Void Confirmation Modal */}

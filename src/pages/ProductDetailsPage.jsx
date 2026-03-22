@@ -279,27 +279,36 @@ export default function ProductDetailsPage() {
             </div>
 
             {/* Reconciliation Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex flex-col md:flex-row items-center gap-2">
                 {[
                     { label: "Beginning Inv", qty: statsData.beginning.qty, val: statsData.beginning.val },
                     { label: "Total Inflow", qty: statsData.inflow.qty, val: statsData.inflow.val },
                     { label: "Net Outflow", qty: statsData.outflow.qty, val: statsData.outflow.val },
                     { label: "Ending Inv", qty: statsData.ending.qty, val: statsData.ending.val, active: true },
-                ].map((box, i) => (
-                    <div key={i} className={`p-5 rounded-xl border ${box.active ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:border-slate-300'} transition-all`}>
-                        <div className={`text-[10px] font-black uppercase tracking-widest mb-3 ${box.active ? 'text-slate-400' : 'text-slate-400'}`}>
-                            {box.label}
+                ].map((box, i, arr) => (
+                    <>
+                        <div key={`box-${i}`} className={`flex-1 w-full p-5 rounded-xl border ${box.active ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:border-slate-300'} transition-all`}>
+                            <div className={`text-[10px] font-black uppercase tracking-widest mb-3 ${box.active ? 'text-slate-400' : 'text-slate-400'}`}>
+                                {box.label}
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className={`text-3xl font-bold tracking-tighter font-mono ${!box.active ? 'text-slate-800' : ''}`}>{box.qty.toLocaleString()}</span>
+                                <span className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Units</span>
+                            </div>
+                            {SHOW_PROFIT_MARGIN && (
+                                <div className={`mt-4 pt-3 border-t font-mono text-xs ${box.active ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                                    ₱ {box.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </div>
+                            )}
                         </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className={`text-3xl font-bold tracking-tighter ${!box.active ? 'text-slate-800' : ''}`}>{box.qty.toLocaleString()}</span>
-                            <span className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Units</span>
-                        </div>
-                        {SHOW_PROFIT_MARGIN && (
-                            <div className={`mt-4 pt-3 border-t font-mono text-xs ${box.active ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                                ₱ {box.val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        {i < arr.length - 1 && (
+                            <div key={`arrow-${i}`} className="text-slate-300 hidden md:block shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
                             </div>
                         )}
-                    </div>
+                    </>
                 ))}
             </div>
 
@@ -325,133 +334,128 @@ export default function ProductDetailsPage() {
         </div>
 
         {/* AUDIT TRAIL TABLE */}
-        <div className="card bg-white shadow-xl border border-slate-200 overflow-hidden">
+        <div className="card bg-white shadow-xl border border-slate-200 overflow-hidden rounded-2xl">
              <div className="card-body p-0">
-                <div className="p-5 border-b flex justify-between items-center bg-white">
+                <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-white">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">Audit Trail</h2>
-                        <p className="text-xs text-slate-500 font-medium">Historical transaction logs for this item</p>
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Audit Trail</h2>
+                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Historical transaction logs for this item</p>
                     </div>
                 </div>
                 <div className="overflow-x-auto min-h-[450px]">
-                    <table className="table w-full">
+                    <table className="table w-full text-sm">
                         <thead>
-                            <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
-                                <th className="bg-slate-50/80">Date / Reference</th>
-                                <th className="bg-slate-50/80">BIS #</th>
-                                <th className="bg-slate-50/80">Activity Type</th>
-                                <th className="bg-slate-50/80">Entity / Details</th>
-                                <th className="text-right bg-slate-50/80">Cost</th>
-                                <th className="text-right bg-slate-50/80">Cash Price</th>
-                                <th className="text-right bg-slate-50/80">Price</th>
-                                <th className="text-center bg-slate-50/80">Qty Change</th>
-                                <th className="text-center bg-slate-50/80">Balance</th>
-                                <th className="text-right bg-slate-50/80">Encoder</th>
+                            <tr className="bg-slate-50/90 backdrop-blur-sm text-slate-500 uppercase text-[10px] font-bold tracking-widest border-b border-slate-200">
+                                <th className="py-4 pl-6 w-[15%]">Date / Ref</th>
+                                <th className="py-4 w-[15%]">BIS / Type</th>
+                                <th className="py-4 w-[20%]">Entity / Details</th>
+                                <th className="py-4 text-right w-[15%]">Unit Value Ref</th>
+                                <th className="py-4 text-center w-[10%]">Change</th>
+                                <th className="py-4 text-center w-[10%]">Balance</th>
+                                <th className="py-4 pr-6 text-right w-[15%]">Encoder</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {tableLoading ? (
-                                <tr><td colSpan="10" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
+                                <tr><td colSpan="7" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                             ) : history.length === 0 ? (
-                                <tr><td colSpan="10" className="text-center py-12 text-slate-400 font-medium">No transactions found for this item.</td></tr>
+                                <tr><td colSpan="7" className="text-center py-16 text-slate-400 font-medium uppercase tracking-widest text-xs">No transactions found for this item.</td></tr>
                             ) : (
                                 history.map((tx) => {
                                     const isIncoming = (tx.new_stock > tx.previous_stock);
                                     const isVoidRow = tx.type === 'VOID';
                                     
                                     return (
-                                        <tr key={tx.id} className={`hover:bg-slate-50/50 transition-colors group 
-                                            ${tx.is_voided ? 'opacity-50 grayscale italic bg-slate-50' : ''} 
-                                            ${isVoidRow ? 'bg-amber-50/30' : ''}`}>
+                                        <tr key={tx.id} className={`hover:bg-slate-50/70 transition-colors group 
+                                            ${tx.is_voided && !isVoidRow ? 'opacity-50 grayscale bg-slate-50/50' : ''} 
+                                            ${isVoidRow ? 'bg-amber-50/40 hover:bg-amber-50/60' : ''}`}>
                                             
                                             {/* 1. Date & Ref */}
-                                            <td className="py-4">
-                                                <div className={`font-mono text-[10px] text-slate-400 select-all break-all max-w-[100px]`}>
+                                            <td className="py-4 pl-6 align-top">
+                                                <div className="text-xs font-semibold text-slate-800">
+                                                    {new Date(tx.timestamp).toLocaleDateString()}
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 mb-1.5">
+                                                    {new Date(tx.timestamp).toLocaleTimeString()}
+                                                </div>
+                                                <div className={`font-mono text-[9px] font-bold text-slate-400 select-all break-all uppercase`}>
                                                     {tx.reference_number}
                                                 </div>
-                                                <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
-                                                    {new Date(tx.timestamp).toLocaleDateString()} • {new Date(tx.timestamp).toLocaleTimeString()}
-                                                </div>
-                                                {tx.is_voided && <span className="badge badge-error badge-xs font-bold text-[8px] mt-1">VOIDED</span>}
-                                                {isVoidRow && <span className="badge badge-warning badge-xs font-bold text-[8px] mt-1">REVERSAL</span>}
+                                                {tx.is_voided && !isVoidRow && <span className="badge badge-error badge-xs font-bold text-[8px] uppercase tracking-widest mt-1 border-none">VOIDED</span>}
                                             </td>
 
-                                            {/* 2. BIS # */}
-                                            <td>
-                                                <div className="font-black text-lg text-slate-700 leading-none">
+                                            {/* 2. BIS & Type */}
+                                            <td className="py-4 align-top">
+                                                <div className={`font-mono text-lg font-bold tracking-tight leading-none ${tx.is_voided && !isVoidRow ? 'text-red-900 line-through decoration-red-300' : 'text-slate-800'}`}>
                                                     #{tx.display_bis || "---"}
                                                 </div>
-                                            </td>
-
-                                            {/* 3. Type */}
-                                            <td>
-                                                <div className={`badge badge-sm border-0 font-bold text-[10px] px-2
+                                                <div className={`mt-2 inline-block px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest leading-none
                                                     ${isVoidRow ? 'bg-amber-600 text-white' : 
                                                     tx.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
                                                     tx.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
                                                     tx.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
                                                     tx.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' :
                                                     'bg-slate-100 text-slate-800'}`}>
-                                                    {tx.type.replace('_', ' ')}
+                                                    {isVoidRow ? 'REVERSAL' : tx.type.replace('_', ' ')}
                                                 </div>
                                                 {tx.transaction_mode && !isVoidRow && (
-                                                    <div className="text-[9px] mt-1 font-black text-slate-400 uppercase tracking-tighter">
+                                                    <div className="text-[9px] mt-1.5 font-black text-slate-400 uppercase tracking-widest pl-1">
                                                         {tx.transaction_mode}
                                                     </div>
                                                 )}
                                             </td>
 
-                                            {/* 4. Entity / Details */}
-                                            <td className="py-4 align-top">
+                                            {/* 3. Entity / Details */}
+                                            <td className="py-4 align-top pr-4">
                                                 <div className="max-w-xs break-words whitespace-normal space-y-1">
                                                     {isVoidRow ? (
                                                         <div>
-                                                            <span className="text-[9px] text-amber-600 font-bold uppercase tracking-widest block">Void Reason</span>
-                                                            <div className="text-xs italic text-slate-600 leading-snug">"{tx.void_reason}"</div>
+                                                            <span className="text-[9px] text-amber-600 font-bold uppercase tracking-widest block mb-0.5">Void Reason</span>
+                                                            <div className="text-xs italic font-medium text-slate-700 leading-snug">"{tx.void_reason}"</div>
                                                         </div>
                                                     ) : (
                                                         <>
                                                             {tx.transaction_mode === 'TRANSMITTAL' ? (
                                                                 <div>
-                                                                    <span className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest block mb-0.5">Transmittal / Dept</span>
-                                                                    <div className="font-bold text-xs text-slate-700 leading-snug mb-1">{tx.department}</div>
+                                                                    <span className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest block mb-0.5">Dept Transmittal</span>
+                                                                    <div className="font-bold text-xs text-slate-800 leading-snug mb-1">{tx.department}</div>
                                                                     {tx.transmittal_no && (
-                                                                        <div className="text-[10px] font-mono text-indigo-500 font-semibold mb-1">
+                                                                        <div className="text-[10px] font-mono text-indigo-500 font-semibold mb-1.5">
                                                                             TR #: {tx.transmittal_no}
                                                                         </div>
                                                                     )}
-                                                                    <div className="text-[10px] text-slate-500 space-y-0.5 leading-tight">
-                                                                        {tx.requested_by && <div><span className="font-semibold text-slate-400">Req:</span> {tx.requested_by}</div>}
-                                                                        {tx.released_by && <div><span className="font-semibold text-slate-400">Rel:</span> {tx.released_by}</div>}
-                                                                        {tx.charge_to && <div><span className="font-semibold text-slate-400">Chg:</span> {tx.charge_to}</div>}
-                                                                        {tx.purpose && <div className="italic text-slate-400 mt-1">"{tx.purpose}"</div>}
+                                                                    <div className="text-[10px] text-slate-600 space-y-0.5 leading-tight">
+                                                                        {tx.requested_by && <div><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Req</span> {tx.requested_by}</div>}
+                                                                        {tx.released_by && <div><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel</span> {tx.released_by}</div>}
+                                                                        {tx.charge_to && <div><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Chg</span> {tx.charge_to}</div>}
+                                                                        {tx.purpose && <div className="italic text-slate-500 mt-1">"{tx.purpose}"</div>}
                                                                     </div>
                                                                 </div>
                                                             ) : tx.student_name ? (
                                                                 <div>
-                                                                    <div className="font-bold text-xs text-slate-700 leading-snug mb-0.5">
+                                                                    <div className="font-semibold text-xs text-slate-800 leading-snug mb-0.5">
                                                                         {tx.student_name}
                                                                     </div>
-                                                                    <div className="text-[10px] text-slate-400 leading-tight">
+                                                                    <div className="text-[10px] text-slate-500 font-medium leading-tight">
                                                                         {tx.student_id && <span className="font-mono mr-1">{tx.student_id} •</span>}
                                                                         {tx.course} {tx.year_level}
                                                                     </div>
                                                                 </div>
                                                             ) : tx.supplier ? (
                                                                 <div>
-                                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Supplier</span>
-                                                                    <div className="font-bold text-slate-700 text-xs leading-snug">
+                                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block mb-0.5">Supplier</span>
+                                                                    <div className="font-semibold text-slate-800 text-xs leading-snug">
                                                                         {tx.supplier}
                                                                     </div>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-slate-300 italic text-[10px]">N/A</span>
+                                                                <span className="text-slate-400 italic text-[10px] font-medium">No Entity Context</span>
                                                             )}
 
-                                                            {/* Released By (For Non-Transmittal) */}
+                                                            {/* Released By */}
                                                             {tx.released_by && tx.transaction_mode !== 'TRANSMITTAL' && (
                                                                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
-                                                                    <span className="font-semibold text-slate-400">Rel:</span> {tx.released_by}
+                                                                    <span className="font-bold text-slate-400 uppercase tracking-widest">Rel:</span> {tx.released_by}
                                                                 </div>
                                                             )}
                                                         </>
@@ -459,62 +463,59 @@ export default function ProductDetailsPage() {
 
                                                     {/* LINKED BIS # (For Returns) */}
                                                     {tx.type === 'ISSUANCE_RETURN' && tx.original_bis && (
-                                                        <div className="mt-2 flex items-center gap-1.5">
-                                                            <div className="p-1 bg-sky-50 rounded text-sky-600">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                                                                    <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
-                                                                </svg>
-                                                            </div>
-                                                            <div className="text-[10px] font-medium text-sky-700">
-                                                                Issuance Link: <span className="font-black text-xs">#{tx.original_bis}</span>
-                                                            </div>
+                                                        <div className="mt-2 text-[10px] text-sky-700 font-bold uppercase tracking-widest">
+                                                            Issuance Link: <span className="font-mono text-sky-600">#{tx.original_bis}</span>
                                                         </div>
                                                     )}
 
                                                     {tx.remarks && !isVoidRow && (
-                                                        <div className="mt-2 text-[10px] text-amber-600 font-medium leading-snug bg-amber-50/50 p-1.5 rounded border border-amber-100">
-                                                            <span className="font-bold">Note:</span> {tx.remarks}
+                                                        <div className="mt-2 text-[10px] text-amber-700 font-medium leading-snug bg-amber-50/80 p-1.5 rounded-md border border-amber-200">
+                                                            <span className="font-bold uppercase tracking-widest text-[9px] mr-1 block mb-0.5">Note</span> {tx.remarks}
                                                         </div>
                                                     )}
                                                 </div>
                                             </td>
 
-                                            {/* 5. Cost */}
-                                            <td className="text-right font-mono text-xs text-slate-500">
-                                                {tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
+                                            {/* 4. Value Snapshot */}
+                                            <td className="py-4 align-top text-right">
+                                                <div className="space-y-1 inline-flex flex-col">
+                                                    <div className="flex justify-between gap-3 text-xs">
+                                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Cost</span>
+                                                        <span className="font-mono text-slate-600">{tx.unit_cost_snapshot !== null ? `₱${tx.unit_cost_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3 text-xs">
+                                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Cash</span>
+                                                        <span className="font-mono text-slate-700 font-semibold">{tx.cash_price_snapshot !== null ? `₱${tx.cash_price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3 text-xs pt-1 border-t border-slate-100">
+                                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">SRP</span>
+                                                        <span className="font-mono text-slate-800 font-bold">{tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}</span>
+                                                    </div>
+                                                </div>
                                             </td>
 
-                                            {/* 6. Cash Price */}
-                                            <td className="text-right font-mono text-xs font-semibold text-slate-600">
-                                                {tx.cash_price_snapshot !== null ? `₱${tx.cash_price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
-                                            </td>
-
-                                            {/* 7. Price */}
-                                            <td className="text-right font-mono text-xs font-semibold text-slate-700">
-                                                {tx.price_snapshot !== null ? `₱${tx.price_snapshot.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '—'}
-                                            </td>
-
-                                            {/* 8. Qty Change */}
-                                            <td className="text-center">
-                                                <span className={`font-black text-base tracking-tighter ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {/* 5. Qty Change */}
+                                            <td className="py-4 align-middle text-center">
+                                                <span className={`font-mono text-xl font-bold tracking-tighter ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     {isIncoming ? '+' : '-'}{tx.qty}
                                                 </span>
                                             </td>
 
-                                            {/* 9. Balance */}
-                                            <td className="text-center">
+                                            {/* 6. Balance */}
+                                            <td className="py-4 align-middle text-center">
                                                 <div className="flex flex-col items-center">
-                                                    <span className="font-bold text-slate-700 text-sm">{tx.new_stock}</span>
-                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Prev: {tx.previous_stock}</span>
+                                                    <span className="font-mono text-lg font-bold text-slate-800 leading-none">{tx.new_stock}</span>
+                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Prev: {tx.previous_stock}</span>
                                                 </div>
                                             </td>
 
-                                            {/* 10. Encoder */}
-                                            <td className="text-right">
-                                                <div className="text-[11px] font-bold text-slate-600">{tx.staff_name}</div>
+                                            {/* 7. Encoder */}
+                                            <td className="py-4 pr-6 align-top text-right">
+                                                <div className="text-xs font-bold text-slate-700">{tx.staff_name}</div>
                                                 {!isVoidRow && tx.is_voided && tx.void_details && (
-                                                    <div className="mt-1 text-[9px] text-rose-500 font-medium">
-                                                        Voided by {tx.void_details.who}
+                                                    <div className="mt-2 text-[9px] text-red-600 font-bold uppercase tracking-widest leading-tight">
+                                                        <span className="block mb-0.5 text-red-400">Reversed By</span>
+                                                        {tx.void_details.who}
                                                     </div>
                                                 )}
                                             </td>
@@ -527,13 +528,15 @@ export default function ProductDetailsPage() {
                 </div>
                  
                  {/* Pagination Controls */}
-                <Pagination 
-                    totalCount={totalCount}
-                    itemsPerPage={ITEMS_PER_PAGE}
-                    currentPage={currentPage}
-                    onPageChange={(p) => setCurrentPage(p)}
-                    loading={tableLoading} 
-                />
+                 <div className="p-4 border-t border-slate-200">
+                    <Pagination 
+                        totalCount={totalCount}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={(p) => setCurrentPage(p)}
+                        loading={tableLoading} 
+                    />
+                 </div>
              </div>
          </div>
        </div>

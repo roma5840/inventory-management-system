@@ -20,6 +20,16 @@ export default function TransactionsManager() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 20;
+
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const toggleRow = (refNo) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(refNo)) next.delete(refNo);
+      else next.add(refNo);
+      return next;
+    });
+  };
   
   // Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -241,33 +251,40 @@ export default function TransactionsManager() {
 
   return (
     <div className="card bg-white shadow-lg border border-gray-200">
-      <div className="card-body p-6">
+      <div className="card-body p-0">
         
         {/* HEADER & FILTERS */}
-        <div className="p-5 border-b flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
-          <div className="flex flex-col lg:flex-row items-center gap-4 w-full xl:w-auto">
+        <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+          <div className="flex flex-col lg:flex-row items-center gap-6 w-full xl:w-auto">
             <div className="text-center lg:text-left">
-              <h2 className="text-xl font-bold text-slate-800">Transaction Ledger</h2>
-              <p className="text-xs text-slate-500 font-medium whitespace-nowrap">View and audit all inventory movements</p>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Transaction Ledger</h2>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1 whitespace-nowrap">View and audit all inventory movements</p>
             </div>
 
             {/* Filter Controls Group */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-                {/* Date Filter */}
-                <select 
-                  className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
-                  value={dateFilter} 
-                  onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
-                >
-                    <option value="TODAY">Today</option>
-                    <option value="7DAYS">Last 7 Days</option>
-                    <option value="30DAYS">Last 30 Days</option>
-                    <option value="ALL">All Time</option>
-                </select>
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
+                
+                {/* Date Segmented Pill */}
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                    {[
+                        { label: 'Today', val: 'TODAY' },
+                        { label: '7 Days', val: '7DAYS' },
+                        { label: '30 Days', val: '30DAYS' },
+                        { label: 'All', val: 'ALL' }
+                    ].map(opt => (
+                        <button 
+                            key={opt.val}
+                            onClick={() => { setDateFilter(opt.val); setCurrentPage(1); }}
+                            className={`px-3 py-1 text-[11px] uppercase tracking-widest font-bold rounded-md transition-all ${dateFilter === opt.val ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
 
-                {/* Type Filter */}
+                {/* Dropdowns */}
                 <select 
-                  className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
+                  className="select select-sm bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-xs font-semibold text-slate-600 rounded-lg h-8" 
                   value={typeFilter} 
                   onChange={e => { setTypeFilter(e.target.value); setModeFilter("ALL"); setCurrentPage(1); }}
                 >
@@ -278,10 +295,9 @@ export default function TransactionsManager() {
                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <option value="PULL_OUT">Pull Out</option>}
                 </select>
 
-                {/* Mode Filter */}
                 {(typeFilter === "ALL" || typeFilter === "ISSUANCE") && (
                      <select 
-                      className="select select-sm select-bordered bg-slate-50 border-slate-200 focus:bg-white text-xs" 
+                      className="select select-sm bg-white border-slate-200 focus:border-slate-400 focus:ring-0 text-xs font-semibold text-slate-600 rounded-lg h-8" 
                       value={modeFilter} 
                       onChange={e => { setModeFilter(e.target.value); setCurrentPage(1); }}
                     >
@@ -294,76 +310,75 @@ export default function TransactionsManager() {
                         )}
                     </select>
                 )}
-
-                {/* Export Button */}
-                {userRole === 'SUPER_ADMIN' && (
-                    <button 
-                        onClick={handleExport} 
-                        disabled={isExporting || totalCount === 0}
-                        className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50 gap-2"
-                        title="Download as Excel"
-                    >
-                        {isExporting ? (
-                            <span className="loading loading-spinner loading-xs"></span>
-                        ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-emerald-600">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                            </svg>
-                        )}
-                        Export
-                    </button>
-                )}
             </div>
           </div>
 
-          {/* Search Input Container */}
-          <div className="relative w-full md:w-72">
-             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-             </div>
-             <input 
-              type="text" 
-              placeholder="Search Name, No., Supplier, or Dept..." 
-              className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
-              value={localSearch}
-              onChange={e => setLocalSearch(e.target.value)}
-            />
+          {/* Right Side Controls */}
+          <div className="flex items-center gap-3 w-full xl:w-auto">
+              <div className="relative flex-1 md:w-64">
+                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                 </div>
+                 <input 
+                  type="text" 
+                  placeholder="Search Name, No, Supplier..." 
+                  className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
+                  value={localSearch}
+                  onChange={e => setLocalSearch(e.target.value)}
+                />
+              </div>
+
+              {userRole === 'SUPER_ADMIN' && (
+                  <button 
+                      onClick={handleExport} 
+                      disabled={isExporting || totalCount === 0}
+                      className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8"
+                  >
+                      {isExporting ? (
+                          <span className="loading loading-spinner loading-xs"></span>
+                      ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                          </svg>
+                      )}
+                      <span className="text-xs font-bold uppercase tracking-widest hidden sm:inline">Export</span>
+                  </button>
+              )}
           </div>
         </div>
 
         {/* DETAILED TABLE */}
-        <div className="overflow-hidden">
-            <table className="table w-full table-fixed text-sm">
-                <thead className="bg-gray-50 text-gray-600">
+        <div className="overflow-x-auto min-h-[500px]">
+            <table className="table w-full">
+                <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-sm z-10 text-slate-500 uppercase text-[10px] font-bold tracking-widest border-b border-slate-200">
                 <tr>
-                    <th className="w-[8%]">Type</th>
-                    <th className="w-[7%]">BIS #</th>
-                    <th className="w-[9%]">Date</th>
-                    <th className="w-[10%]">Ref #</th>
-                    <th className="w-[9%]">Student No.</th>
-                    <th className="w-[16%]">Name / Supplier</th>
-                    <th className="w-auto">Items Breakdown</th>
-                    <th className="text-right w-[10%]">Value</th>
-                    <th className="w-[10%] text-right">Staff</th>
+                    <th className="py-4 pl-6 w-[15%]">Type / Mode</th>
+                    <th className="py-4 w-[15%]">BIS #</th>
+                    <th className="py-4 w-[15%]">Date</th>
+                    <th className="py-4 w-[25%]">Entity</th>
+                    <th className="py-4 w-[15%]">Items</th>
+                    <th className="py-4 pr-6 text-right w-[15%]">Value</th>
                 </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                    <tr><td colSpan="9" className="text-center py-10">Loading records...</td></tr>
+                    <tr><td colSpan="6" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                 ) : Object.keys(groupedTransactions).length === 0 ? (
-                    <tr><td colSpan="9" className="text-center py-10 text-gray-400">No transactions found matching filters.</td></tr>
+                    <tr><td colSpan="6" className="text-center py-16 text-slate-400 font-medium uppercase tracking-widest text-xs">No transactions found matching filters.</td></tr>
                 ) : (
                     Object.entries(groupedTransactions).map(([refNo, items]) => {
                         const nonVoidItems = items.filter(i => i.type !== 'VOID');
                         const voidRow = items.find(i => i.type === 'VOID'); 
                         const displayItems = nonVoidItems.length > 0 ? nonVoidItems : items;
                         const first = nonVoidItems.length > 0 ? nonVoidItems[0] : items[0];
+                        
                         const isVoided = items.some(i => i.is_voided) || !!voidRow;
                         const isOrphanVoid = items.every(i => i.type === 'VOID');
                         const isCostType = ['RECEIVING', 'PULL_OUT'].includes(first.type);
                         const isCashMode = first.transaction_mode === 'CASH';
+                        const isExpanded = expandedRows.has(refNo);
 
                         const totalValue = displayItems.reduce((sum, item) => {
                             const val = isCostType ? (item.unit_cost_snapshot ?? 0) : isCashMode ? (item.cash_price_snapshot ?? 0) : (item.price_snapshot ?? item.price);
@@ -372,178 +387,176 @@ export default function TransactionsManager() {
 
                         const voidSource = voidRow || (isOrphanVoid ? first : null);
 
+                        let entityName = "Unknown Entity";
+                        if (first.transaction_mode === 'TRANSMITTAL') entityName = `Dept: ${first.department}`;
+                        else if (first.student_name) entityName = first.student_name;
+                        else if (first.supplier) entityName = first.supplier;
+                        else if (isOrphanVoid) entityName = "System Reversal";
+
                         return (
-                            <tr key={refNo} className={`border-b hover:bg-gray-50 align-top ${isVoided ? 'opacity-50 grayscale bg-gray-50' : ''}`}>
-                                <td className="py-2 pr-1 align-top">
-                                    {isOrphanVoid ? (
-                                        <div className="badge badge-sm font-bold border-0 bg-gray-200 text-gray-800 whitespace-nowrap">TX</div>
-                                    ) : (
-                                        <div className={`badge badge-sm font-bold border-0 h-auto py-1 whitespace-normal text-center w-full
-                                            ${first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
-                                            first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
-                                            first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
-                                            first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
-                                            'bg-gray-200 text-gray-800'}`}>
-                                            {first.type === 'ISSUANCE_RETURN' ? (
-                                                <div className="flex flex-col items-center leading-[1.1]">
-                                                    <span>ISSUANCE</span>
-                                                    <span>RETURN</span>
-                                                </div>
-                                            ) : (
-                                                first.type.replace('_', ' ')
-                                            )}
-                                        </div>
-                                    )}
-                                    {first.transaction_mode && (
-                                        <div className="mt-1 text-[9px] font-bold text-gray-500 uppercase leading-tight text-center">
+                            <>
+                            <tr 
+                                key={`row-${refNo}`} 
+                                onClick={() => toggleRow(refNo)}
+                                className={`cursor-pointer transition-colors hover:bg-slate-50/70 group ${isExpanded ? 'bg-slate-50/50' : ''} ${isVoided ? 'bg-red-50/30 hover:bg-red-50/50' : ''}`}
+                            >
+                                <td className={`pl-6 relative ${isVoided ? 'border-l-4 border-l-red-400' : ''}`}>
+                                    <div className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest leading-none
+                                        ${isOrphanVoid ? 'bg-amber-600 text-white' : 
+                                        first.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' : 
+                                        first.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' : 
+                                        first.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
+                                        first.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' : 
+                                        'bg-slate-100 text-slate-800'}`}>
+                                        {isOrphanVoid ? 'TRANSACTION' : first.type.replace('_', ' ')}
+                                    </div>
+                                    {first.transaction_mode && !isOrphanVoid && (
+                                        <div className="mt-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                                             {first.transaction_mode}
                                         </div>
                                     )}
                                 </td>
 
-                                {/* New BIS # Column */}
-                                <td className="py-2 align-top text-center">
-                                    <div className="font-black text-sm text-slate-700">
+                                <td>
+                                    <div className={`font-mono text-lg font-bold tracking-tight ${isVoided ? 'text-red-900 line-through decoration-red-300' : 'text-slate-800'}`}>
                                         #{first.bis_number || "---"}
                                     </div>
                                 </td>
 
-                                <td className="py-2 align-top">
-                                    <div className="text-xs text-gray-700 leading-tight">{new Date(first.timestamp).toLocaleDateString()}</div>
-                                    <div className="text-[10px] text-gray-400 leading-tight">{new Date(first.timestamp).toLocaleTimeString()}</div>
+                                <td>
+                                    <div className="text-xs font-semibold text-slate-700">{new Date(first.timestamp).toLocaleDateString()}</div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{new Date(first.timestamp).toLocaleTimeString()}</div>
                                 </td>
 
-                                <td className="py-2 align-top pr-2">
-                                    <div className="font-mono text-[10px] text-gray-400 break-all leading-tight">
-                                        {refNo}
+                                <td>
+                                    <div className="text-sm font-semibold text-slate-800 truncate max-w-[200px] xl:max-w-[300px]" title={entityName}>{entityName}</div>
+                                    {first.student_id && <div className="text-[10px] font-mono text-slate-500 mt-0.5">{first.student_id}</div>}
+                                </td>
+
+                                <td>
+                                    <div className="text-xs font-bold text-slate-600 flex items-center gap-1">
+                                        {displayItems.length} {displayItems.length === 1 ? 'item' : 'items'}
                                     </div>
-                                    {isVoided && (
-                                        <div className="mt-1">
-                                            <span className="badge badge-xs badge-error uppercase font-bold tracking-tighter">VOIDED</span>
-                                        </div>
-                                    )}
-                                </td>
-
-                                <td className="py-2 font-mono text-xs text-gray-600 break-all whitespace-normal align-top">
-                                    {first.student_id || "-"}
-                                </td>
-
-                                {/* 5. Name / Supplier / Transmittal Column */}
-                                <td className="py-2 align-top pr-2 max-w-[250px]">
-                                    {first.transaction_mode === 'TRANSMITTAL' ? (
-                                        <div className="whitespace-normal break-words">
-                                            <div className="font-bold text-xs text-indigo-700 leading-tight mb-1">
-                                                {first.department} <span className="text-[10px] text-gray-500 font-normal ml-0.5">(Dept)</span>
-                                            </div>
-                                            {first.transmittal_no && (
-                                                <div className="text-[10px] font-mono text-indigo-500 font-semibold mb-1">
-                                                    TR #: {first.transmittal_no}
-                                                </div>
-                                            )}
-                                            <div className="text-[10px] text-gray-600 space-y-0.5">
-                                                {first.requested_by && <div className="break-words"><span className="font-semibold text-gray-400">Req:</span> {first.requested_by}</div>}
-                                                {first.released_by && <div className="break-words"><span className="font-semibold text-gray-400">Rel:</span> {first.released_by}</div>}
-                                                {first.charge_to && <div className="break-words"><span className="font-semibold text-gray-400">Chg:</span> {first.charge_to}</div>}
-                                                {first.purpose && <div className="italic text-gray-500 mt-1 break-words">"{first.purpose}"</div>}
-                                            </div>
-                                        </div>
-                                    ) : first.student_name ? (
-                                        <div className="whitespace-normal break-words">
-                                            <div className="font-bold text-xs leading-tight">{first.student_name}</div>
-                                            <div className="text-[10px] text-gray-500 leading-tight mt-0.5">
-                                                {first.course} {first.year_level}
-                                            </div>
-                                        </div>
-                                    ) : first.supplier ? (
-                                        <div className="whitespace-normal break-words">
-                                            <span className="text-[9px] text-gray-400 uppercase font-bold">Supplier</span>
-                                            <div className="font-bold text-xs leading-tight">{first.supplier}</div>
-                                        </div>
-                                    ) : (
-                                        <span className="text-gray-400 italic text-xs">N/A</span>
-                                    )}
-
-                                    {/* Released By (For Non-Transmittal) */}
-                                    {first.released_by && first.transaction_mode !== 'TRANSMITTAL' && (
-                                        <div className="mt-1 text-[10px] text-gray-600 leading-tight whitespace-normal break-words">
-                                            <span className="font-semibold text-gray-400">Rel:</span> {first.released_by}
-                                        </div>
-                                    )}
-
-                                    {/* LINKED BIS # (For Returns) */}
-                                    {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
-                                        <div className="mt-2 flex items-start gap-1.5 whitespace-normal break-words">
-                                            <div className="p-1 bg-sky-50 rounded text-sky-600 shrink-0">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                                                    <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h9.128c1.81 0 3.5.908 4.5 2.424a5.25 5.25 0 01-4.5 8.076h-1.5a.75.75 0 010-1.5h1.5a3.75 3.75 0 003.214-5.771 3.75 3.75 0 00-3.214-1.729H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.25-5a.75.75 0 010-1.085l5.25-5a.75.75 0 011.06.025z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <div className="text-[10px] font-medium text-sky-700 mt-0.5">
-                                                Issuance Link: <span className="font-black text-xs">#{first.original_bis}</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {first.remarks && (
-                                        <div className="mt-1 text-[10px] bg-yellow-50 text-yellow-800 p-1 rounded border border-yellow-100 whitespace-normal break-words leading-tight">
-                                            {first.remarks}
-                                        </div>
-                                    )}
-                                </td>
-
-                                <td className="py-2 align-top pr-2">
-                                    <div className="space-y-1">
-                                        {displayItems.map(item => {
-                                            const itemIsCashMode = item.transaction_mode === 'CASH';
-                                            const itemVal = isCostType ? (item.unit_cost_snapshot ?? 0) : itemIsCashMode ? (item.cash_price_snapshot ?? 0) : (item.price_snapshot ?? item.price);
-                                            return (
-                                                <div key={item.id} className="flex justify-between items-start text-xs border-b border-dashed border-gray-200 pb-1 last:border-0 gap-2">
-                                                    <div className="flex flex-col flex-grow min-w-0">
-                                                        <span className="font-medium whitespace-normal break-words leading-tight text-gray-700">{item.product_name_snapshot || "Item"}</span>
-                                                        <span className="text-[9px] text-gray-400 font-mono leading-none mt-0.5 break-all">{item.barcode_snapshot || item.product_id}</span>
-                                                    </div>
-                                                    <div className="text-right shrink-0 whitespace-nowrap ml-1">
-                                                        <span className="font-mono text-gray-600 block leading-none">{item.qty} <span className="text-gray-400">x</span> {Number(itemVal).toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 group-hover:text-indigo-500 transition-colors flex items-center gap-1">
+                                        Click to view <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
                                     </div>
                                 </td>
 
-                                <td className="py-2 text-right align-top">
-                                    <div className="font-mono font-bold text-sm leading-none">{first.type === 'ISSUANCE_RETURN' ? '-' : ''}{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                    <div className="text-[9px] text-gray-400 uppercase tracking-wide mt-1">{isCostType ? 'Cost' : isCashMode ? 'Cash Price' : 'Price'}</div>
-                                </td>
-
-                                <td className="py-2 text-right align-top">
-                                    <div className="text-xs font-semibold whitespace-normal break-words leading-tight">{first.staff_name}</div>
-                                    {isVoided && voidSource && (
-                                        <div className="mt-2 pt-1 border-t border-red-100 flex flex-col items-end">
-                                            <span className="text-[8px] text-red-500 font-bold uppercase tracking-wider">Voided By</span>
-                                            <div className="text-[10px] text-red-700 font-medium break-words w-full text-right">{voidSource.staff_name || "Unknown"}</div>
-                                            <div className="text-[9px] text-red-400 leading-tight mt-0.5 whitespace-nowrap">
-                                                {new Date(voidSource.timestamp).toLocaleDateString()} <span className="opacity-75">• {new Date(voidSource.timestamp).toLocaleTimeString()}</span>
-                                            </div>
-                                            <div className="text-[9px] text-red-500 italic mt-1 bg-red-50/50 p-1 rounded border border-red-100/50 w-full text-right leading-tight break-words whitespace-normal">"{voidSource.void_reason || first.void_reason || "N/A"}"</div>
-                                        </div>
-                                    )}
+                                <td className="pr-6 text-right">
+                                    <div className="font-mono text-base font-bold text-slate-800">
+                                        {first.type === 'ISSUANCE_RETURN' ? '-' : ''}₱{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{isCostType ? 'Cost Val' : isCashMode ? 'Cash Val' : 'SRP Val'}</div>
                                 </td>
                             </tr>
+
+                            {/* Expanded Details Row */}
+                            {isExpanded && (
+                                <tr key={`exp-${refNo}`} className="bg-slate-50/50 border-b border-slate-200 shadow-inner">
+                                    <td colSpan="6" className="p-0">
+                                        <div className="px-6 py-5 border-l-4 border-indigo-200">
+                                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                                
+                                                {/* Left: Metadata & Context */}
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">System Reference</span>
+                                                        <span className="font-mono text-xs text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded">{refNo}</span>
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Encoded By</span>
+                                                        <span className="text-xs font-bold text-slate-700">{first.staff_name}</span>
+                                                    </div>
+
+                                                    {first.transaction_mode === 'TRANSMITTAL' && (
+                                                        <div className="bg-white p-3 rounded-lg border border-slate-200">
+                                                            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-1.5">Transmittal Info</span>
+                                                            <div className="space-y-1 text-xs text-slate-600">
+                                                                {first.transmittal_no && <div><span className="font-bold text-slate-400">TR #:</span> <span className="font-mono">{first.transmittal_no}</span></div>}
+                                                                {first.requested_by && <div><span className="font-bold text-slate-400">Req:</span> {first.requested_by}</div>}
+                                                                {first.released_by && <div><span className="font-bold text-slate-400">Rel:</span> {first.released_by}</div>}
+                                                                {first.charge_to && <div><span className="font-bold text-slate-400">Charge:</span> {first.charge_to}</div>}
+                                                                {first.purpose && <div className="italic text-slate-500 mt-1">"{first.purpose}"</div>}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
+                                                        <div>
+                                                            <span className="text-[10px] font-black text-sky-500 uppercase tracking-widest block mb-1">Linked Issuance</span>
+                                                            <span className="font-mono font-bold text-sm text-sky-700">#{first.original_bis}</span>
+                                                        </div>
+                                                    )}
+
+                                                    {first.remarks && !isVoided && (
+                                                        <div className="bg-amber-50 border border-amber-100 p-2.5 rounded text-amber-800 text-xs">
+                                                            <span className="font-bold uppercase tracking-widest text-[9px] block mb-0.5">Remarks</span>
+                                                            <span className="italic">"{first.remarks}"</span>
+                                                        </div>
+                                                    )}
+
+                                                    {isVoided && voidSource && (
+                                                        <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+                                                            <span className="text-[10px] font-black text-red-600 uppercase tracking-widest block mb-1.5">Void Details</span>
+                                                            <div className="text-xs text-red-900 font-medium mb-1">Reason: <span className="italic font-normal">"{voidSource.void_reason || first.void_reason || "N/A"}"</span></div>
+                                                            <div className="text-[10px] text-red-700 uppercase tracking-widest font-bold mt-2">
+                                                                Voided by {voidSource.staff_name || "Unknown"} <span className="text-red-400 font-normal ml-1">({new Date(voidSource.timestamp).toLocaleString()})</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Right: Item Breakdown (takes 2 cols) */}
+                                                <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3 border-b border-slate-100 pb-2">Item Details</span>
+                                                    <div className="space-y-2">
+                                                        {displayItems.map(item => {
+                                                            const itemIsCashMode = item.transaction_mode === 'CASH';
+                                                            const itemVal = isCostType ? (item.unit_cost_snapshot ?? 0) : itemIsCashMode ? (item.cash_price_snapshot ?? 0) : (item.price_snapshot ?? item.price);
+                                                            return (
+                                                                <div key={item.id} className="flex justify-between items-center text-xs border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                                                                    <div className="flex-1">
+                                                                        <div className="font-semibold text-slate-800">{item.product_name_snapshot || "Item"}</div>
+                                                                        <div className="text-[10px] font-mono text-slate-400 mt-0.5">{item.barcode_snapshot || item.product_id}</div>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <div className="font-mono text-slate-600">
+                                                                            {item.qty} <span className="text-slate-300 px-1">×</span> {Number(itemVal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                                        </div>
+                                                                        <div className="font-mono font-bold text-slate-800 mt-0.5">
+                                                                            ₱{(item.qty * itemVal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            </>
                         );
                     })
                 )}
                 </tbody>
             </table>
         </div>
+        
         {/* Pagination Controls */}
-        <Pagination 
-            totalCount={totalCount}
-            itemsPerPage={ITEMS_PER_PAGE}
-            currentPage={currentPage}
-            onPageChange={(p) => setCurrentPage(p)}
-            loading={loading}
-        />
+        <div className="p-4 border-t border-slate-200">
+            <Pagination 
+                totalCount={totalCount}
+                itemsPerPage={ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={(p) => setCurrentPage(p)}
+                loading={loading}
+            />
+        </div>
       </div>
     </div>
   );
