@@ -430,7 +430,12 @@ export default function TransactionsManager() {
 
                                 <td>
                                     <div className="text-sm font-semibold text-slate-800 truncate max-w-[200px] xl:max-w-[300px]" title={entityName}>{entityName}</div>
-                                    {first.student_id && <div className="text-[10px] font-mono text-slate-500 mt-0.5">{first.student_id}</div>}
+                                    {first.student_id && (
+                                        <div className="text-[10px] text-slate-500 mt-0.5">
+                                            <span className="font-mono">{first.student_id}</span>
+                                            {(first.course || first.year_level) && ` • ${first.course} ${first.year_level}`}
+                                        </div>
+                                    )}
                                 </td>
 
                                 <td>
@@ -482,6 +487,34 @@ export default function TransactionsManager() {
                                                         </div>
                                                     )}
 
+                                                    {/* Standard Entity / Released By Info (Non-Transmittal) */}
+                                                    {first.transaction_mode !== 'TRANSMITTAL' && (first.student_name || first.supplier || first.released_by) && (
+                                                        <div className="bg-white p-3 rounded-lg border border-slate-200">
+                                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                                                                {first.student_name ? 'Student Info' : first.supplier ? 'Supplier Info' : 'Details'}
+                                                            </span>
+                                                            <div className="space-y-1 text-xs text-slate-600">
+                                                                {first.student_name && (
+                                                                    <>
+                                                                        <div className="font-semibold text-slate-700">{first.student_name}</div>
+                                                                        {first.student_id && <div><span className="font-bold text-slate-400">ID:</span> <span className="font-mono">{first.student_id}</span></div>}
+                                                                        {(first.course || first.year_level) && <div><span className="font-bold text-slate-400">Course/Year:</span> {first.course} {first.year_level}</div>}
+                                                                    </>
+                                                                )}
+                                                                
+                                                                {first.supplier && (
+                                                                    <div className="font-semibold text-slate-700">{first.supplier}</div>
+                                                                )}
+
+                                                                {first.released_by && (
+                                                                    <div className={`pt-1.5 ${first.student_name || first.supplier ? 'mt-1.5 border-t border-slate-100' : ''}`}>
+                                                                        <span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel:</span> {first.released_by}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
                                                         <div>
                                                             <span className="text-[10px] font-black text-sky-500 uppercase tracking-widest block mb-1">Linked Issuance</span>
@@ -489,7 +522,7 @@ export default function TransactionsManager() {
                                                         </div>
                                                     )}
 
-                                                    {first.remarks && !isVoided && (
+                                                    {first.remarks && !isOrphanVoid && (
                                                         <div className="bg-amber-50 border border-amber-100 p-2.5 rounded text-amber-800 text-xs">
                                                             <span className="font-bold uppercase tracking-widest text-[9px] block mb-0.5">Remarks</span>
                                                             <span className="italic">"{first.remarks}"</span>

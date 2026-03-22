@@ -302,6 +302,35 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                           </div>
                                       )}
 
+                                      {/* Standard Entity / Released By Info (Non-Transmittal) */}
+                                      {first.transaction_mode !== 'TRANSMITTAL' && (first.student_name || first.supplier || first.released_by) && (
+                                          <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                                                  {first.student_name ? 'Student Details' : first.supplier ? 'Supplier Details' : 'Transaction Info'}
+                                              </span>
+                                              
+                                              {first.student_name && (
+                                                  <div className="space-y-1 text-[11px] text-slate-600 mb-2 pb-2 border-b border-slate-50">
+                                                      <div className="font-bold text-slate-800 text-xs">{first.student_name}</div>
+                                                      {first.student_id && <div><span className="font-bold text-slate-400">ID:</span> <span className="font-mono">{first.student_id}</span></div>}
+                                                      {(first.course || first.year_level) && <div><span className="font-bold text-slate-400">Course/Year:</span> {first.course} {first.year_level}</div>}
+                                                  </div>
+                                              )}
+                                              
+                                              {first.supplier && (
+                                                  <div className="space-y-1 text-[11px] text-slate-600 mb-2 pb-2 border-b border-slate-50">
+                                                      <div className="font-bold text-slate-800 text-xs">{first.supplier}</div>
+                                                  </div>
+                                              )}
+
+                                              {first.released_by && (
+                                                  <div className="text-[11px] text-slate-600">
+                                                      <span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel:</span> {first.released_by}
+                                                  </div>
+                                              )}
+                                          </div>
+                                      )}
+
                                       {/* Link / Remarks */}
                                       {first.type === 'ISSUANCE_RETURN' && first.original_bis && (
                                           <div className="bg-sky-50 border border-sky-100 p-3 rounded-lg text-sky-800 text-xs flex items-start gap-2">
