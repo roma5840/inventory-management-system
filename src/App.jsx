@@ -50,7 +50,7 @@ const SessionGuard = () => {
 
   // Easily change these for testing (e.g., 20000 and 10000)
   const TIMEOUT_MS = 600000; // 10 minutes
-  const PROMPT_MS = 30000; // 30 seconds
+  const PROMPT_MS = 60000; // 60 seconds
 
   const onPrompt = () => setShowModal(true);
   const onIdle = () => {
