@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { PasswordInput } from "../components/PasswordInput";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 // Isolated component for Personal Activity Log (Optimized for zero-egress waste)
 function PersonalActivityLog({ userRole }) {
@@ -189,27 +190,48 @@ function PersonalActivityLog({ userRole }) {
 export default function SettingsPage() {
   const { currentUser, userRole } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwLoading, setPwLoading] = useState(false);
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef(null);
 
   const handleOpenModal = () => {
-    setNewPassword(""); setConfirmPassword("");
-    setPwError(""); setPwSuccess("");
+    setCurrentPassword("");
+    setNewPassword(""); 
+    setConfirmPassword("");
+    setPwError(""); 
+    setPwSuccess("");
+    setCaptchaToken("");
+    turnstileRef.current?.reset();
     setIsModalOpen(true);
   };
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setPwError(""); setPwSuccess("");
+    
+    if (!currentPassword) return setPwError("Current password is required.");
     if (newPassword !== confirmPassword) return setPwError("New passwords do not match.");
+    if (!captchaToken) return setPwError("Security verification pending. Please wait.");
     
     setPwLoading(true);
     try {
-        // BYPASS CAPTCHA ISSUE: We drop the requirement to verify the old password via signInWithPassword 
-        // because the user is ALREADY authenticated by their valid session JWT!
+        // 1. Re-authenticate to prove identity (consumes the CAPTCHA securely)
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+          email: currentUser.email,
+          password: currentPassword,
+          options: { captchaToken }
+        });
+
+        if (verifyError) {
+          throw new Error("Incorrect current password or verification failed.");
+        }
+
+        // 2. Perform the actual password update
         const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
         if (updateError) {
           if (updateError.message.includes("Password should contain"))
@@ -218,9 +240,11 @@ export default function SettingsPage() {
         }
 
         setPwSuccess("Password updated securely.");
-        setNewPassword(""); setConfirmPassword("");
+        setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
     } catch (err) {
         setPwError(err.message || "An unexpected error occurred.");
+        turnstileRef.current?.reset();
+        setCaptchaToken("");
     } finally {
         setPwLoading(false);
     }
@@ -299,9 +323,45 @@ export default function SettingsPage() {
 
                   {!pwSuccess && (
                     <>
-                      <PasswordInput label="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                      <PasswordInput label="Confirm New Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                      <button type="submit" disabled={pwLoading || !newPassword || !confirmPassword} className="btn btn-primary w-full font-bold tracking-wide mt-2">
+                      <PasswordInput 
+                        label="Current Password" 
+                        value={currentPassword} 
+                        onChange={(e) => setCurrentPassword(e.target.value)} 
+                      />
+                      <div className="divider my-1 text-slate-300"></div>
+                      <PasswordInput 
+                        label="New Password" 
+                        value={newPassword} 
+                        onChange={(e) => setNewPassword(e.target.value)} 
+                      />
+                      <PasswordInput 
+                        label="Confirm New Password" 
+                        value={confirmPassword} 
+                        onChange={(e) => setConfirmPassword(e.target.value)} 
+                      />
+                      
+                      {/* Interaction-only Turnstile: Invisible unless Cloudflare suspects a bot */}
+                      <div className="flex justify-center">
+                        <Turnstile 
+                          ref={turnstileRef}
+                          siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
+                          options={{ appearance: 'interaction-only' }}
+                          onSuccess={(token) => {
+                            setCaptchaToken(token);
+                            setPwError("");
+                          }}
+                          onError={() => {
+                            setCaptchaToken("");
+                            setPwError("Security verification failed. Please try again.");
+                          }}
+                          onExpire={() => {
+                            setCaptchaToken("");
+                            setPwError("Security verification expired. Please modify a field to refresh.");
+                          }}
+                        />
+                      </div>
+
+                      <button type="submit" disabled={pwLoading || !currentPassword || !newPassword || !confirmPassword || !captchaToken} className="btn btn-primary w-full font-bold tracking-wide mt-2">
                         {pwLoading ? <span className="loading loading-spinner loading-sm"></span> : "Update Password"}
                       </button>
                     </>
