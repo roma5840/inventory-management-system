@@ -13,6 +13,7 @@ import ForgotPassword from "./components/ForgotPassword";
 import UpdatePassword from "./components/UpdatePassword";
 import SupplierPage from "./pages/SupplierPage";
 import InventoryPage from "./pages/InventoryPage";
+import SettingsPage from "./pages/SettingsPage";
 import { useIdleTimer } from "react-idle-timer";
 
 
@@ -248,6 +249,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <StaffPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Protected Settings Route */}
+      <Route 
+        path="/settings" 
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         } 
       />
