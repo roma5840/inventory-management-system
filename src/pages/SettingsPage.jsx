@@ -10,7 +10,6 @@ function PersonalActivityLog({ userRole }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize to current month (Automatically adapts to PH timezone based on user's OS)
   const [dateRange, setDateRange] = useState(() => {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -25,8 +24,6 @@ function PersonalActivityLog({ userRole }) {
   useEffect(() => {
     async function fetchActivity() {
       setLoading(true);
-      
-      // Convert local dates to ISO securely mapping them from 00:00:00 to 23:59:59
       const startIso = new Date(`${dateRange.start}T00:00:00`).toISOString();
       const endIso = new Date(`${dateRange.end}T23:59:59.999`).toISOString();
 
@@ -47,142 +44,144 @@ function PersonalActivityLog({ userRole }) {
     }
     
     fetchActivity();
-  }, [dateRange]); // Refetches when dates change
+  }, [dateRange]);
 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole);
 
-  if (loading && !stats) return <div className="text-center p-6 text-sm text-slate-400 font-medium animate-pulse">Loading recent activity...</div>;
+  if (loading && !stats) return <div className="text-center p-12 text-sm text-slate-400 font-medium animate-pulse bg-white rounded-xl border border-slate-200">Loading activity data...</div>;
 
   return (
-    <div className="flex flex-col relative">
-      {/* Loading overlay for when dates are changed but we already have data */}
-      {loading && stats && (
-        <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-            <span className="loading loading-spinner text-blue-500"></span>
-        </div>
-      )}
-
-      {/* Stats Overview */}
-      {stats && (
-        <div className="flex flex-col bg-slate-50 border-b border-slate-100">
-          <div className="px-4 py-3 border-b border-slate-200/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-slate-400">
-                <path fillRule="evenodd" d="M15 8A7 7 0 1 1 1 8a7 7 0 0 1 14 0ZM9 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM6.75 8a.75.75 0 0 0 0 1.5h.75v1.75a.75.75 0 0 0 1.5 0v-2.5a.75.75 0 0 0-.75-.75h-1.5Z" clipRule="evenodd" />
-                </svg>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
-                Performance metrics exclude voided transactions and system reversals
-                </p>
-            </div>
-            
-            {/* Embedded Date Filter */}
-            <div className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm rounded-lg p-1.5 px-3">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">Metrics:</span>
-                <input 
-                    type="date" 
-                    className="bg-transparent text-[10px] font-bold text-slate-600 outline-none border-none p-0 w-24"
-                    value={dateRange.start}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                />
-                <span className="text-slate-300 mx-1 text-xs">—</span>
-                <input 
-                    type="date" 
-                    className="bg-transparent text-[10px] font-bold text-slate-600 outline-none border-none p-0 w-24"
-                    value={dateRange.end}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                />
-            </div>
+    <div className="space-y-6">
+      {/* SECTION 1: Performance Metrics (Date Filterable) */}
+      <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+              <span className="loading loading-spinner text-blue-500"></span>
           </div>
+        )}
+        
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Performance Metrics</h2>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1">Excludes voided transactions and reversals</p>
+          </div>
+          
+          <div className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm rounded-lg p-1.5 px-3">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">Filter Period:</span>
+              <input 
+                  type="date" 
+                  className="bg-transparent text-[10px] font-bold text-slate-600 outline-none border-none p-0 w-24"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              />
+              <span className="text-slate-300 mx-1 text-xs">—</span>
+              <input 
+                  type="date" 
+                  className="bg-transparent text-[10px] font-bold text-slate-600 outline-none border-none p-0 w-24"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              />
+          </div>
+        </div>
 
-          <div className={`grid gap-3 p-4 ${isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 max-w-2xl'}`}>
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Sales (Cash/Chg/SIP)</div>
-                <div className="text-xl font-black text-slate-700 leading-none mt-1">{stats.issuanceCash + stats.issuanceCharged}</div>
+        <div className="p-6">
+          {/* GRID FIX: Removed max-width for non-admins so cards fill the container width */}
+          <div className={`grid gap-4 ${isAdmin ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2'}`}>
+            <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 flex flex-col justify-center">
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sales (Cash/Chg/SIP)</div>
+                <div className="text-2xl font-black text-slate-700 leading-none">{stats?.issuanceCash + stats?.issuanceCharged || 0}</div>
             </div>
             
             {isAdmin && (
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Transmittals</div>
-                  <div className="text-xl font-black text-indigo-600 leading-none mt-1">{stats.issuanceTransmittal}</div>
+              <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 flex flex-col justify-center">
+                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Transmittals</div>
+                  <div className="text-2xl font-black text-indigo-600 leading-none">{stats?.issuanceTransmittal || 0}</div>
               </div>
             )}
             
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Returns Handled</div>
-                <div className="text-xl font-black text-sky-600 leading-none mt-1">{stats.returns}</div>
+            <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 flex flex-col justify-center">
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Returns Handled</div>
+                <div className="text-2xl font-black text-sky-600 leading-none">{stats?.returns || 0}</div>
             </div>
             
             {isAdmin && (
-                <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Recv / Pull-Out</div>
-                <div className="text-xl font-black text-emerald-600 leading-none mt-1">
-                    {stats.receiving} <span className="text-slate-300 font-normal mx-0.5">/</span> <span className="text-amber-500">{stats.pullOuts}</span>
+                <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 flex flex-col justify-center">
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recv / Pull-Out</div>
+                <div className="text-2xl font-black text-emerald-600 leading-none">
+                    {stats?.receiving || 0} <span className="text-slate-300 font-normal mx-0.5">/</span> <span className="text-amber-500">{stats?.pullOuts || 0}</span>
                 </div>
                 </div>
             )}
           </div>
         </div>
-      )}
+      </section>
 
-      {/* Transaction Table */}
-      <div className="overflow-x-auto border-t border-slate-200">
-        {logs.length === 0 ? (
-           <div className="text-center p-6 text-sm text-slate-400">No recent activity found.</div>
-        ) : (
-            <table className="table w-full table-xs">
-            <thead>
-                <tr className="bg-white text-slate-500 border-b border-slate-200">
-                <th className="py-3 font-bold pl-6">Date</th>
-                <th className="font-bold">Transaction</th>
-                <th className="font-bold">Target Entity</th>
-                <th className="text-right font-bold pr-6">Total Qty</th>
-                </tr>
-            </thead>
-            <tbody>
-                {logs.map((log, i) => {
-                let entityName = "System Operation";
-                if (log.type === 'RECEIVING' || log.type === 'PULL_OUT') entityName = log.supplier || "Supplier";
-                else if (log.transaction_mode === 'TRANSMITTAL') entityName = `Dept: ${log.department}`;
-                else if (log.student_name) entityName = log.student_name;
+      {/* SECTION 2: Recent Transactions List */}
+      <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+          <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Recent Transactions</h2>
+          <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">Last 10 Activities</span>
+        </div>
+        
+        <div className="overflow-x-auto">
+          {logs.length === 0 ? (
+            <div className="text-center p-12 text-sm text-slate-400">No recent activity found.</div>
+          ) : (
+              <table className="table w-full table-xs">
+              <thead>
+                  <tr className="bg-white text-slate-500 border-b border-slate-200">
+                  <th className="py-4 font-bold pl-8">Date</th>
+                  <th className="font-bold">Transaction</th>
+                  <th className="font-bold">Target Entity</th>
+                  <th className="text-right font-bold pr-8">Total Qty</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  {logs.map((log, i) => {
+                  let entityName = "System Operation";
+                  if (log.type === 'RECEIVING' || log.type === 'PULL_OUT') entityName = log.supplier || "Supplier";
+                  else if (log.transaction_mode === 'TRANSMITTAL') entityName = `Dept: ${log.department}`;
+                  else if (log.student_name) entityName = log.student_name;
 
-                return (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="whitespace-nowrap text-slate-600 pl-6 py-3">
-                        <div className="font-medium">{new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                        <div className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">{new Date(log.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>
-                    </td>
-                    <td>
-                        <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-slate-700">#{log.bis_number || "---"}</span>
-                        <span className={`badge badge-sm badge-ghost text-[9px] font-bold tracking-wider uppercase border-none ${
-                            log.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' :
-                            log.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' :
-                            log.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
-                            log.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' :
-                            'bg-slate-100 text-slate-800'
-                        }`}>
-                            {log.type.replace('_', ' ')}
-                        </span>
-                        </div>
-                        <div className="text-[9px] text-slate-400 font-mono mt-1">{log.reference_number}</div>
-                    </td>
-                    <td className="truncate max-w-[150px]">
-                        <div className="font-medium text-slate-700 truncate" title={entityName}>{entityName}</div>
-                        {log.transaction_mode && log.type === 'ISSUANCE' && (
-                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{log.transaction_mode}</div>
-                        )}
-                    </td>
-                    <td className="text-right pr-6">
-                        <span className="font-bold text-slate-700 text-sm">{log.total_items}</span>
-                        <span className="text-[9px] text-slate-400 uppercase tracking-widest ml-1">Items</span>
-                    </td>
-                    </tr>
-                )
-                })}
-            </tbody>
-            </table>
-        )}
-      </div>
+                  return (
+                      <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                      <td className="whitespace-nowrap text-slate-600 pl-8 py-4">
+                          <div className="font-medium text-slate-700">{new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                          <div className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">{new Date(log.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</div>
+                      </td>
+                      <td>
+                          <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-slate-700">#{log.bis_number || "---"}</span>
+                          <span className={`badge badge-sm badge-ghost text-[8px] font-bold tracking-wider uppercase border-none h-4 ${
+                              log.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-800' :
+                              log.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-800' :
+                              log.type === 'ISSUANCE_RETURN' ? 'bg-sky-100 text-sky-800' :
+                              log.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-800' :
+                              'bg-slate-100 text-slate-800'
+                          }`}>
+                              {log.type.replace('_', ' ')}
+                          </span>
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-mono mt-1">{log.reference_number}</div>
+                      </td>
+                      <td className="truncate max-w-[150px]">
+                          <div className="font-medium text-slate-700 truncate" title={entityName}>{entityName}</div>
+                          {log.transaction_mode && log.type === 'ISSUANCE' && (
+                          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{log.transaction_mode}</div>
+                          )}
+                      </td>
+                      <td className="text-right pr-8">
+                          <span className="font-bold text-slate-700 text-sm">{log.total_items}</span>
+                          <span className="text-[9px] text-slate-400 uppercase tracking-widest ml-1">Qty</span>
+                      </td>
+                      </tr>
+                  )
+                  })}
+              </tbody>
+              </table>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
@@ -274,15 +273,8 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden col-span-1 lg:col-span-12">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                  <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">My Recent Transactions</h2>
-                  <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">Last 10 Transactions</span>
-                </div>
-                <PersonalActivityLog userRole={userRole} />
-              </section>
-            </div>
+            {/* The Activity Log handles its own card separation now */}
+            <PersonalActivityLog userRole={userRole} />
           </div>
 
           {isModalOpen && (
