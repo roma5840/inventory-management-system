@@ -423,7 +423,6 @@ export default function TransactionsManager() {
                                     {first.student_id && (
                                         <div className="text-[10px] text-slate-500 mt-0.5">
                                             <span className="font-mono">{first.student_id}</span>
-                                            {(first.course || first.year_level) && ` • ${first.course} ${first.year_level}`}
                                         </div>
                                     )}
                                 </td>
@@ -488,7 +487,8 @@ export default function TransactionsManager() {
                                                                     <>
                                                                         <div className="font-semibold text-slate-700">{first.student_name}</div>
                                                                         {first.student_id && <div><span className="font-bold text-slate-400">ID:</span> <span className="font-mono">{first.student_id}</span></div>}
-                                                                        {(first.course || first.year_level) && <div><span className="font-bold text-slate-400">Course/Year:</span> {first.course} {first.year_level}</div>}
+                                                                        {first.course && <div><span className="font-bold text-slate-400">Course:</span> {first.course}</div>}
+                                                                        {first.year_level && <div><span className="font-bold text-slate-400">Year Level:</span> {first.year_level}</div>}
                                                                     </>
                                                                 )}
                                                                 
