@@ -343,7 +343,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                       {/* Void Callout */}
                                       {(isVoided || voidEntry) && (
                                           <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
-                                              <span className="font-black text-red-600 uppercase tracking-widest text-[10px] block mb-1.5">Reversal Information</span>
+                                              <span className="font-black text-red-600 uppercase tracking-widest text-[10px] block mb-1.5">Void Details</span>
                                               <div className="text-xs text-red-900 font-medium mb-1">Reason: <span className="font-normal italic">"{voidEntry?.void_reason || first.void_reason || "N/A"}"</span></div>
                                               {voidEntry && (
                                                   <div className="text-[10px] text-red-700 mt-2 uppercase tracking-widest font-bold">
