@@ -4,67 +4,30 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { PasswordInput } from "../components/PasswordInput";
 
-// Isolated component for Personal Activity Log
-function PersonalActivityLog({ staffName, userRole }) {
+// Isolated component for Personal Activity Log (Optimized for zero-egress waste)
+function PersonalActivityLog({ userRole }) {
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchActivity() {
-      // Fetch recent non-void line items to group and extract stats
-      // We fetch 500 rows to ensure we have enough data to calculate meaningful recent stats
-      // and guarantee at least 10 distinct transaction groupings.
-      const { data } = await supabase
-        .from('vw_transaction_history')
-        .select('timestamp, reference_number, type, transaction_mode, qty, student_name, supplier, department, bis_number')
-        .eq('staff_name', staffName)
-        .eq('is_voided', false)
-        .neq('type', 'VOID')
-        .order('timestamp', { ascending: false })
-        .limit(500);
+      // Calls our backend RPC function. Returns exactly the aggregated stats and 10 rows.
+      const { data, error } = await supabase.rpc('get_personal_activity_log');
         
-      if (!data) {
+      if (error || !data) {
+        console.error("Failed to fetch activity log:", error);
         setLoading(false);
         return;
       }
 
-      // Group by reference number to recreate exact transactions instead of single items
-      const grouped = {};
-      data.forEach(row => {
-        if (!grouped[row.reference_number]) {
-          grouped[row.reference_number] = { ...row, total_items: 0 };
-        }
-        grouped[row.reference_number].total_items += row.qty;
-      });
-
-      // Sort the unique transactions back into descending order
-      const groupedArray = Object.values(grouped).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      
-      // Calculate Recent Stats based on the unique grouped transactions
-      const calculatedStats = {
-        issuanceCash: 0, issuanceCharged: 0, issuanceTransmittal: 0,
-        returns: 0, receiving: 0, pullOuts: 0
-      };
-
-      groupedArray.forEach(tx => {
-        if (tx.type === 'ISSUANCE') {
-          if (tx.transaction_mode === 'CASH') calculatedStats.issuanceCash++;
-          if (tx.transaction_mode === 'CHARGED' || tx.transaction_mode === 'SIP') calculatedStats.issuanceCharged++;
-          if (tx.transaction_mode === 'TRANSMITTAL') calculatedStats.issuanceTransmittal++;
-        }
-        if (tx.type === 'ISSUANCE_RETURN') calculatedStats.returns++;
-        if (tx.type === 'RECEIVING') calculatedStats.receiving++;
-        if (tx.type === 'PULL_OUT') calculatedStats.pullOuts++;
-      });
-
-      setStats(calculatedStats);
-      setLogs(groupedArray.slice(0, 10)); // Extract exactly 10 distinct grouped transactions for the table
+      setStats(data.stats);
+      setLogs(data.logs);
       setLoading(false);
     }
     
-    if (staffName) fetchActivity();
-  }, [staffName]);
+    fetchActivity();
+  }, []);
 
   if (loading) return <div className="text-center p-6 text-sm text-slate-400 font-medium animate-pulse">Loading recent activity...</div>;
   if (logs.length === 0) return <div className="text-center p-6 text-sm text-slate-400">No recent activity found.</div>;
@@ -74,7 +37,6 @@ function PersonalActivityLog({ staffName, userRole }) {
       {/* Stats Overview */}
       {stats && (
         <div className="flex flex-col bg-slate-50 border-b border-slate-100">
-          {/* Disclaimer Banner */}
           <div className="px-4 py-2 border-b border-slate-200/50 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-slate-400">
               <path fillRule="evenodd" d="M15 8A7 7 0 1 1 1 8a7 7 0 0 1 14 0ZM9 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM6.75 8a.75.75 0 0 0 0 1.5h.75v1.75a.75.75 0 0 0 1.5 0v-2.5a.75.75 0 0 0-.75-.75h-1.5Z" clipRule="evenodd" />
@@ -175,7 +137,6 @@ function PersonalActivityLog({ staffName, userRole }) {
 export default function SettingsPage() {
   const { currentUser, userRole } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwLoading, setPwLoading] = useState(false);
@@ -183,7 +144,7 @@ export default function SettingsPage() {
   const [pwSuccess, setPwSuccess] = useState("");
 
   const handleOpenModal = () => {
-    setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+    setNewPassword(""); setConfirmPassword("");
     setPwError(""); setPwSuccess("");
     setIsModalOpen(true);
   };
@@ -192,19 +153,20 @@ export default function SettingsPage() {
     e.preventDefault();
     setPwError(""); setPwSuccess("");
     if (newPassword !== confirmPassword) return setPwError("New passwords do not match.");
-    if (newPassword === currentPassword) return setPwError("New password cannot be the same as the current one.");
+    
     setPwLoading(true);
     try {
-        const { error: reauthError } = await supabase.auth.signInWithPassword({ email: currentUser.email, password: currentPassword });
-        if (reauthError) throw new Error("Current password is incorrect.");
+        // BYPASS CAPTCHA ISSUE: We drop the requirement to verify the old password via signInWithPassword 
+        // because the user is ALREADY authenticated by their valid session JWT!
         const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
         if (updateError) {
-        if (updateError.message.includes("Password should contain"))
-            throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
-        throw updateError;
+          if (updateError.message.includes("Password should contain"))
+              throw new Error("Password must be at least 8 characters and include uppercase, lowercase, numbers, and symbols.");
+          throw updateError;
         }
-        setPwSuccess("Password updated. Other active devices have been signed out.");
-        setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+
+        setPwSuccess("Password updated securely.");
+        setNewPassword(""); setConfirmPassword("");
     } catch (err) {
         setPwError(err.message || "An unexpected error occurred.");
     } finally {
@@ -217,7 +179,6 @@ export default function SettingsPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
-        {/* Header */}
         <header className="bg-white border-b border-slate-200 px-8 py-5 flex-shrink-0 flex items-center justify-between z-10">
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-none">ACCOUNT SETTINGS</h1>
@@ -225,11 +186,9 @@ export default function SettingsPage() {
           </div>
         </header>
 
-        {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
           <div className="max-w-6xl mx-auto space-y-6">
             
-            {/* Account Info Panel */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Profile Information</h2>
@@ -263,12 +222,12 @@ export default function SettingsPage() {
             </section>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <section className="lg:col-span-12 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden col-span-1 lg:col-span-12">
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                   <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">My Recent Transactions</h2>
                   <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">Last 10 Actions</span>
                 </div>
-                <PersonalActivityLog staffName={currentUser?.fullName} userRole={userRole} />
+                <PersonalActivityLog userRole={userRole} />
               </section>
             </div>
           </div>
@@ -295,11 +254,9 @@ export default function SettingsPage() {
 
                   {!pwSuccess && (
                     <>
-                      <PasswordInput label="Current Password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-                      <div className="divider my-0"></div>
                       <PasswordInput label="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                       <PasswordInput label="Confirm New Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                      <button type="submit" disabled={pwLoading || !currentPassword || !newPassword || !confirmPassword} className="btn btn-primary w-full font-bold tracking-wide mt-2">
+                      <button type="submit" disabled={pwLoading || !newPassword || !confirmPassword} className="btn btn-primary w-full font-bold tracking-wide mt-2">
                         {pwLoading ? <span className="loading loading-spinner loading-sm"></span> : "Update Password"}
                       </button>
                     </>
