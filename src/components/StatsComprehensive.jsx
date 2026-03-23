@@ -131,35 +131,44 @@ export default function StatsComprehensive({ lastUpdated }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="flex flex-col md:flex-row items-center gap-2">
           {[
             { label: "Beginning Inv", qty: data.beginning.qty, val: data.beginning.val },
             { label: "Total Inflow", qty: data.inflow.qty, val: data.inflow.val },
             { label: "Net Outflow", qty: data.outflow.qty, val: data.outflow.val },
             { label: "Ending Inv", qty: data.ending.qty, val: data.ending.val, active: true },
-          ].map((box, i) => (
-            <div key={i} className={`relative p-5 rounded-xl border ${box.active ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-800 shadow-sm'} transition-all`}>
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-                    {box.label}
-                </div>
-                <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold tracking-tighter">{box.qty.toLocaleString()}</span>
-                    <span className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Units</span>
-                </div>
-                {SHOW_SENSITIVE_METRICS && (
-                    <div className={`mt-4 pt-3 border-t font-mono text-xs ${box.active ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
-                       ₱ {fmt(box.val)}
+          ].map((box, i, arr) => (
+            <div key={i} className="flex-1 w-full flex items-center gap-2">
+                <div className={`relative flex-1 p-5 rounded-xl border ${box.active ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:border-slate-300'} transition-all`}>
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                        {box.label}
                     </div>
-                )}
-                
-                {box.active && lowStockCount > 0 && (
-                   <button 
-                     onClick={() => { setModalPage(1); setShowLowStockModal(true); }}
-                     className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-full shadow-lg shadow-rose-900/40 transition-all active:scale-95"
-                   >
-                     <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                     <span className="text-[10px] font-bold uppercase tracking-tight">{lowStockCount} Low</span>
-                   </button>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-bold tracking-tighter">{box.qty.toLocaleString()}</span>
+                        <span className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Units</span>
+                    </div>
+                    {SHOW_SENSITIVE_METRICS && (
+                        <div className={`mt-4 pt-3 border-t font-mono text-xs ${box.active ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
+                           ₱ {fmt(box.val)}
+                        </div>
+                    )}
+                    
+                    {box.active && lowStockCount > 0 && (
+                       <button 
+                         onClick={() => { setModalPage(1); setShowLowStockModal(true); }}
+                         className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-full shadow-lg shadow-rose-900/40 transition-all active:scale-95"
+                       >
+                         <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                         <span className="text-[10px] font-bold uppercase tracking-tight">{lowStockCount} Low</span>
+                       </button>
+                    )}
+                </div>
+                {i < arr.length - 1 && (
+                    <div className="text-slate-300 hidden md:block shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                    </div>
                 )}
             </div>
           ))}

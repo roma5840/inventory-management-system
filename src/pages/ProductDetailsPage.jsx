@@ -199,8 +199,8 @@ export default function ProductDetailsPage() {
                 <button onClick={() => navigate(-1)} className="btn btn-sm btn-ghost gap-2 mb-4 text-slate-500 hover:bg-slate-200">
                     ← Back to Inventory
                 </button>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Product Audit Trail</h1>
-                <p className="text-sm text-slate-500">Detailed historical movements and performance for this item.</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">PRODUCT AUDIT TRAIL</h1>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Detailed historical movements and performance for this item.</p>
             </div>
 
             {/* HEADER CARD: MASTER DATA */}
