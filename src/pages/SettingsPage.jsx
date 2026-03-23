@@ -125,7 +125,7 @@ function PersonalActivityLog({ userRole }) {
                   </td>
                   <td className="text-right pr-6">
                     <span className="font-bold text-slate-700 text-sm">{log.total_items}</span>
-                    <span className="text-[9px] text-slate-400 uppercase tracking-widest ml-1">Items</span>
+                    <span className="text-[9px] text-slate-400 uppercase tracking-widest ml-1">Qty</span>
                   </td>
                 </tr>
               )
