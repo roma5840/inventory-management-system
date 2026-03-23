@@ -32,6 +32,8 @@ function PersonalActivityLog({ userRole }) {
   if (loading) return <div className="text-center p-6 text-sm text-slate-400 font-medium animate-pulse">Loading recent activity...</div>;
   if (logs.length === 0) return <div className="text-center p-6 text-sm text-slate-400">No recent activity found.</div>;
 
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole);
+
   return (
     <div className="flex flex-col">
       {/* Stats Overview */}
@@ -46,32 +48,33 @@ function PersonalActivityLog({ userRole }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
+          <div className={`grid gap-3 p-4 ${isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2'}`}>
             <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
                 <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Sales (Cash/Chg/SIP)</div>
                 <div className="text-xl font-black text-slate-700 leading-none mt-1">{stats.issuanceCash + stats.issuanceCharged}</div>
             </div>
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Transmittals</div>
-                <div className="text-xl font-black text-indigo-600 leading-none mt-1">{stats.issuanceTransmittal}</div>
-            </div>
+            
+            {isAdmin && (
+              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
+                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Transmittals</div>
+                  <div className="text-xl font-black text-indigo-600 leading-none mt-1">{stats.issuanceTransmittal}</div>
+              </div>
+            )}
+            
             <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
                 <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Returns Handled</div>
                 <div className="text-xl font-black text-sky-600 leading-none mt-1">{stats.returns}</div>
             </div>
-            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? (
+            
+            {isAdmin && (
                 <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-center">
                 <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Recv / Pull-Out</div>
                 <div className="text-xl font-black text-emerald-600 leading-none mt-1">
                     {stats.receiving} <span className="text-slate-300 font-normal mx-0.5">/</span> <span className="text-amber-500">{stats.pullOuts}</span>
                 </div>
                 </div>
-            ) : (
-                <div className="bg-slate-100 p-3 rounded-lg border border-slate-200 shadow-inner flex items-center justify-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Standard<br/>Access</span>
-                </div>
             )}
-            </div>
+          </div>
         </div>
       )}
 
@@ -225,7 +228,7 @@ export default function SettingsPage() {
               <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden col-span-1 lg:col-span-12">
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                   <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">My Recent Transactions</h2>
-                  <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">Last 10 Actions</span>
+                  <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded">Last 10 Transactions</span>
                 </div>
                 <PersonalActivityLog userRole={userRole} />
               </section>
@@ -233,7 +236,7 @@ export default function SettingsPage() {
           </div>
 
           {isModalOpen && (
-            <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}>
+            <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 
                 <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
