@@ -29,10 +29,10 @@ export default function DashboardPage() {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
             
-            {/* Cleaner Page Title Replacement for Header */}
+            {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-                <p className="text-sm text-slate-500">Manage bookstore transactions and view realtime operations.</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">DASHBOARD</h1>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Manage bookstore transactions and view realtime operations.</p>
             </div>
 
             <StatsComprehensive key={refreshTrigger} lastUpdated={refreshTrigger} />

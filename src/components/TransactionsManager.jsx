@@ -247,8 +247,7 @@ export default function TransactionsManager() {
         <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
           <div className="flex flex-col lg:flex-row items-center gap-6 w-full xl:w-auto">
             <div className="text-center lg:text-left">
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Transaction Ledger</h2>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1 whitespace-nowrap">View and audit all inventory movements</p>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">TRANSACTION LEDGER</h2>
             </div>
 
             {/* Filter Controls Group */}

@@ -22,8 +22,8 @@ export default function InventoryPage() {
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
             
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Inventory</h1>
-                <p className="text-sm text-slate-500">Monitor stock levels, register products, and manage the bookstore catalog.</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">INVENTORY</h1>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Monitor stock levels, register products, and manage the bookstore catalog.</p>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

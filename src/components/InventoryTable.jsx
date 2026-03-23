@@ -667,44 +667,43 @@ export default function InventoryTable({ lastUpdated }) {
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body p-0">
         {/* Header with REGISTER BUTTON */}
-        <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div>
-                <h2 className="text-xl font-bold text-slate-800">Inventory Catalog</h2>
-                <p className="text-xs text-slate-500 font-medium">Detailed list of all registered bookstore products</p>
+        <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+          <div className="flex flex-col lg:flex-row items-center gap-6 w-full xl:w-auto">
+            <div className="text-center lg:text-left">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight uppercase">Inventory Catalog</h2>
             </div>
               {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                     <button 
                         onClick={handleDownloadTemplate}
-                        className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
+                        className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
                         title="Download CSV Template"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
-                        Template
+                        <span className="text-[11px] font-bold uppercase tracking-widest">Template</span>
                     </button>
                     <button 
                       onClick={() => setIsAddModalOpen(true)}
-                      className="btn btn-sm btn-primary px-4 normal-case"
+                      className="btn btn-sm btn-primary rounded-lg px-4 gap-2 h-8 normal-case"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                         <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                       </svg>
-                      New Item
+                      <span className="text-[11px] font-bold uppercase tracking-widest">New Item</span>
                     </button>
                     <button 
                       onClick={() => setIsImportModalOpen(true)}
-                      className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
+                      className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
                     >
-                      Import CSV
+                      <span className="text-[11px] font-bold uppercase tracking-widest">Import CSV</span>
                     </button>
                   </div>
               )}
           </div>
           
-          <div className="relative w-full md:w-72">
+          <div className="relative w-full xl:w-72">
              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -712,8 +711,8 @@ export default function InventoryTable({ lastUpdated }) {
              </div>
              <input 
               type="text" 
-              placeholder="Search by name, barcode, or code..." 
-              className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
+              placeholder="Search by name, code, or accpac..." 
+              className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
               value={searchTerm}
               onChange={handleSearch}
             />

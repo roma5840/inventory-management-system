@@ -8,9 +8,10 @@ export default function TransactionsPage() {
       
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+            {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Transaction Ledger</h1>
-                <p className="text-sm text-slate-500">Complete audit log of all financial and stock movements.</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">TRANSACTION LEDGER</h1>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Complete audit log of all financial and stock movements.</p>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

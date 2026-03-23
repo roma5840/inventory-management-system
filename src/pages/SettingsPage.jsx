@@ -220,7 +220,7 @@ export default function SettingsPage() {
         {/* Header */}
         <header className="bg-white border-b border-slate-200 px-8 py-5 flex-shrink-0 flex items-center justify-between z-10">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-none">Account Settings</h1>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-none">ACCOUNT SETTINGS</h1>
             <p className="text-xs text-slate-500 mt-1.5 font-medium uppercase tracking-wider">Manage your security and view your activity</p>
           </div>
         </header>

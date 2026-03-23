@@ -363,67 +363,67 @@ export default function StudentPage() {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Students & Enrollment</h1>
-                <p className="text-sm text-slate-500">Database of registered students for transaction billing.</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">STUDENTS & ENROLLMENT</h1>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Database of registered students for transaction billing.</p>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
             {/* Header */}
-            <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div>
-                      <h2 className="text-xl font-bold text-slate-800">Enrollment Summary</h2>
-                      <p className="text-xs text-slate-500 font-medium">Database of registered students for transaction billing</p>
-                  </div>
-                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                        <div className="flex gap-2">
-                            <button 
-                                onClick={handleDownloadTemplate}
-                                className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
-                                title="Download CSV Template"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                </svg>
-                                Template
-                            </button>
-                            <button 
-                                onClick={() => setIsImportModalOpen(true)}
-                                className="btn btn-sm btn-primary px-4 normal-case"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                </svg>
-                                Import CSV
-                            </button>
-                            <button 
-                                onClick={() => setShowCourseModal(true)}
-                                className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
-                                    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                                </svg>
-                                Courses
-                            </button>
-                        </div>
-                    )}
+            <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+              <div className="flex flex-col lg:flex-row items-center gap-6 w-full xl:w-auto">
+                <div className="text-center lg:text-left">
+                  <h2 className="text-xl font-bold text-slate-900 tracking-tight uppercase">ENROLLMENT SUMMARY</h2>
                 </div>
-
-                <div className="relative w-full md:w-72">
-                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                
+                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                    <button 
+                        onClick={handleDownloadTemplate}
+                        className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
+                        title="Download CSV Template"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
-                    </div>
-                    <input 
-                        type="text" 
-                        placeholder="Search Name or ID..." 
-                        className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                        <span className="text-[11px] font-bold uppercase tracking-widest">Template</span>
+                    </button>
+                    <button 
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="btn btn-sm btn-primary rounded-lg px-4 gap-2 h-8 normal-case"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                        <span className="text-[11px] font-bold uppercase tracking-widest">Import CSV</span>
+                    </button>
+                    <button 
+                        onClick={() => setShowCourseModal(true)}
+                        className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                        </svg>
+                        <span className="text-[11px] font-bold uppercase tracking-widest">Courses</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative w-full xl:w-72">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                 </div>
+                <input 
+                    type="text" 
+                    placeholder="Search students..." 
+                    className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
 
             {/* Table */}

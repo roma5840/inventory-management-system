@@ -419,49 +419,56 @@ export default function SupplierPage() {
       
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <div className="p-8 space-y-8 max-w-[1200px] mx-auto w-full">
+            {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Suppliers</h1>
-                <p className="text-sm text-slate-500">Manage vendor profiles for inventory receiving and procurement.</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">SUPPLIERS</h1>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Manage vendor profiles for inventory receiving and procurement.</p>
             </div>
 
             <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
 
             {/* Action Bar (Search & Import) */}
-            <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white gap-4">
-                <div className="relative w-full md:w-80">
-                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                    <input 
-                        type="text" 
-                        placeholder="Search supplier name or info..." 
-                        className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
-                        value={searchTerm}
-                        onChange={handleSearch}
-                    />
+            <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+                <div className="text-center lg:text-left">
+                    <h2 className="text-xl font-bold text-slate-900 tracking-tight uppercase">SUPPLIER DIRECTORY</h2>
                 </div>
 
-                {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                    <div className="flex gap-2 w-full md:w-auto">
-                        <button 
-                            onClick={handleDownloadTemplate}
-                            className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50 flex-1 md:flex-none"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
+                    <div className="relative w-full xl:w-80">
+                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                            <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            Template
-                        </button>
-                        <button 
-                            onClick={() => setIsImportModalOpen(true)}
-                            className="btn btn-sm btn-outline btn-ghost border-slate-200 text-slate-600 px-4 normal-case hover:bg-slate-50 flex-1 md:flex-none"
-                        >
-                            Import CSV
-                        </button>
+                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Search suppliers..." 
+                            className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
+                            value={searchTerm}
+                            onChange={handleSearch}
+                        />
                     </div>
-                )}
+
+                    {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                        <div className="flex gap-2 w-full md:w-auto">
+                            <button 
+                                onClick={handleDownloadTemplate}
+                                className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                <span className="text-[11px] font-bold uppercase tracking-widest">Template</span>
+                            </button>
+                            <button 
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
+                            >
+                                <span className="text-[11px] font-bold uppercase tracking-widest">Import CSV</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
 

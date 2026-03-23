@@ -291,8 +291,8 @@ export default function StaffPage() {
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
             {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
-                <p className="text-sm text-slate-500 font-medium">Manage user roles, access status, and system permissions.</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">STAFF MANAGEMENT</h1>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Manage user roles, access status, and system permissions.</p>
             </div>
 
             {/* Statistics Overview */}
