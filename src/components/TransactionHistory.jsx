@@ -14,7 +14,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 10;
 
   const [expandedCards, setExpandedCards] = useState(new Set());
   const toggleCard = (refNo) => {
@@ -45,50 +45,41 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
       const now = new Date();
       const startOfDay = new Date(now.setHours(0,0,0,0)).toISOString();
 
-      // Query the VIEW instead of the base table
-      const { data: txData, count, error } = await supabase
-        .from('vw_transaction_history')
+      // Step 1: Fetch EXACTLY 10 Headers from the DB View (Zero wasted data)
+      const { data: headerData, count, error: headerError } = await supabase
+        .from('vw_transaction_headers')
         .select('*', { count: 'exact' })
         .gte('timestamp', startOfDay) 
         .order('timestamp', { ascending: false })
         .range(from, to);
 
-      if (error) throw error;
+      if (headerError) throw headerError;
+      setTotalCount(count || 0);
 
+      if (!headerData || headerData.length === 0) {
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Fetch the line items ONLY for those 10 references
+      const pageRefs = headerData.map(h => h.reference_number);
+      const { data: txData, error: txError } = await supabase
+        .from('vw_transaction_history')
+        .select('*')
+        .in('reference_number', pageRefs)
+        .order('timestamp', { ascending: false });
+
+      if (txError) throw txError;
+
+      // Clean void items to prevent duplicate line-item rendering
       const cleanedData = (txData || []).filter(row => {
         if (!row.is_voided) return true;
         if (row.type === 'VOID') return true;
-        const hasVoidMarkerInBatch = txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
-        return hasVoidMarkerInBatch;
+        return txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
       });
 
-      let combinedData = [...cleanedData];
-      const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
-      const orphanRefs = [];
-
-      distinctRefs.forEach(ref => {
-          const items = combinedData.filter(t => t.reference_number === ref);
-          const hasOriginal = items.some(t => t.type !== 'VOID');
-          if (!hasOriginal) orphanRefs.push(ref);
-      });
-
-      if (orphanRefs.length > 0) {
-          // Also query the VIEW for orphan checks
-          const { data: originals } = await supabase
-              .from('vw_transaction_history')
-              .select('*')
-              .in('reference_number', orphanRefs)
-              .neq('type', 'VOID');
-          
-          if (originals?.length > 0) {
-              combinedData = [...combinedData, ...originals];
-          }
-      }
-
-      // We no longer need the auth_uid manual mapping! 
-      // The DB provides `staff_name` and `original_bis` natively.
-      setTransactions(combinedData || []);
-      setTotalCount(count || 0);
+      setTransactions(cleanedData || []);
 
     } catch (err) {
       console.error(err);

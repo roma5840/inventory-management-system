@@ -19,7 +19,7 @@ export default function TransactionsManager() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 10;
 
   const [expandedRows, setExpandedRows] = useState(new Set());
   const toggleRow = (refNo) => {
@@ -52,10 +52,11 @@ export default function TransactionsManager() {
   }, [currentPage, dateFilter, typeFilter, modeFilter, searchRef]);
 
   // Helper to build the base query based on filters
-  const buildQuery = (isForExport = false) => {
+  const buildQuery = (tableName = 'vw_transaction_headers', selectFields = '*') => {
+    // Add exact count calculation natively
     let query = supabase
-        .from('vw_transaction_history') // CHANGED to View
-        .select('*', { count: isForExport ? 'exact' : 'exact' }) // Always get count
+        .from(tableName)
+        .select(selectFields, { count: 'exact' })
         .order('timestamp', { ascending: false });
 
     // 1. Date Filter
@@ -77,11 +78,9 @@ export default function TransactionsManager() {
     // 3. Mode Filter
     if (modeFilter !== "ALL") query = query.eq('transaction_mode', modeFilter);
 
-    // 4. Search Filter (Server-side for pagination efficiency)
+    // 4. Search Filter
     if (searchRef) {
-        // FIX: Replace commas with '_' to prevent breaking Supabase .or() syntax
         const safeRef = searchRef.replace(/,/g, '_');
-        // Includes Student Name, Student ID, Supplier, and Department in search
         query = query.or(`student_name.ilike.%${safeRef}%,student_id.ilike.%${safeRef}%,supplier.ilike.%${safeRef}%,department.ilike.%${safeRef}%`);
     }
 
@@ -91,52 +90,42 @@ export default function TransactionsManager() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      let query = buildQuery(false);
-
-      // Pagination Range
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
-      query = query.range(from, to);
 
-      const { data: txData, count, error } = await query;
-      if (error) throw error;
+      // Step 1: Ask Postgres to give us exactly 10 matching groups
+      const { data: headerData, count, error: headerError } = await buildQuery('vw_transaction_headers', '*')
+        .range(from, to);
+      
+      if (headerError) throw headerError;
+      setTotalCount(count || 0);
+
+      if (!headerData || headerData.length === 0) {
+          setTransactions([]);
+          setLoading(false);
+          return;
+      }
+
+      // Step 2: Fetch full line items strictly for those 10 references
+      const pageRefs = headerData.map(h => h.reference_number);
+      const { data: txData, error: txError } = await supabase
+          .from('vw_transaction_history')
+          .select('*')
+          .in('reference_number', pageRefs)
+          .order('timestamp', { ascending: false });
+
+      if (txError) throw txError;
 
       let cleanedData = txData || [];
-      
       if (typeFilter === 'ALL') {
          cleanedData = cleanedData.filter(row => {
             if (!row.is_voided) return true; 
             if (row.type === 'VOID') return true; 
-            const hasVoidMarkerInBatch = txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
-            return hasVoidMarkerInBatch;
+            return txData.some(r => r.reference_number === row.reference_number && r.type === 'VOID');
          });
       }
 
-      let combinedData = [...cleanedData];
-      const distinctRefs = [...new Set(combinedData.map(t => t.reference_number).filter(Boolean))];
-      const orphanRefs = [];
-
-      distinctRefs.forEach(ref => {
-          const items = combinedData.filter(t => t.reference_number === ref);
-          const hasOriginal = items.some(t => t.type !== 'VOID');
-          if (!hasOriginal) orphanRefs.push(ref);
-      });
-
-      if (orphanRefs.length > 0) {
-          const { data: originals } = await supabase
-              .from('vw_transaction_history') // CHANGED to View
-              .select('*')
-              .in('reference_number', orphanRefs)
-              .neq('type', 'VOID');
-          
-          if (originals?.length > 0) {
-              combinedData = [...combinedData, ...originals];
-          }
-      }
-
-      // The View already provided staff_name and original_bis natively!
-      setTransactions(combinedData);
-      setTotalCount(count || 0);
+      setTransactions(cleanedData);
 
     } catch (err) {
       console.error("Error fetching transactions:", err);
@@ -155,12 +144,13 @@ export default function TransactionsManager() {
 
   const handleExport = async () => {
     if (totalCount > 5000) {
-        if(!window.confirm(`You are about to export ${totalCount} rows. This might take a moment. Continue?`)) return;
+        if(!window.confirm(`You are about to export ${totalCount} groups. This might take a moment. Continue?`)) return;
     }
     
     setIsExporting(true);
     try {
-        const { data: rawData, error } = await buildQuery(true).limit(100000);
+        // Explicitly query the full history view for Excel exports
+        const { data: rawData, error } = await buildQuery('vw_transaction_history', '*').limit(100000);
         if (error) throw error;
 
         const voidRefs = [...new Set(rawData.filter(t => t.type === 'VOID').map(t => t.reference_number).filter(Boolean))];
