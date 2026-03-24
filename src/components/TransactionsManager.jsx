@@ -48,7 +48,9 @@ export default function TransactionsManager() {
 
   // Fetch transactions when dependencies change
   useEffect(() => {
-    fetchTransactions();
+    const fetchOptions = { ignore: false };
+    fetchTransactions(fetchOptions);
+    return () => { fetchOptions.ignore = true; };
   }, [currentPage, dateFilter, typeFilter, modeFilter, searchRef]);
 
   // Helper to build the base query based on filters
@@ -87,7 +89,7 @@ export default function TransactionsManager() {
     return query;
   };
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (options = { ignore: false }) => {
     setLoading(true);
     try {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -97,6 +99,8 @@ export default function TransactionsManager() {
       const { data: headerData, count, error: headerError } = await buildQuery('vw_transaction_headers', '*')
         .range(from, to);
       
+      if (options.ignore) return; // Prevent race conditions
+
       if (headerError) throw headerError;
       setTotalCount(count || 0);
 
@@ -114,6 +118,8 @@ export default function TransactionsManager() {
           .in('reference_number', pageRefs)
           .order('timestamp', { ascending: false });
 
+      if (options.ignore) return; // Prevent race conditions after second await
+
       if (txError) throw txError;
 
       let cleanedData = txData || [];
@@ -130,7 +136,7 @@ export default function TransactionsManager() {
     } catch (err) {
       console.error("Error fetching transactions:", err);
     } finally {
-      setLoading(false);
+      if (!options.ignore) setLoading(false);
     }
   };
 

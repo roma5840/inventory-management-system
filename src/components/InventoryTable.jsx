@@ -118,7 +118,7 @@ export default function InventoryTable({ lastUpdated }) {
   }, [searchTerm]);
 
   // Handle Fetching (Immediate response to Page or Debounced Term)
-  const fetchInventory = async () => {
+  const fetchInventory = async (options = { ignore: false }) => {
     setLoading(true);
     
     let query = supabase
@@ -137,6 +137,8 @@ export default function InventoryTable({ lastUpdated }) {
     
     const { data, count, error } = await query.range(from, to);
 
+    if (options.ignore) return; // Prevent race conditions
+
     if (error) {
         console.error(error);
     } else {
@@ -149,7 +151,8 @@ export default function InventoryTable({ lastUpdated }) {
 
     // Effect: Triggers on Search, Page Change, or External Updates
   useEffect(() => {
-    fetchInventory();
+    const fetchOptions = { ignore: false };
+    fetchInventory(fetchOptions);
     
     // Local variables to track burst rate
     let changeCount = 0;
@@ -185,6 +188,7 @@ export default function InventoryTable({ lastUpdated }) {
         .subscribe();
 
     return () => {
+        fetchOptions.ignore = true; // Discard stale results if a new fetch starts
         if (burstResetTimer) clearTimeout(burstResetTimer);
         if (debounceTimer) clearTimeout(debounceTimer);
         supabase.removeChannel(channel);

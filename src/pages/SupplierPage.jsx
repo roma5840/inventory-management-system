@@ -48,7 +48,7 @@ export default function SupplierPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = async (options = { ignore: false }) => {
     setLoading(true);
     let query = supabase.from('suppliers').select('*', { count: 'exact' });
 
@@ -64,6 +64,8 @@ export default function SupplierPage() {
 
     const { data, count, error } = await query.range(from, to);
 
+    if (options.ignore) return; // Prevent race conditions
+
     if (!error) {
         setSuppliers(data || []);
         setTotalCount(count || 0);
@@ -72,7 +74,8 @@ export default function SupplierPage() {
   };
 
   useEffect(() => {
-    fetchSuppliers();
+    const fetchOptions = { ignore: false };
+    fetchSuppliers(fetchOptions);
 
     let changeCount = 0;
     let burstResetTimer = null;
@@ -98,6 +101,7 @@ export default function SupplierPage() {
         .subscribe();
 
     return () => {
+        fetchOptions.ignore = true; // Discard stale results
         if (burstResetTimer) clearTimeout(burstResetTimer);
         if (debounceTimer) clearTimeout(debounceTimer);
         supabase.removeChannel(dbChannel);
