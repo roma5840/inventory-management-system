@@ -403,7 +403,7 @@ export default function StaffPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loading ? (
-                                    <tr><td colSpan="4" className="text-center py-24 text-slate-400 font-medium">Loading Personnel Data...</td></tr>
+                                    <tr><td colSpan="4" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                                 ) : staff.length === 0 ? (
                                     <tr><td colSpan="4" className="text-center py-24 text-slate-400 font-medium">No personnel records found.</td></tr>
                                 ) : staff.map((user) => {

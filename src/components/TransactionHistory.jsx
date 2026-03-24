@@ -170,7 +170,6 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
           {loading ? (
             <div className="py-12 text-center text-slate-400">
                 <span className="loading loading-spinner loading-md mb-2"></span>
-                <p className="text-xs font-bold uppercase tracking-widest">Loading Activity...</p>
             </div>
           ) : Object.keys(groupedTransactions).length === 0 ? (
             <div className="py-12 text-center text-slate-400">

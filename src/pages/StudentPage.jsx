@@ -447,9 +447,9 @@ export default function StudentPage() {
                             {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right">Action</th>}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                         {loading ? (
-                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-12 text-slate-400 font-medium">Loading Data...</td></tr>
+                            <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                         ) : students.length === 0 ? (
                             <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? 5 : 4} className="text-center py-12 text-slate-400 font-medium">No students found.</td></tr>
                         ) : (

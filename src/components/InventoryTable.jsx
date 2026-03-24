@@ -741,11 +741,13 @@ export default function InventoryTable({ lastUpdated }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {products.length === 0 && !loading ? (
+            {loading ? (
+                <tr><td colSpan="10" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
+            ) : products.length === 0 ? (
                 <tr><td colSpan="10" className="text-center py-12 text-slate-400 font-medium">No products found matching your search.</td></tr>
-              ) : (
+            ) : (
                 products.map((p) => (
-                  <tr key={p.internal_id || p.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr key={p.internal_id || p.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="max-w-[120px]">
                         {['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? (
                             <button 

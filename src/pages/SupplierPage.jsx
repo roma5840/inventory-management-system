@@ -528,9 +528,9 @@ export default function SupplierPage() {
                     </thead>
                     <tbody>
                         {loading ? (
-                             <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? "3" : "2"} className="text-center py-12 text-slate-400 font-medium"><span className="loading loading-spinner loading-md text-primary"></span></td></tr>
+                                <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? "3" : "2"} className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
                         ) : suppliers.length === 0 ? (
-                             <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? "3" : "2"} className="text-center py-12 text-slate-400 font-medium italic">No suppliers found in the database.</td></tr>
+                                <tr><td colSpan={['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? "3" : "2"} className="text-center py-12 text-slate-400 font-medium italic">No suppliers found in the database.</td></tr>
                         ) : (
                             suppliers.map(s => (
                                 <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
