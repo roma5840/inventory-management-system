@@ -14,6 +14,7 @@ import UpdatePassword from "./components/UpdatePassword";
 import SupplierPage from "./pages/SupplierPage";
 import InventoryPage from "./pages/InventoryPage";
 import SettingsPage from "./pages/SettingsPage";
+import StudentDetailsPage from "./pages/StudentDetailsPage";
 import { useIdleTimer } from "react-idle-timer";
 
 
@@ -259,6 +260,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Protected Student Details Route */}
+      <Route 
+        path="/student/:id" 
+        element={
+          <ProtectedRoute>
+            <StudentDetailsPage />
           </ProtectedRoute>
         } 
       />
