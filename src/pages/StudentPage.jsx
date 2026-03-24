@@ -62,6 +62,8 @@ export default function StudentPage() {
 
   // 2. Fetch Students (The Search Logic)
   useEffect(() => {
+    let ignore = false; // Flag to prevent race conditions
+
     const fetchStudents = async () => {
         setLoading(true);
         // OPTIMIZATION: Select specific columns to reduce DB sorting memory and network payload
@@ -81,6 +83,9 @@ export default function StudentPage() {
         const to = from + ITEMS_PER_PAGE - 1;
 
         const { data, count, error } = await query.range(from, to);
+        
+        // If the query finishes but a new search has already started, discard these stale results
+        if (ignore) return; 
         
         if (error) {
             console.error("Error fetching students:", error);
@@ -122,6 +127,7 @@ export default function StudentPage() {
         .subscribe();
 
     return () => {
+        ignore = true; // Mark this fetch instance as outdated
         if (burstResetTimer) clearTimeout(burstResetTimer);
         if (debounceTimer) clearTimeout(debounceTimer);
         supabase.removeChannel(dbChannel);
