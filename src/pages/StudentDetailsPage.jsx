@@ -9,15 +9,6 @@ export default function StudentDetailsPage() {
   const { id } = useParams(); // target student_id
   const navigate = useNavigate();
   const { userRole } = useAuth();
-  const alertShown = useRef(false);
-
-  useEffect(() => {
-    if (userRole === 'EMPLOYEE' && !alertShown.current) {
-      alertShown.current = true;
-      alert("Access Denied: You do not have permission to view Student Records.");
-      navigate("/", { replace: true });
-    }
-  }, [userRole, navigate]);
 
   const [student, setStudent] = useState(null);
   const [stats, setStats] = useState({ issued_items: 0, returned_items: 0, net_items: 0, total_value: 0 });
@@ -30,8 +21,6 @@ export default function StudentDetailsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 10;
-
-  if (userRole === 'EMPLOYEE') return null;
 
   useEffect(() => {
     if (id) {

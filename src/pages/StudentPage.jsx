@@ -449,23 +449,18 @@ export default function StudentPage() {
                         ) : (
                             students.map(s => (
                                 <tr key={s.id || s.student_id} className="hover:bg-slate-50/50 transition-colors group">
-                                     <td className="max-w-[150px] min-w-[120px]">
-                                        {['ADMIN', 'SUPER_ADMIN'].includes(userRole) ? (
-                                            <button 
-                                                onClick={() => navigate(`/student/${s.student_id}`)}
-                                                className="font-mono text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 whitespace-normal break-all text-left group-hover:underline"
-                                            >
-                                                {s.student_id}
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                  <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                                                  <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        ) : (
-                                            <span className="font-mono font-bold text-[11px] text-slate-500 whitespace-normal break-all">
-                                                {s.student_id}
-                                            </span>
-                                        )}
+                                    <td className="max-w-[150px] min-w-[120px]">
+                                        <button 
+                                            onClick={() => navigate(`/student/${s.student_id}`)}
+                                            className="font-mono text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 whitespace-normal break-all text-left group-hover:underline"
+                                            title="View Student Record"
+                                        >
+                                            {s.student_id}
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                                              <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
                                     </td>
                                     <td className="font-semibold text-slate-700 whitespace-normal break-all min-w-[150px]">
                                         {s.name}
