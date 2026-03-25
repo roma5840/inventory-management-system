@@ -40,6 +40,8 @@ export default function SupplierPage() {
   const [deletingSupplier, setDeletingSupplier] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   // Debounce Search Term
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -340,6 +342,7 @@ export default function SupplierPage() {
       } else {
         setNewName("");
         setNewContact("");
+        setIsAddModalOpen(false); // Close modal on success
         showToast("Supplier Registered", "New vendor added to the system.");
         
         await supabase.channel('app_updates').send({
@@ -433,37 +436,34 @@ export default function SupplierPage() {
 
             {/* Action Bar (Search & Import) */}
             <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
-                <div className="text-center lg:text-left">
-                    <h2 className="text-xl font-bold text-slate-900 tracking-tight uppercase">SUPPLIER DIRECTORY</h2>
-                </div>
-
-                <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
-                    <div className="relative w-full xl:w-80">
-                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                            <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <input 
-                            type="text" 
-                            placeholder="Search suppliers..." 
-                            className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
-                            value={searchTerm}
-                            onChange={handleSearch}
-                        />
+                <div className="flex flex-col lg:flex-row items-center gap-6 w-full xl:w-auto">
+                    <div className="text-center lg:text-left">
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight uppercase">Supplier Directory</h2>
                     </div>
 
                     {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-                        <div className="flex gap-2 w-full md:w-auto">
+                        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                             <button 
                                 onClick={handleDownloadTemplate}
                                 className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
+                                title="Download CSV Template"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                                 </svg>
                                 <span className="text-[11px] font-bold uppercase tracking-widest">Template</span>
                             </button>
+                            
+                            <button 
+                                onClick={() => setIsAddModalOpen(true)}
+                                className="btn btn-sm btn-primary rounded-lg px-4 gap-2 h-8 normal-case"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                                </svg>
+                                <span className="text-[11px] font-bold uppercase tracking-widest">New Supplier</span>
+                            </button>
+
                             <button 
                                 onClick={() => setIsImportModalOpen(true)}
                                 className="btn btn-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-lg px-4 gap-2 h-8 normal-case"
@@ -473,48 +473,22 @@ export default function SupplierPage() {
                         </div>
                     )}
                 </div>
-            </div>
 
-
-            {/* Add Form - Only for Admins */}
-            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
-            <div className="p-6 bg-white border-b">
-                <h3 className="text-sm font-bold text-gray-600 mb-4 uppercase tracking-wider">Add New Supplier</h3>
-                <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                    <div className="form-control md:col-span-5 w-full">
-                        <label className="label">
-                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Supplier Name</span>
-                        </label>
-                        <LimitedInput 
-                            type="text" required 
-                            maxLength={150}
-                            showCounter={true}
-                            className="input input-bordered w-full uppercase focus:ring-2 focus:ring-primary/20" 
-                            placeholder="SUPPLIER NAME"
-                            value={newName} onChange={e => setNewName(e.target.value)}
-                        />
+                <div className="relative w-full xl:w-72">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
                     </div>
-                    <div className="form-control md:col-span-5 w-full">
-                        <label className="label">
-                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Contact Info (Optional)</span>
-                        </label>
-                        <LimitedInput 
-                            type="text" 
-                            maxLength={300}
-                            showCounter={true}
-                            className="input input-bordered w-full focus:ring-2 focus:ring-primary/20" 
-                            placeholder="Phone, Email, or Address"
-                            value={newContact} onChange={e => setNewContact(e.target.value)}
-                        />
-                    </div>
-                    <div className="md:col-span-2 w-full">
-                        <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full shadow-md">
-                            {isSubmitting ? "Saving..." : "Add Supplier"}
-                        </button>
-                    </div>
-                </form>
+                    <input 
+                        type="text" 
+                        placeholder="Search suppliers..." 
+                        className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
+                        value={searchTerm}
+                        onChange={handleSearch}
+                    />
+                </div>
             </div>
-            )}
 
             {/* List */}
             <div className="overflow-x-auto min-h-[400px]">
@@ -586,54 +560,107 @@ export default function SupplierPage() {
             </div>
         </div>
       </main>
-      {/* Edit Modal */}
-      {editingSupplier && (
-        <div className="modal modal-open backdrop-blur-sm">
-            <div className="modal-box border border-slate-200 shadow-2xl">
-                <div className="flex justify-between items-center border-b pb-4 mb-6">
-                    <h3 className="font-black text-xl text-gray-800 uppercase tracking-tight">Edit Supplier Details</h3>
-                    <button onClick={() => setEditingSupplier(null)} className="btn btn-sm btn-circle btn-ghost">✕</button>
-                </div>
-                
-                <form onSubmit={handleUpdate} className="space-y-5">
-                    <div className="form-control w-full">
-                        <label className="label">
-                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Supplier Name</span>
-                        </label>
-                        <LimitedInput 
-                            type="text" required 
-                            maxLength={150}
-                            showCounter={true}
-                            className="input input-bordered w-full uppercase font-semibold text-lg py-6 focus:ring-2 focus:ring-primary/20" 
-                            value={editName} onChange={e => setEditName(e.target.value)}
-                        />
-                    </div>
-                    <div className="form-control w-full">
-                        <label className="label">
-                            <span className="label-text text-xs font-bold text-gray-500 uppercase">Contact Info</span>
-                        </label>
-                        <LimitedInput 
-                            as="textarea"
-                            maxLength={300}
-                            showCounter={true}
-                            className="textarea textarea-bordered w-full min-h-[100px] text-base focus:ring-2 focus:ring-primary/20" 
-                            placeholder="Enter contact details..."
-                            value={editContact} onChange={e => setEditContact(e.target.value)}
-                        />
-                    </div>
 
-                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-8">
-                        <button type="button" onClick={() => setEditingSupplier(null)} className="btn btn-ghost sm:w-24">
-                            Cancel
-                        </button>
-                        <button type="submit" disabled={isSaving} className="btn btn-primary sm:w-40 shadow-lg">
-                            {isSaving ? "Updating..." : "Save Changes"}
-                        </button>
-                    </div>
-                </form>
-            </div>
+
+      {/* === REGISTER NEW SUPPLIER MODAL === */}
+      {isAddModalOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-lg">
+            <h3 className="font-bold text-lg text-gray-700 mb-4">
+                Register New Supplier
+            </h3>
+            
+            <form onSubmit={handleAdd} className="flex flex-col gap-4">
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Supplier Name *</label>
+                    <LimitedInput 
+                        type="text" 
+                        maxLength={150}
+                        showCounter={true}
+                        className="input input-bordered w-full uppercase" 
+                        placeholder="FULL COMPANY NAME"
+                        value={newName}
+                        onChange={e => setNewName(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Contact Info / Address</label>
+                    <LimitedInput 
+                        as="textarea"
+                        maxLength={300}
+                        showCounter={true}
+                        className="textarea textarea-bordered w-full min-h-[100px]" 
+                        placeholder="Phone, Email, or Physical Address"
+                        value={newContact}
+                        onChange={e => setNewContact(e.target.value)}
+                    />
+                </div>
+
+                <div className="modal-action mt-2">
+                    <button type="button" className="btn btn-ghost" onClick={() => {
+                        setIsAddModalOpen(false);
+                        setNewName("");
+                        setNewContact("");
+                    }}>Cancel</button>
+                    <button type="submit" disabled={isSubmitting} className={`btn btn-primary ${isSubmitting ? 'loading' : ''}`}>
+                        {isSubmitting ? "Adding..." : "Add Supplier"}
+                    </button>
+                </div>
+            </form>
+          </div>
         </div>
       )}
+
+      {/* Edit Modal (Matches Register Modal UI/UX) */}
+    {editingSupplier && (
+        <div className="modal modal-open">
+        <div className="modal-box max-w-lg">
+            <h3 className="font-bold text-lg text-gray-700 mb-4">
+                Update Supplier Details
+            </h3>
+            
+            <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Supplier Name *</label>
+                    <LimitedInput 
+                        type="text" 
+                        maxLength={150}
+                        showCounter={true}
+                        className="input input-bordered w-full uppercase font-medium" 
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Contact Info / Address</label>
+                    <LimitedInput 
+                        as="textarea"
+                        maxLength={300}
+                        showCounter={true}
+                        className="textarea textarea-bordered w-full min-h-[100px]" 
+                        placeholder="Phone, Email, or Physical Address"
+                        value={editContact}
+                        onChange={e => setEditContact(e.target.value)}
+                    />
+                </div>
+
+                <div className="modal-action mt-2">
+                    <button type="button" className="btn btn-ghost" onClick={() => setEditingSupplier(null)}>
+                        Cancel
+                    </button>
+                    <button type="submit" disabled={isSaving} className={`btn btn-primary ${isSaving ? 'loading' : ''}`}>
+                        {isSaving ? "Saving..." : "Save Changes"}
+                    </button>
+                </div>
+            </form>
+        </div>
+        </div>
+    )}
+    
       {/* CSV Import Modal */}
       {isImportModalOpen && (
         <div className="modal modal-open">
