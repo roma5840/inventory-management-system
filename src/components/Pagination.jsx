@@ -58,19 +58,24 @@ export default function Pagination({
           </svg>
         </button>
         
-        <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg shadow-sm">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page</span>
-          <input 
-            type="number" 
-            min="1" 
-            max={maxPages}
-            value={jumpPage}
-            onChange={(e) => setJumpPage(e.target.value)}
-            onKeyDown={handleJump}
-            onBlur={applyPageJump}
-            style={{ width: `${Math.max(String(jumpPage).length, 1)}ch`, minWidth: '2.5ch' }}
-            className="bg-transparent p-0 border-none text-center font-bold text-xs text-slate-900 focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
+        <div className="flex items-center gap-2.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
+          <label htmlFor="page-jump-input" className="text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-default">
+            Page
+          </label>
+          <div className="relative group">
+            <input 
+              id="page-jump-input"
+              type="number" 
+              min="1" 
+              max={maxPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={handleJump}
+              onBlur={applyPageJump}
+              style={{ width: `${Math.max(String(jumpPage).length, 1) + 1}ch`, minWidth: '3rem' }}
+              className="bg-white px-2 py-1 border border-slate-300 rounded-md text-center font-bold text-xs text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
           <span className="text-xs font-bold text-slate-400">/ {maxPages}</span>
         </div>
 

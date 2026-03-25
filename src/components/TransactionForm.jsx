@@ -1106,7 +1106,7 @@ export default function TransactionForm({ onSuccess }) {
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Department <span className="text-rose-500">*</span></label>
                                     <LimitedInput 
                                         maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
-                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                         placeholder="e.g. CELA"
                                         value={headerData.department}
                                         onChange={e => setHeaderData({...headerData, department: e.target.value})} 
@@ -1116,7 +1116,7 @@ export default function TransactionForm({ onSuccess }) {
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Requested By</label>
                                     <LimitedInput 
                                         maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
-                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                         placeholder="Name or Dept"
                                         value={headerData.requestedBy}
                                         onChange={e => setHeaderData({...headerData, requestedBy: e.target.value})} 
@@ -1126,7 +1126,7 @@ export default function TransactionForm({ onSuccess }) {
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
                                     <LimitedInput 
                                         maxLength={150} showCounter={true} disabled={headerData.type === 'ISSUANCE_RETURN'}
-                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                         placeholder="Name"
                                         value={headerData.releasedBy}
                                         onChange={e => setHeaderData({...headerData, releasedBy: e.target.value})} 
@@ -1194,7 +1194,7 @@ export default function TransactionForm({ onSuccess }) {
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Full Name</label>
                                     <input 
                                         type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold uppercase disabled:text-slate-500"
+                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold uppercase disabled:text-slate-500"
                                         placeholder="Name will autofill"
                                         value={headerData.studentName}
                                         onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
@@ -1263,7 +1263,7 @@ export default function TransactionForm({ onSuccess }) {
                                     id="supplierInput" 
                                     maxLength={150}
                                     autoComplete="off"
-                                    className={`w-full h-9 px-3 rounded-lg border text-sm uppercase font-semibold transition-all outline-none
+                                    className={`w-full h-9 px-3 rounded-lg border text-xs uppercase font-semibold transition-all outline-none
                                         ${isNewSupplier === true ? 'border-rose-300 bg-rose-50/30 text-rose-900' : 'border-slate-200 bg-white focus:border-blue-500'}
                                         ${isNewSupplier === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
                                     `}
@@ -1290,7 +1290,7 @@ export default function TransactionForm({ onSuccess }) {
                                 <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
                                 <LimitedInput 
                                     maxLength={150} showCounter={true} 
-                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm uppercase"
+                                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                     placeholder="Name"
                                     value={headerData.releasedBy}
                                     onChange={e => setHeaderData({...headerData, releasedBy: e.target.value})} 

@@ -61,28 +61,19 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     <div className="flex gap-3">
                       <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">1</span>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">Select <b>Transaction Type</b> at the top of the form.</p>
+                      <p className="text-[12px] text-slate-600 leading-relaxed">Select Transaction Type at the top of the form.</p>
                     </div>
                     <div className="flex gap-3">
                       <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">2</span>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">Scan <b>Barcode</b>.</p>
+                      <p className="text-[12px] text-slate-600 leading-relaxed">Scan Barcode or Input Item Name.</p>
                     </div>
                     <div className="flex gap-3">
                       <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">3</span>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">Adjust <b>Qty</b> and press <b>Enter</b> again to add to the batch list.</p>
+                      <p className="text-[12px] text-slate-600 leading-relaxed">Adjust Qty and press Enter to add to the batch list.</p>
                     </div>
                     <div className="flex gap-3">
                       <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">4</span>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">Click <b>Confirm Batch</b> once all items are listed to save the transaction.</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-tight">
-                      <span>Keyboard Shortcut:</span>
-                      <div className="flex gap-1">
-                        <kbd className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 text-slate-600 font-mono">ENTER</kbd>
-                      </div>
+                      <p className="text-[12px] text-slate-600 leading-relaxed">Click Confirm Batch once all items are listed to save the transaction.</p>
                     </div>
                   </div>
                 </div>
