@@ -393,12 +393,12 @@ export default function StaffPage() {
 
                     <div className="overflow-x-auto min-h-[450px]">
                         <table className="table w-full">
-                            <thead className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
-                                <tr>
-                                    <th className="pl-6 py-4 bg-slate-50/80">Personnel</th>
-                                    <th className="text-center bg-slate-50/80">Status</th>
-                                    <th className="bg-slate-50/80">Assigned Role</th>
-                                    <th className="text-right pr-6 bg-slate-50/80">Actions</th>
+                            <thead>
+                                <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                                    <th className="bg-slate-50/80 pl-6 py-4">Personnel</th>
+                                    <th className="bg-slate-50/80 text-center py-4">Status</th>
+                                    <th className="bg-slate-50/80 py-4">Assigned Role</th>
+                                    <th className="bg-slate-50/80 text-right pr-6 py-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">

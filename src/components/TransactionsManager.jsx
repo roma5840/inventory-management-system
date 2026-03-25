@@ -347,15 +347,15 @@ export default function TransactionsManager() {
         {/* DETAILED TABLE */}
         <div className="overflow-x-auto min-h-[500px]">
             <table className="table w-full">
-                <thead className="sticky top-0 bg-slate-50/90 backdrop-blur-sm z-10 text-slate-500 uppercase text-[10px] font-bold tracking-widest border-b border-slate-200">
-                <tr>
-                    <th className="py-4 pl-6 w-[15%]">Type / Mode</th>
-                    <th className="py-4 w-[15%]">BIS #</th>
-                    <th className="py-4 w-[15%]">Date</th>
-                    <th className="py-4 w-[25%]">Entity</th>
-                    <th className="py-4 w-[15%]">Items</th>
-                    <th className="py-4 pr-6 text-right w-[15%]">Value</th>
-                </tr>
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                    <th className="bg-slate-50/80 py-4 pl-6 w-[15%]">Type / Mode</th>
+                    <th className="bg-slate-50/80 py-4 w-[15%]">BIS #</th>
+                    <th className="bg-slate-50/80 py-4 w-[15%]">Date</th>
+                    <th className="bg-slate-50/80 py-4 w-[25%]">Entity</th>
+                    <th className="bg-slate-50/80 py-4 w-[15%]">Items</th>
+                    <th className="bg-slate-50/80 py-4 pr-6 text-right w-[15%]">Value</th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                 {loading ? (

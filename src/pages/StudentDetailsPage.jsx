@@ -153,13 +153,13 @@ export default function StudentDetailsPage() {
                     
                     <div className="overflow-x-auto min-h-[450px]">
                         <table className="table w-full">
-                            <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-widest border-b border-slate-200">
-                                <tr>
-                                    <th className="py-4 pl-6 w-[20%]">Date / Ref</th>
-                                    <th className="py-4 w-[20%]">BIS / Type</th>
-                                    <th className="py-4 w-[25%]">Item Summary</th>
-                                    <th className="py-4 text-center w-[15%]">Items</th>
-                                    <th className="py-4 pr-6 text-right w-[20%]">Transaction Value</th>
+                            <thead className="sticky top-0 z-10">
+                                <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                                    <th className="bg-slate-50/80 py-4 pl-6 w-[20%]">Date / Ref</th>
+                                    <th className="bg-slate-50/80 py-4 w-[20%]">BIS / Type</th>
+                                    <th className="bg-slate-50/80 py-4 w-[25%]">Item Summary</th>
+                                    <th className="bg-slate-50/80 py-4 text-center w-[15%]">Items</th>
+                                    <th className="bg-slate-50/80 py-4 pr-6 text-right w-[20%]">Transaction Value</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">

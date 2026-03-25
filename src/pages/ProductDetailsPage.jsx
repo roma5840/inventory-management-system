@@ -345,14 +345,14 @@ export default function ProductDetailsPage() {
                 <div className="overflow-x-auto min-h-[450px]">
                     <table className="table w-full text-sm">
                         <thead>
-                            <tr className="bg-slate-50/90 backdrop-blur-sm text-slate-500 uppercase text-[10px] font-bold tracking-widest border-b border-slate-200">
-                                <th className="py-4 pl-6 w-[15%]">Date / Ref</th>
-                                <th className="py-4 w-[15%]">BIS / Type</th>
-                                <th className="py-4 w-[20%]">Entity / Details</th>
-                                <th className="py-4 text-right w-[15%]">Unit Value Ref</th>
-                                <th className="py-4 text-center w-[10%]">Change</th>
-                                <th className="py-4 text-center w-[10%]">Balance</th>
-                                <th className="py-4 pr-6 text-right w-[15%]">Encoder</th>
+                            <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                                <th className="bg-slate-50/80 py-4 pl-6 w-[15%]">Date / Ref</th>
+                                <th className="bg-slate-50/80 py-4 w-[15%]">BIS / Type</th>
+                                <th className="bg-slate-50/80 py-4 w-[20%]">Entity / Details</th>
+                                <th className="bg-slate-50/80 py-4 text-right w-[15%]">Unit Value Ref</th>
+                                <th className="bg-slate-50/80 py-4 text-center w-[10%]">Change</th>
+                                <th className="bg-slate-50/80 py-4 text-center w-[10%]">Balance</th>
+                                <th className="bg-slate-50/80 py-4 pr-6 text-right w-[15%]">Encoder</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">

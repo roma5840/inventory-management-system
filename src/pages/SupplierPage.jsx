@@ -519,11 +519,11 @@ export default function SupplierPage() {
             {/* List */}
             <div className="overflow-x-auto min-h-[400px]">
                 <table className="table w-full">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th>Name</th>
-                            <th>Contact Info</th>
-                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right">Action</th>}
+                    <thead>
+                        <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                            <th className="bg-slate-50/80">Name</th>
+                            <th className="bg-slate-50/80">Contact Info</th>
+                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && <th className="text-right bg-slate-50/80">Action</th>}
                         </tr>
                     </thead>
                     <tbody>
