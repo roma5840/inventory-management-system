@@ -244,7 +244,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                           <div>
                               <div className="text-sm font-semibold text-slate-800">{entityName}</div>
                               <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-2">
-                                  <span>Enc: <span className="font-bold text-slate-700">{first.staff_name}</span></span>
+                                  <span>Enc: <span className="font-bold text-slate-700 normal-case">{first.staff_name}</span></span>
                                   <span className="text-slate-300">•</span>
                                   <span>Ref: <span className="font-mono text-slate-600 font-medium">{refNo}</span></span>
                               </div>
@@ -346,7 +346,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                               <div className="text-xs text-red-900 font-medium mb-1">Reason: <span className="font-normal italic">"{voidEntry?.void_reason || first.void_reason || "N/A"}"</span></div>
                                               {voidEntry && (
                                                   <div className="text-[10px] text-red-700 mt-2 uppercase tracking-widest font-bold">
-                                                      Voided by {voidEntry.staff_name} <span className="text-red-400 font-normal ml-1">({new Date(voidEntry.timestamp).toLocaleString()})</span>
+                                                      Voided by <span className="normal-case">{voidEntry.staff_name}</span> <span className="text-red-400 font-normal ml-1 normal-case">({new Date(voidEntry.timestamp).toLocaleString()})</span>
                                                   </div>
                                               )}
                                           </div>
