@@ -316,11 +316,13 @@ export default function SupplierPage() {
             showToast("Import Failed", err.message, "error");
         } finally {
             setImportLoading(false);
+            e.target.value = null;
         }
       },
       error: (error) => {
         showToast("Parsing Error", error.message, "error");
         setImportLoading(false);
+        e.target.value = null;
       }
     });
   };
