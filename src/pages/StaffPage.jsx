@@ -710,10 +710,10 @@ export default function StaffPage() {
                             >
                                 Cancel
                             </button>
-                            <button
-                                type="submit"
-                                disabled={reAuth.loading}
-                                className="btn btn-error px-6 normal-case text-white"
+                            <button 
+                                type="submit" 
+                                disabled={reAuth.loading} 
+                                className={`btn btn-primary ${reAuth.loading ? 'loading' : ''}`}
                             >
                                 {reAuth.loading ? <span className="loading loading-spinner loading-sm"></span> : "Confirm Action"}
                             </button>
