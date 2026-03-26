@@ -23,7 +23,7 @@ export default function SystemLogsPage() {
   ];
 
   if (userRole !== 'SUPER_ADMIN') {
-    return <div className="p-10 text-center text-error font-bold">403: Forbidden Access</div>;
+    return <div className="p-10 text-center text-error">Access Denied</div>;
   }
 
   useEffect(() => {
