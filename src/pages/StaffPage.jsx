@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import AdminInvite from "../components/AdminInvite";
 import Sidebar from "../components/Sidebar";
 import LimitedInput from "../components/LimitedInput";
 import Pagination from "../components/Pagination";
@@ -33,6 +32,12 @@ export default function StaffPage() {
   // Toast State
   const [toast, setToast] = useState(null);
   const showToast = (message, subMessage, type = "success") => setToast({ message, subMessage, type });
+
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState("EMPLOYEE");
+  const [inviteLoading, setInviteLoading] = useState(false);
   
   if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return <div className="p-10 text-center text-error">Access Denied</div>;
 
@@ -281,7 +286,67 @@ export default function StaffPage() {
   };
 
 
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim() || !inviteName.trim()) return;
+    setInviteLoading(true);
 
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Authentication error: No active session found.");
+
+      const { error } = await supabase.rpc('invite_new_user', {
+        new_email: inviteEmail.trim().toLowerCase(),
+        new_name: inviteName.trim(),
+        new_role: inviteRole
+      });
+
+      if (error) throw error;
+
+      await callCloudflareSync(inviteEmail.trim().toLowerCase(), 'add');
+
+      await supabase.channel('app_updates').send({
+        type: 'broadcast',
+        event: 'staff_update',
+        payload: {} 
+      });
+
+      const emailResponse = await fetch('/api/send-invite-email', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` 
+        },
+        body: JSON.stringify({
+          to_name: inviteName.trim(),
+          to_email: inviteEmail.trim().toLowerCase(),
+          invite_link: `${window.location.origin}/register` 
+        })
+      });
+
+      if (!emailResponse.ok) {
+        const errData = await emailResponse.json();
+        console.warn("Email API Warning:", errData);
+        throw new Error(errData.error || "User added to DB, but email dispatch failed.");
+      }
+
+      showToast("Invitation Sent", `Successfully invited ${inviteName.trim()}`);
+      setIsInviteModalOpen(false);
+      setInviteEmail("");
+      setInviteName("");
+      setInviteRole("EMPLOYEE");
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error("Invite Process Error:", error);
+      const msg = error.message === "Cloudflare Sync Failed" 
+        ? "User saved to DB, but Cloudflare Sync failed. Check logs." 
+        : error.message || "An unexpected error occurred processing the invite.";
+      showToast("Invite Failed", msg, "error");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex">
@@ -332,191 +397,239 @@ export default function StaffPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-                {/* LEFT: Invite Form */}
-                <div className="w-full lg:w-1/4 lg:sticky lg:top-8">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b bg-slate-50/50">
-                            <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wider">Authorize User</h3>
-                        </div>
-                        <div className="p-5">
-                            <AdminInvite onSuccess={() => setRefreshTrigger(prev => prev + 1)} />
-                        </div>
+            <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+                {/* Action Bar (Matches SupplierPage) */}
+                <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
+                <div className="flex flex-col lg:flex-row items-center gap-6 w-full xl:w-auto">
+                    <div className="text-center lg:text-left">
+                    <h2 className="text-xl font-bold text-slate-900 tracking-tight uppercase">Personnel Directory</h2>
                     </div>
 
-                    <div className="mt-6 p-5 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                        <h4 className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-                            </svg>
-                            Privilege Guide
-                        </h4>
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-[11px] font-bold text-blue-800 uppercase">Super Admin</p>
-                                <p className="text-[11px] text-blue-600 leading-relaxed mt-0.5">Full control over all system configurations and user roles.</p>
-                            </div>
-                            <div>
-                                <p className="text-[11px] font-bold text-blue-800 uppercase">Admin</p>
-                                <p className="text-[11px] text-blue-600 leading-relaxed mt-0.5">Can manage Employee access, inventory, and students.</p>
-                            </div>
-                            <div className="pt-3 border-t border-blue-100">
-                                <p className="text-[10px] text-blue-500 italic">Deactivating an account prevents login but preserves audit history.</p>
-                            </div>
-                        </div>
+                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                    <button 
+                        onClick={() => setIsInviteModalOpen(true)}
+                        className="btn btn-sm btn-primary rounded-lg px-4 gap-2 h-8 normal-case"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                        </svg>
+                        <span className="text-[11px] font-bold uppercase tracking-widest">Invite User</span>
+                    </button>
                     </div>
                 </div>
 
-                {/* RIGHT: User List */}
-                <div className="w-full lg:w-3/4 bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
-                    <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-white gap-4">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800">Personnel Directory</h2>
-                            <p className="text-xs text-slate-500 font-medium">Manage access and system privileges</p>
-                        </div>
-                        
-                        <div className="relative w-full md:w-72">
-                            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                            <input 
-                                type="text" 
-                                placeholder="Search Name or Email..." 
-                                className="input input-bordered input-sm w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-all"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                <div className="relative w-full xl:w-72">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                     </div>
-
-                    <div className="overflow-x-auto min-h-[450px]">
-                        <table className="table w-full">
-                            <thead>
-                                <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
-                                    <th className="bg-slate-50/80 pl-6 py-4">Personnel</th>
-                                    <th className="bg-slate-50/80 text-center py-4">Status</th>
-                                    <th className="bg-slate-50/80 py-4">Assigned Role</th>
-                                    <th className="bg-slate-50/80 text-right pr-6 py-4">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {loading ? (
-                                    <tr><td colSpan="4" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
-                                ) : staff.length === 0 ? (
-                                    <tr><td colSpan="4" className="text-center py-24 text-slate-400 font-medium">No personnel records found.</td></tr>
-                                ) : staff.map((user) => {
-                                    const isSelf = user.id === currentUser.id;
-                                    return (
-                                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="pl-6 py-4 align-middle">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0 border border-slate-200 uppercase">
-                                                    {(user.fullName || user.email).slice(0, 2)}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="font-bold text-slate-800 flex items-center gap-2">
-                                                        <span className="truncate">{user.fullName || "Unregistered"}</span>
-                                                        {canManage(user) && (
-                                                            <button 
-                                                                onClick={() => startEditName(user)}
-                                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-all tooltip tooltip-right"
-                                                                data-tip="Edit Name"
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                                                                </svg>
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-[11px] text-slate-400 font-medium truncate">{user.email}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <td className="text-center align-middle">
-                                            {user.status === 'REGISTERED' 
-                                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tighter">Active</span>
-                                                : user.status === 'INACTIVE'
-                                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100 uppercase tracking-tighter">Inactive</span>
-                                                : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-tighter">Pending</span>
-                                            }
-                                        </td>
-
-                                        <td className="align-middle">
-                                            {userRole === 'SUPER_ADMIN' && !isSelf ? (
-                                                <select 
-                                                    className="select select-bordered select-sm w-full max-w-[160px] font-bold text-[11px] uppercase tracking-tight bg-slate-50 border-slate-200 h-8 min-h-0 focus:bg-white transition-all"
-                                                    value={user.role}
-                                                    onChange={(e) => changeRole(user, e.target.value)}
-                                                >
-                                                    <option value="EMPLOYEE">Employee</option>
-                                                    <option value="ADMIN">Admin</option>
-                                                    <option value="SUPER_ADMIN">Super Admin</option>
-                                                </select>
-                                            ) : (
-                                                <div className="font-bold text-[10px] uppercase tracking-widest text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg inline-block">
-                                                    {user.role.replace('_', ' ')}
-                                                    {isSelf && <span className="ml-1 opacity-50 text-[9px]">(You)</span>}
-                                                </div>
-                                            )}
-                                        </td>
-
-                                        <td className="text-right align-middle pr-6">
-                                            {processingUsers.includes(user.id) ? (
-                                                <span className="loading loading-spinner loading-sm text-slate-300"></span>
-                                            ) : (
-                                                !isSelf && canManage(user) && (
-                                                    <div className="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        {user.status !== 'PENDING' && canToggleStatus(user) && (
-                                                            <button 
-                                                                onClick={() => toggleStatus(user)}
-                                                                className={`p-1.5 rounded-md transition-all tooltip tooltip-left ${user.status === 'INACTIVE' ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
-                                                                data-tip={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
-                                                            >
-                                                                {user.status === 'INACTIVE' ? (
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                                                                    </svg>
-                                                                ) : (
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.3} stroke="currentColor" className="w-4 h-4">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-                                                                    </svg>
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                        
-                                                        <button 
-                                                            onClick={() => revokeAccess(user)}
-                                                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all tooltip tooltip-left"
-                                                            data-tip="Revoke Access"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                )
-                                            )}
-                                        </td>
-                                    </tr>
-                                )})}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <Pagination 
-                        totalCount={totalCount}
-                        itemsPerPage={ITEMS_PER_PAGE}
-                        currentPage={currentPage}
-                        onPageChange={(p) => setCurrentPage(p)}
-                        loading={loading}
+                    <input 
+                    type="text" 
+                    placeholder="Search Name or Email..." 
+                    className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
+                    value={searchTerm}
+                    onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                    }}
                     />
                 </div>
+                </div>
+
+                <div className="overflow-x-auto min-h-[450px]">
+                <table className="table w-full">
+                    <thead>
+                    <tr className="bg-slate-50/80 backdrop-blur-sm text-slate-500 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                        <th className="bg-slate-50/80 pl-6 py-4">Personnel</th>
+                        <th className="bg-slate-50/80 text-center py-4">Status</th>
+                        <th className="bg-slate-50/80 py-4">Assigned Role</th>
+                        <th className="bg-slate-50/80 text-right pr-6 py-4">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                    {loading ? (
+                        <tr><td colSpan="4" className="text-center py-20"><span className="loading loading-spinner loading-lg text-slate-300"></span></td></tr>
+                    ) : staff.length === 0 ? (
+                        <tr><td colSpan="4" className="text-center py-24 text-slate-400 font-medium">No personnel records found.</td></tr>
+                    ) : staff.map((user) => {
+                        const isSelf = user.id === currentUser.id;
+                        return (
+                        <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="pl-6 py-4 align-middle">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0 border border-slate-200 uppercase">
+                                {(user.fullName || user.email).slice(0, 2)}
+                                </div>
+                                <div className="min-w-0">
+                                <div className="font-bold text-slate-800 flex items-center gap-2">
+                                    <span className="truncate">{user.fullName || "Unregistered"}</span>
+                                    {canManage(user) && (
+                                    <button 
+                                        onClick={() => startEditName(user)}
+                                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-all tooltip tooltip-right"
+                                        data-tip="Edit Name"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                        </svg>
+                                    </button>
+                                    )}
+                                </div>
+                                <div className="text-[11px] text-slate-400 font-medium truncate">{user.email}</div>
+                                </div>
+                            </div>
+                            </td>
+
+                            <td className="text-center align-middle">
+                            {user.status === 'REGISTERED' 
+                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tighter">Active</span>
+                                : user.status === 'INACTIVE'
+                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100 uppercase tracking-tighter">Inactive</span>
+                                : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-tighter">Pending</span>
+                            }
+                            </td>
+
+                            <td className="align-middle">
+                            {userRole === 'SUPER_ADMIN' && !isSelf ? (
+                                <select 
+                                className="select select-bordered select-sm w-full max-w-[160px] font-bold text-[11px] uppercase tracking-tight bg-slate-50 border-slate-200 h-8 min-h-0 focus:bg-white transition-all"
+                                value={user.role}
+                                onChange={(e) => changeRole(user, e.target.value)}
+                                >
+                                <option value="EMPLOYEE">Employee</option>
+                                <option value="ADMIN">Admin</option>
+                                <option value="SUPER_ADMIN">Super Admin</option>
+                                </select>
+                            ) : (
+                                <div className="font-bold text-[10px] uppercase tracking-widest text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg inline-block">
+                                {user.role.replace('_', ' ')}
+                                {isSelf && <span className="ml-1 opacity-50 text-[9px]">(You)</span>}
+                                </div>
+                            )}
+                            </td>
+
+                            <td className="text-right align-middle pr-6">
+                            {processingUsers.includes(user.id) ? (
+                                <span className="loading loading-spinner loading-sm text-slate-300"></span>
+                            ) : (
+                                !isSelf && canManage(user) && (
+                                <div className="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {user.status !== 'PENDING' && canToggleStatus(user) && (
+                                    <button 
+                                        onClick={() => toggleStatus(user)}
+                                        className={`p-1.5 rounded-md transition-all tooltip tooltip-left ${user.status === 'INACTIVE' ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
+                                        data-tip={user.status === 'INACTIVE' ? "Reactivate User" : "Deactivate User"}
+                                    >
+                                        {user.status === 'INACTIVE' ? (
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                                        </svg>
+                                        ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.3} stroke="currentColor" className="w-4 h-4">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                                        </svg>
+                                        )}
+                                    </button>
+                                    )}
+                                    
+                                    <button 
+                                    onClick={() => revokeAccess(user)}
+                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all tooltip tooltip-left"
+                                    data-tip="Revoke Access"
+                                    >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                    </svg>
+                                    </button>
+                                </div>
+                                )
+                            )}
+                            </td>
+                        </tr>
+                        )})}
+                    </tbody>
+                </table>
+                </div>
+                
+                <Pagination 
+                totalCount={totalCount}
+                itemsPerPage={ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={(p) => setCurrentPage(p)}
+                loading={loading}
+                />
             </div>
         </div>
       </main>
+
+      {/* === AUTHORIZE NEW USER MODAL === */}
+      {isInviteModalOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-lg">
+            <h3 className="font-bold text-lg text-gray-700 mb-4">
+                Authorize New User
+            </h3>
+            
+            <form onSubmit={handleInvite} className="flex flex-col gap-4">
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Email Address *</label>
+                    <LimitedInput 
+                        type="email" 
+                        maxLength={300}
+                        className="input input-bordered w-full" 
+                        placeholder="staff@institution.edu"
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">Full Name *</label>
+                    <LimitedInput 
+                        type="text"
+                        maxLength={150}
+                        className="input input-bordered w-full" 
+                        placeholder="Enter Formal Name"
+                        value={inviteName}
+                        onChange={e => setInviteName(e.target.value)}
+                        required
+                    />
+                </div>
+
+                {userRole === 'SUPER_ADMIN' && (
+                <div className="form-control">
+                    <label className="label text-xs uppercase font-bold text-gray-500">System Role *</label>
+                    <select 
+                        className="select select-bordered w-full"
+                        value={inviteRole}
+                        onChange={e => setInviteRole(e.target.value)}
+                        required
+                    >
+                        <option value="EMPLOYEE">Employee</option>
+                        <option value="ADMIN">Administrator</option>
+                        <option value="SUPER_ADMIN">Super Administrator</option>
+                    </select>
+                </div>
+                )}
+
+                <div className="modal-action mt-2">
+                    <button type="button" className="btn btn-ghost" onClick={() => {
+                        setIsInviteModalOpen(false);
+                        setInviteEmail("");
+                        setInviteName("");
+                        setInviteRole("EMPLOYEE");
+                    }}>Cancel</button>
+                    <button type="submit" disabled={inviteLoading} className={`btn btn-primary ${inviteLoading ? 'loading' : ''}`}>
+                        {inviteLoading ? "Sending..." : "Send Authorization"}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
       {/* Edit User Modal */}
       {isEditModalOpen && (
         <div className="modal modal-open">
