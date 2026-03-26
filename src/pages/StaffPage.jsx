@@ -429,10 +429,7 @@ export default function StaffPage() {
                     placeholder="Search Name or Email..." 
                     className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
                     value={searchTerm}
-                    onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        setCurrentPage(1);
-                    }}
+                    onChange={(e) => setSearchTerm(e.target.value)} 
                     />
                 </div>
                 </div>
@@ -565,69 +562,107 @@ export default function StaffPage() {
 
       {/* === AUTHORIZE NEW USER MODAL === */}
       {isInviteModalOpen && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
-            <h3 className="font-bold text-lg text-gray-700 mb-4">
-                Authorize New User
-            </h3>
-            
-            <form onSubmit={handleInvite} className="flex flex-col gap-4">
-                <div className="form-control">
-                    <label className="label text-xs uppercase font-bold text-gray-500">Email Address *</label>
-                    <LimitedInput 
-                        type="email" 
-                        maxLength={300}
-                        className="input input-bordered w-full" 
-                        placeholder="staff@institution.edu"
-                        value={inviteEmail}
-                        onChange={e => setInviteEmail(e.target.value)}
-                        required
-                    />
-                </div>
-
-                <div className="form-control">
-                    <label className="label text-xs uppercase font-bold text-gray-500">Full Name *</label>
-                    <LimitedInput 
-                        type="text"
-                        maxLength={150}
-                        className="input input-bordered w-full" 
-                        placeholder="Enter Formal Name"
-                        value={inviteName}
-                        onChange={e => setInviteName(e.target.value)}
-                        required
-                    />
-                </div>
-
-                {userRole === 'SUPER_ADMIN' && (
-                <div className="form-control">
-                    <label className="label text-xs uppercase font-bold text-gray-500">System Role *</label>
-                    <select 
-                        className="select select-bordered w-full"
-                        value={inviteRole}
-                        onChange={e => setInviteRole(e.target.value)}
-                        required
-                    >
-                        <option value="EMPLOYEE">Employee</option>
-                        <option value="ADMIN">Administrator</option>
-                        <option value="SUPER_ADMIN">Super Administrator</option>
-                    </select>
-                </div>
-                )}
-
-                <div className="modal-action mt-2">
-                    <button type="button" className="btn btn-ghost" onClick={() => {
-                        setIsInviteModalOpen(false);
-                        setInviteEmail("");
-                        setInviteName("");
-                        setInviteRole("EMPLOYEE");
-                    }}>Cancel</button>
-                    <button type="submit" disabled={inviteLoading} className={`btn btn-primary ${inviteLoading ? 'loading' : ''}`}>
-                        {inviteLoading ? "Sending..." : "Send Authorization"}
-                    </button>
-                </div>
-            </form>
+      <div className="modal modal-open">
+          <div className="modal-box max-w-lg p-0 overflow-hidden border border-slate-200 shadow-2xl">
+          <div className="p-6 border-b bg-slate-50">
+              <h3 className="font-bold text-lg text-slate-800">Authorize New User</h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">Send a secure invitation to the system.</p>
           </div>
-        </div>
+          
+          <div className="p-6">
+              <form onSubmit={handleInvite} className="flex flex-col gap-4">
+                  <div className="form-control">
+                      <label className="label py-1">
+                      <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address *</span>
+                      </label>
+                      <div className="relative">
+                      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1 1 0 00.918 0L19 7.161V6a2 2 0 00-2-2H3z" />
+                          <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
+                          </svg>
+                      </div>
+                      <LimitedInput 
+                          type="email" 
+                          maxLength={300}
+                          className="input input-bordered w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white text-sm" 
+                          placeholder="staff@institution.edu"
+                          value={inviteEmail}
+                          onChange={e => setInviteEmail(e.target.value)}
+                          required
+                      />
+                      </div>
+                  </div>
+
+                  <div className="form-control">
+                      <label className="label py-1">
+                      <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name *</span>
+                      </label>
+                      <div className="relative">
+                      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.230 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1a1.23 1.23 0 00.41-1.412 6.533 6.533 0 00-13.076 0z" />
+                          </svg>
+                      </div>
+                      <LimitedInput 
+                          type="text"
+                          maxLength={150}
+                          className="input input-bordered w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white text-sm" 
+                          placeholder="Enter Formal Name"
+                          value={inviteName}
+                          onChange={e => setInviteName(e.target.value)}
+                          required
+                      />
+                      </div>
+                  </div>
+
+                  {userRole === 'SUPER_ADMIN' && (
+                  <div className="form-control mb-2">
+                      <label className="label py-1">
+                          <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Role *</span>
+                      </label>
+                      <select 
+                          className="select select-bordered w-full bg-slate-50 border-slate-200 text-sm font-semibold"
+                          value={inviteRole}
+                          onChange={e => setInviteRole(e.target.value)}
+                          required
+                      >
+                          <option value="EMPLOYEE">Employee</option>
+                          <option value="ADMIN">Administrator</option>
+                          <option value="SUPER_ADMIN">Super Administrator</option>
+                      </select>
+                  </div>
+                  )}
+
+                  <div className="modal-action mt-4 pt-4 border-t border-slate-100 flex justify-end gap-2">
+                      <button 
+                      type="button" 
+                      disabled={inviteLoading}
+                      className="btn btn-ghost text-slate-500 normal-case" 
+                      onClick={() => {
+                          setIsInviteModalOpen(false);
+                          setInviteEmail("");
+                          setInviteName("");
+                          setInviteRole("EMPLOYEE");
+                      }}>
+                      Cancel
+                      </button>
+                      <button 
+                      type="submit" 
+                      disabled={inviteLoading} 
+                      className="btn btn-primary px-6 normal-case"
+                      >
+                          {inviteLoading ? (
+                          <span className="loading loading-spinner loading-sm"></span>
+                          ) : (
+                          "Send Authorization"
+                          )}
+                      </button>
+                  </div>
+              </form>
+          </div>
+          </div>
+      </div>
       )}
       
       {/* Edit User Modal */}
@@ -657,15 +692,21 @@ export default function StaffPage() {
             <div className="p-4 bg-slate-50 border-t flex justify-end gap-2">
               <button 
                 onClick={() => setIsEditModalOpen(false)} 
+                disabled={processingUsers.includes(selectedUser?.id)}
                 className="btn btn-sm btn-ghost text-slate-500 normal-case"
               >
                 Cancel
               </button>
               <button 
                 onClick={saveName} 
+                disabled={processingUsers.includes(selectedUser?.id)}
                 className="btn btn-sm btn-primary px-6 normal-case"
               >
-                Update Name
+                {processingUsers.includes(selectedUser?.id) ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  "Update Name"
+                )}
               </button>
             </div>
           </div>
