@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
   if (!password) return res.status(400).json({ error: 'Password re-authentication is strictly required.' });
 
-  // Gate 2: Re-authentication (Mutates the auth header on supabaseAuthCheck ONLY)
+  // Gate 2: Re-authentication
   const { error: signInError } = await supabaseAuthCheck.auth.signInWithPassword({
     email: user.email,
     password: password
@@ -37,10 +37,10 @@ export default async function handler(req, res) {
 
   if (signInError) return res.status(403).json({ error: 'Authentication failed. Incorrect password.' });
 
-  // Gate 3: Role & Status Authorization
+  // Gate 3: Role & Status Authorization (Now fetching full_name for audit logs)
   const { data: callerProfile } = await supabaseAdmin
     .from('authorized_users')
-    .select('id, role, status')
+    .select('id, full_name, role, status')
     .eq('auth_uid', user.id)
     .single();
 
@@ -102,6 +102,21 @@ export default async function handler(req, res) {
     if (!putRes.ok) throw new Error('Failed to synchronize Cloudflare group');
   };
 
+  // Helper: Audit Logger
+  const logAudit = async (actionType, entityId, entityName, oldValues = null, newValues = null, metadata = null) => {
+    await supabaseAdmin.from('audit_logs').insert({
+      actor_id: user.id,
+      actor_name: callerProfile.full_name || user.email,
+      action_type: actionType,
+      entity_type: 'STAFF',
+      entity_id: entityId,
+      entity_name: entityName,
+      old_values: oldValues,
+      new_values: newValues,
+      metadata: metadata
+    });
+  };
+
   // Execution Layer with Safe Fallbacks
   try {
     if (action === 'INVITE') {
@@ -123,6 +138,8 @@ export default async function handler(req, res) {
         await supabaseAdmin.from('authorized_users').delete().eq('id', newUser.id);
         throw new Error("Cloudflare sync failed, rolled back invitation. " + cfErr.message);
       }
+
+      await logAudit('INVITE', newUser.id, targetName, null, { email: targetEmail, role: newRole });
     }
     
     else if (action === 'REVOKE') {
@@ -141,6 +158,8 @@ export default async function handler(req, res) {
       if (targetProfile.auth_uid) {
         await supabaseAdmin.auth.admin.deleteUser(targetProfile.auth_uid);
       }
+
+      await logAudit('REVOKE', targetProfile.id, targetProfile.full_name, { email: targetProfile.email, role: targetProfile.role }, null);
     }
     
     else if (action === 'TOGGLE_STATUS') {
@@ -169,19 +188,27 @@ export default async function handler(req, res) {
           throw new Error("Cloudflare sync failed, DB rolled back. " + cfErr.message);
         }
       }
+
+      await logAudit(
+        newStatus === 'INACTIVE' ? 'DEACTIVATE' : 'REACTIVATE', 
+        targetProfile.id, 
+        targetProfile.full_name, 
+        { status: targetProfile.status }, 
+        { status: newStatus }
+      );
     }
     
     else if (action === 'CHANGE_ROLE') {
       if (callerProfile.role !== 'SUPER_ADMIN') throw new Error("Only Super Admins can execute role changes.");
       
-      // Note: All valid users (including EMPLOYEE) belong in the Cloudflare group. 
-      // CF removal only happens during REVOKE or TOGGLE_STATUS (Deactivation).
       const { error: updErr } = await supabaseAdmin
         .from('authorized_users')
         .update({ role: newRole })
         .eq('id', targetProfile.id);
         
       if (updErr) throw new Error("Database update failed: " + updErr.message);
+
+      await logAudit('CHANGE_ROLE', targetProfile.id, targetProfile.full_name, { role: targetProfile.role }, { role: newRole });
     }
     
     else {

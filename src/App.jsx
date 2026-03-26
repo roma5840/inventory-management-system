@@ -15,6 +15,7 @@ import SupplierPage from "./pages/SupplierPage";
 import InventoryPage from "./pages/InventoryPage";
 import SettingsPage from "./pages/SettingsPage";
 import StudentDetailsPage from "./pages/StudentDetailsPage";
+import SystemLogsPage from "./pages/SystemLogsPage";
 import { useIdleTimer } from "react-idle-timer";
 
 
@@ -270,6 +271,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <StudentDetailsPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Protected System Logs Route (Super Admin Only) */}
+      <Route 
+        path="/system-logs" 
+        element={
+          <ProtectedRoute>
+            <SystemLogsPage />
           </ProtectedRoute>
         } 
       />
