@@ -74,22 +74,31 @@ export default function SystemLogsPage() {
   const renderDetails = (log) => {
     if (!log.new_values && !log.old_values && !log.metadata) return <span className="text-slate-400 italic">No details captured</span>;
     
-    // Quick formatter for Staff roles
+    // --- HUMAN READABLE STAFF LOGS ---
     if (log.action_type === 'CHANGE_ROLE') {
-      return <span>Changed from <b>{log.old_values?.role?.replace('_', ' ')}</b> to <b>{log.new_values?.role?.replace('_', ' ')}</b></span>;
+      return <span>Changed role from <b className="text-slate-700">{log.old_values?.role?.replace('_', ' ')}</b> to <b className="text-indigo-600">{log.new_values?.role?.replace('_', ' ')}</b></span>;
     }
     if (log.action_type === 'UPDATE_NAME') {
-      return <span>Renamed from <b>{log.old_values?.full_name}</b> to <b>{log.new_values?.full_name}</b></span>;
+      return <span>Renamed personnel from <b className="text-slate-700">{log.old_values?.full_name}</b> to <b className="text-indigo-600">{log.new_values?.full_name}</b></span>;
     }
     if (log.action_type === 'INVITE') {
-      return <span>Assigned as <b>{log.new_values?.role?.replace('_', ' ')}</b> ({log.new_values?.email})</span>;
+      return <span>Sent invitation for <b className="text-slate-700">{log.new_values?.email}</b> as <b className="text-indigo-600">{log.new_values?.role?.replace('_', ' ')}</b></span>;
+    }
+    if (log.action_type === 'DEACTIVATE') {
+      return <span>Access was <b className="text-amber-600">suspended</b> for this user.</span>;
+    }
+    if (log.action_type === 'REACTIVATE') {
+      return <span>Access was <b className="text-emerald-600">restored</b> for this user.</span>;
+    }
+    if (log.action_type === 'REVOKE') {
+      return <span>Permanently <b className="text-rose-600">deleted</b> user profile and system access.</span>;
     }
 
     // Generic fallback for future proofing
     return (
-      <div className="text-[10px] space-y-1">
-        {log.old_values && <div><span className="text-slate-400">Old:</span> {JSON.stringify(log.old_values)}</div>}
-        {log.new_values && <div><span className="text-slate-400">New:</span> {JSON.stringify(log.new_values)}</div>}
+      <div className="text-[10px] space-y-1 font-mono bg-slate-100 p-2 rounded border border-slate-200">
+        {log.old_values && Object.keys(log.old_values).length > 0 && <div><span className="text-slate-400 select-none">Old:</span> {JSON.stringify(log.old_values)}</div>}
+        {log.new_values && Object.keys(log.new_values).length > 0 && <div><span className="text-slate-400 select-none">New:</span> {JSON.stringify(log.new_values)}</div>}
       </div>
     );
   };
