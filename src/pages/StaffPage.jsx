@@ -699,6 +699,7 @@ export default function StaffPage() {
                                 type="password"
                                 className="input input-bordered w-full bg-slate-50 border-slate-200 focus:bg-white text-sm font-sans"
                                 placeholder="Enter password to confirm"
+                                disabled={reAuth.loading}
                                 value={reAuth.password}
                                 onChange={e => setReAuth(prev => ({ ...prev, password: e.target.value }))}
                                 required
