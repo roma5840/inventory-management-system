@@ -525,6 +525,7 @@ export default function StaffPage() {
                       <LimitedInput 
                           type="email" 
                           maxLength={300}
+                          disabled={inviteLoading}
                           className="input input-bordered w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white text-sm" 
                           placeholder="staff@institution.edu"
                           value={inviteEmail}
@@ -547,6 +548,7 @@ export default function StaffPage() {
                       <LimitedInput 
                           type="text"
                           maxLength={150}
+                          disabled={inviteLoading}
                           className="input input-bordered w-full pl-10 bg-slate-50 border-slate-200 focus:bg-white text-sm" 
                           placeholder="Enter Formal Name"
                           value={inviteName}
@@ -556,7 +558,7 @@ export default function StaffPage() {
                       </div>
                   </div>
 
-                   {userRole === 'SUPER_ADMIN' && (
+                  {userRole === 'SUPER_ADMIN' && (
                   <div className="form-control mb-2">
                       <label className="label py-1">
                           <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Role *</span>
@@ -564,6 +566,7 @@ export default function StaffPage() {
                       <select 
                           className="select select-bordered w-full bg-slate-50 border-slate-200 text-sm font-semibold"
                           value={inviteRole}
+                          disabled={inviteLoading}
                           onChange={e => setInviteRole(e.target.value)}
                           required
                       >
@@ -580,6 +583,7 @@ export default function StaffPage() {
                       </label>
                       <LimitedInput
                           type="password"
+                          disabled={inviteLoading}
                           className="input input-bordered w-full bg-slate-50 border-slate-200 focus:bg-white text-sm"
                           placeholder="Enter your password to authorize"
                           value={invitePassword}

@@ -220,7 +220,20 @@ export default function SettingsPage() {
     
     setPwLoading(true);
     try {
-        // 1. Re-authenticate to prove identity (consumes the CAPTCHA securely)
+        // 1. Strict Fallback Status Check
+        const { data: checkData } = await supabase
+            .from('authorized_users')
+            .select('status')
+            .eq('auth_uid', currentUser.id)
+            .single();
+
+        if (!checkData || checkData.status !== 'REGISTERED') {
+            await supabase.auth.signOut();
+            window.location.href = '/login';
+            throw new Error("Action denied: Your account is no longer active.");
+        }
+
+        // 2. Re-authenticate to prove identity (consumes the CAPTCHA securely)
         const { error: verifyError } = await supabase.auth.signInWithPassword({
           email: currentUser.email,
           password: currentPassword,
@@ -231,7 +244,7 @@ export default function SettingsPage() {
           throw new Error("Incorrect current password or verification failed.");
         }
 
-        // 2. Perform the actual password update
+        // 3. Perform the actual password update
         const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
         if (updateError) {
           if (updateError.message.includes("Password should contain"))
