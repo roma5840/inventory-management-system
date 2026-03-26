@@ -155,11 +155,14 @@ export default async function handler(req, res) {
         throw new Error("Database deletion failed, Cloudflare rolled back. " + delErr.message);
       }
 
-      if (targetProfile.auth_uid) {
-        await supabaseAdmin.auth.admin.deleteUser(targetProfile.auth_uid);
-      }
-
+      // 1. Write the log immediately after DB confirmation so we don't lose it if Auth fails
       await logAudit('REVOKE', targetProfile.id, targetProfile.full_name, { email: targetProfile.email, role: targetProfile.role }, null);
+
+      // 2. Perform the volatile Auth deletion last
+      if (targetProfile.auth_uid) {
+        const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(targetProfile.auth_uid);
+        if (authErr) console.error("Auth User Deletion Failed, but DB record was removed:", authErr);
+      }
     }
     
     else if (action === 'TOGGLE_STATUS') {
