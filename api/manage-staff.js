@@ -144,6 +144,10 @@ export default async function handler(req, res) {
     }
     
     else if (action === 'TOGGLE_STATUS') {
+      if (targetProfile.status === 'PENDING') {
+        throw new Error("Pending invitations cannot be suspended. Use REVOKE to cancel the invite entirely.");
+      }
+
       const newStatus = targetProfile.status === 'INACTIVE' ? 'REGISTERED' : 'INACTIVE';
 
       if (newStatus === 'INACTIVE') {
