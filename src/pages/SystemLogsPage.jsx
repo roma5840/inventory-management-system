@@ -140,7 +140,7 @@ export default function SystemLogsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.492-3.396m-2.492 3.396l-3.396 2.492m3.396-2.492L8.32 8.32M15.17 11.42l-2.492 3.396m2.492-3.396L21 17.25m-5.83-5.83l-3.396-2.492m3.396 2.492L17.25 21" />
                   </svg>
                   <p className="font-semibold text-sm">Logging for {tabs.find(t => t.id === activeTab)?.label} is currently under construction.</p>
-                  <p className="text-xs mt-1">Infrastructure is ready; active tracking will be enabled soon.</p>
+                  <p className="text-xs mt-1">This functionality is under development and not currently accessible.</p>
                 </div>
               ) : (
                 <table className="table w-full">
