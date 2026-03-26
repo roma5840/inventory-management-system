@@ -37,8 +37,11 @@ export default function StaffPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState("EMPLOYEE");
+  const [invitePassword, setInvitePassword] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   
+  const [reAuth, setReAuth] = useState({ isOpen: false, action: null, payload: null, password: '', error: '', loading: false });
+
   if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return <div className="p-10 text-center text-error">Access Denied</div>;
 
   // Logic: Super Admin can edit everyone. Admin can only edit Employees.
@@ -158,152 +161,94 @@ export default function StaffPage() {
     };
   }, [refreshTrigger, debouncedTerm, currentPage]);
 
-  const changeRole = async (user, newRole) => {
-    // Note: We keep client-side checks for UX, but the real security is now in the DB
-    if (userRole !== 'SUPER_ADMIN') return showToast("Access Denied", "Only Super Admins can change roles.", "error");
-    if (user.id === currentUser.id) return showToast("Action Blocked", "You cannot change your own role.", "error");
-
-    try {
-        const { error } = await supabase.rpc('update_staff_role', { 
-            target_id: user.id, 
-            new_role: newRole 
-        });
-
-        if (error) throw error;
-
-        showToast("Role Updated", `${user.fullName}'s role is now ${newRole.replace('_', ' ')}.`);
-        setRefreshTrigger(prev => prev + 1);
-        await supabase.channel('app_updates').send({
-            type: 'broadcast',
-            event: 'staff_update',
-            payload: {} 
-        });
-    } catch (err) {
-        showToast("Update Failed", err.message, "error");
-    }
-  };
-
-  // --- NEW: Helper for Secure API Calls with Auto-Refresh ---
-  const callCloudflareSync = async (email, action) => {
-    // 1. Get current session
+  const callSecureApi = async (action, payload, password) => {
     let { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("No active session");
 
-    // 2. Define the fetch logic
     const makeRequest = async (token) => {
-      return fetch('/api/cf-sync', {
+      return fetch('/api/manage-staff', {
         method: 'POST',
-        credentials: 'same-origin',
         headers: { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` 
         },
-        body: JSON.stringify({ email, action })
+        body: JSON.stringify({
+          action,
+          password,
+          targetId: payload.user?.id,
+          targetEmail: payload.email,
+          targetName: payload.name,
+          newRole: payload.newRole || payload.role
+        })
       });
     };
 
-    // 3. Try the request
     let response = await makeRequest(session.access_token);
-
-    // 4. If 401 (Unauthorized), try to refresh token and retry ONCE
     if (response.status === 401) {
-      console.log("Token expired, attempting refresh...");
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError || !refreshData.session) {
-        throw new Error("Session expired. Please refresh the page.");
-      }
-
-      // Retry with new token
+      if (refreshError || !refreshData.session) throw new Error("Session expired. Please refresh the page.");
       response = await makeRequest(refreshData.session.access_token);
     }
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Cloudflare Sync Failed");
-    }
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Secure operation failed");
+    return data;
   };
 
-  const toggleStatus = async (user) => {
+  const changeRole = (user, newRole) => {
+    if (userRole !== 'SUPER_ADMIN') return showToast("Access Denied", "Only Super Admins can change roles.", "error");
+    if (user.id === currentUser.id) return showToast("Action Blocked", "You cannot change your own role.", "error");
+    setReAuth({ isOpen: true, action: 'CHANGE_ROLE', payload: { user, newRole }, password: '', error: '', loading: false });
+  };
+
+  const toggleStatus = (user) => {
     if (!canToggleStatus(user)) return showToast("Permission Denied", "You cannot change this user's status.", "error");
     if (user.id === currentUser.id) return showToast("Action Blocked", "You cannot deactivate your own account.", "error");
-
-    const newStatus = user.status === 'INACTIVE' ? 'REGISTERED' : 'INACTIVE';
-    const actionLabel = newStatus === 'INACTIVE' ? 'Deactivated' : 'Reactivated';
-
-    setProcessingUsers(prev => [...prev, user.id]);
-    try {
-        // SECURE UPDATE: Use RPC instead of direct table update
-        const { error } = await supabase.rpc('update_staff_status', {
-            target_id: user.id,
-            new_status: newStatus
-        });
-
-        if (error) throw error;
-
-        const cfAction = newStatus === 'INACTIVE' ? 'remove' : 'add';
-        await callCloudflareSync(user.email, cfAction);
-
-        showToast(`Account ${actionLabel}`, `${user.fullName} is now ${newStatus.toLowerCase()}.`);
-        setRefreshTrigger(prev => prev + 1);
-        
-        await supabase.channel('app_updates').send({
-            type: 'broadcast',
-            event: 'staff_update',
-            payload: { targetId: user.id, status: newStatus } 
-        });
-
-    } catch (err) {
-        showToast("Status Update Failed", err.message, "error");
-    } finally {
-        setProcessingUsers(prev => prev.filter(id => id !== user.id));
-    }
+    setReAuth({ isOpen: true, action: 'TOGGLE_STATUS', payload: { user }, password: '', error: '', loading: false });
   };
 
-
-  const revokeAccess = async (user) => {
+  const revokeAccess = (user) => {
     if (!canManage(user)) return showToast("Permission Denied", "You cannot delete this user.", "error");
-    
-    if (confirm(`Are you sure you want to REVOKE access for ${user.fullName}?`)) {
-        setProcessingUsers(prev => [...prev, user.id]);
-        try {
-            const { error } = await supabase.rpc('delete_staff_account', { target_record_id: user.id });
-            if (error) throw error;
+    setReAuth({ isOpen: true, action: 'REVOKE', payload: { user }, password: '', error: '', loading: false });
+  };
 
-            await callCloudflareSync(user.email, 'remove');
-            showToast("Access Revoked", `${user.fullName} has been removed from the system.`, "delete");
-            setRefreshTrigger(prev => prev + 1); 
+  const handleReAuthSubmit = async (e) => {
+    e.preventDefault();
+    setReAuth(prev => ({ ...prev, loading: true, error: '' }));
+    try {
+        const { action, payload, password } = reAuth;
+        setProcessingUsers(prev => [...prev, payload.user.id]);
 
-            await supabase.channel('app_updates').send({ 
-                type: 'broadcast', event: 'staff_update', payload: {} 
-            });
-        } catch (err) {
-            showToast("Revoke Failed", err.message, "error");
-        } finally {
-            setProcessingUsers(prev => prev.filter(id => id !== user.id));
+        const res = await callSecureApi(action, payload, password);
+
+        if (action === 'REVOKE') showToast("Access Revoked", `${payload.user.fullName} has been removed.`, "delete");
+        else if (action === 'CHANGE_ROLE') showToast("Role Updated", `${payload.user.fullName}'s role changed to ${payload.newRole.replace('_', ' ')}.`);
+        else if (action === 'TOGGLE_STATUS') showToast("Status Updated", `${payload.user.fullName} is now ${res.newStatus.toLowerCase()}.`);
+        
+        setRefreshTrigger(prev => prev + 1);
+        await supabase.channel('app_updates').send({
+            type: 'broadcast', event: 'staff_update', payload: {}
+        });
+        setReAuth({ isOpen: false, action: null, payload: null, password: '', error: '', loading: false });
+    } catch (err) {
+        setReAuth(prev => ({ ...prev, error: err.message, loading: false }));
+    } finally {
+        if (reAuth.payload?.user) {
+            setProcessingUsers(prev => prev.filter(id => id !== reAuth.payload.user.id));
         }
     }
   };
 
-
   const handleInvite = async (e) => {
     e.preventDefault();
-    if (!inviteEmail.trim() || !inviteName.trim()) return;
+    if (!inviteEmail.trim() || !inviteName.trim() || !invitePassword) return;
     setInviteLoading(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Authentication error: No active session found.");
 
-      const { error } = await supabase.rpc('invite_new_user', {
-        new_email: inviteEmail.trim().toLowerCase(),
-        new_name: inviteName.trim(),
-        new_role: inviteRole
-      });
-
-      if (error) throw error;
-
-      await callCloudflareSync(inviteEmail.trim().toLowerCase(), 'add');
+      await callSecureApi('INVITE', { email: inviteEmail.trim().toLowerCase(), name: inviteName.trim(), role: inviteRole }, invitePassword);
 
       await supabase.channel('app_updates').send({
         type: 'broadcast',
@@ -313,7 +258,6 @@ export default function StaffPage() {
 
       const emailResponse = await fetch('/api/send-invite-email', {
         method: 'POST',
-        credentials: 'same-origin',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}` 
@@ -327,7 +271,6 @@ export default function StaffPage() {
 
       if (!emailResponse.ok) {
         const errData = await emailResponse.json();
-        console.warn("Email API Warning:", errData);
         throw new Error(errData.error || "User added to DB, but email dispatch failed.");
       }
 
@@ -336,13 +279,10 @@ export default function StaffPage() {
       setInviteEmail("");
       setInviteName("");
       setInviteRole("EMPLOYEE");
+      setInvitePassword("");
       setRefreshTrigger(prev => prev + 1);
     } catch (error) {
-      console.error("Invite Process Error:", error);
-      const msg = error.message === "Cloudflare Sync Failed" 
-        ? "User saved to DB, but Cloudflare Sync failed. Check logs." 
-        : error.message || "An unexpected error occurred processing the invite.";
-      showToast("Invite Failed", msg, "error");
+      showToast("Invite Failed", error.message, "error");
     } finally {
       setInviteLoading(false);
     }
@@ -616,7 +556,7 @@ export default function StaffPage() {
                       </div>
                   </div>
 
-                  {userRole === 'SUPER_ADMIN' && (
+                   {userRole === 'SUPER_ADMIN' && (
                   <div className="form-control mb-2">
                       <label className="label py-1">
                           <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Role *</span>
@@ -634,6 +574,20 @@ export default function StaffPage() {
                   </div>
                   )}
 
+                  <div className="form-control mb-2">
+                      <label className="label py-1">
+                          <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Password (Authorization) *</span>
+                      </label>
+                      <LimitedInput
+                          type="password"
+                          className="input input-bordered w-full bg-slate-50 border-slate-200 focus:bg-white text-sm"
+                          placeholder="Enter your password to authorize"
+                          value={invitePassword}
+                          onChange={e => setInvitePassword(e.target.value)}
+                          required
+                      />
+                  </div>
+
                   <div className="modal-action mt-4 pt-4 border-t border-slate-100 flex justify-end gap-2">
                       <button 
                       type="button" 
@@ -644,6 +598,7 @@ export default function StaffPage() {
                           setInviteEmail("");
                           setInviteName("");
                           setInviteRole("EMPLOYEE");
+                          setInvitePassword("");
                       }}>
                       Cancel
                       </button>
@@ -712,6 +667,63 @@ export default function StaffPage() {
           </div>
         </div>
       )}
+
+      {/* Re-Auth Security Modal */}
+      {reAuth.isOpen && (
+        <div className="modal modal-open">
+            <div className="modal-box max-w-sm p-0 overflow-hidden border border-slate-200 shadow-2xl">
+                <div className="p-6 border-b bg-rose-50">
+                    <h3 className="font-bold text-lg text-rose-800">Security Verification</h3>
+                    <p className="text-xs text-rose-600 font-medium mt-1">
+                        {reAuth.action === 'REVOKE' && `You are about to permanently revoke access for ${reAuth.payload.user.fullName}.`}
+                        {reAuth.action === 'TOGGLE_STATUS' && `You are about to ${reAuth.payload.user.status === 'INACTIVE' ? 'reactivate' : 'deactivate'} access for ${reAuth.payload.user.fullName}.`}
+                        {reAuth.action === 'CHANGE_ROLE' && `You are about to change the role of ${reAuth.payload.user.fullName} to ${reAuth.payload.newRole.replace('_', ' ')}.`}
+                    </p>
+                </div>
+                <div className="p-6">
+                    <form onSubmit={handleReAuthSubmit} className="flex flex-col gap-4">
+                        {reAuth.error && (
+                            <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg font-medium border border-red-100">
+                                {reAuth.error}
+                            </div>
+                        )}
+                        <div className="form-control">
+                            <label className="label py-1">
+                                <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Password *</span>
+                            </label>
+                            <LimitedInput
+                                type="password"
+                                className="input input-bordered w-full bg-slate-50 border-slate-200 focus:bg-white text-sm font-sans"
+                                placeholder="Enter password to confirm"
+                                value={reAuth.password}
+                                onChange={e => setReAuth(prev => ({ ...prev, password: e.target.value }))}
+                                required
+                                autoFocus
+                            />
+                        </div>
+                        <div className="mt-2 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                disabled={reAuth.loading}
+                                className="btn btn-ghost text-slate-500 normal-case"
+                                onClick={() => setReAuth({ isOpen: false, action: null, payload: null, password: '', error: '', loading: false })}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={reAuth.loading}
+                                className="btn btn-error px-6 normal-case text-white"
+                            >
+                                {reAuth.loading ? <span className="loading loading-spinner loading-sm"></span> : "Confirm Action"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+      )}
+      
       {toast && (
         <Toast 
           message={toast.message} 
