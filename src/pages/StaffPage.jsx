@@ -5,6 +5,7 @@ import Sidebar from "../components/Sidebar";
 import LimitedInput from "../components/LimitedInput";
 import Pagination from "../components/Pagination";
 import Toast from "../components/Toast";
+import { PasswordInput } from "../components/PasswordInput";
 
 export default function StaffPage() {
   const { userRole, currentUser } = useAuth();
@@ -577,20 +578,15 @@ export default function StaffPage() {
                   </div>
                   )}
 
-                  <div className="form-control mb-2">
-                      <label className="label py-1">
-                          <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Password (Authorization) *</span>
-                      </label>
-                      <LimitedInput
-                          type="password"
-                          disabled={inviteLoading}
-                          className="input input-bordered w-full bg-slate-50 border-slate-200 focus:bg-white text-sm"
-                          placeholder="Enter your password to authorize"
-                          value={invitePassword}
-                          onChange={e => setInvitePassword(e.target.value)}
-                          required
-                      />
-                  </div>
+                  <PasswordInput
+                    label={<span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Password (Authorization) *</span>}
+                    disabled={inviteLoading}
+                    className="mb-2"
+                    placeholder="Enter your password to authorize"
+                    value={invitePassword}
+                    onChange={e => setInvitePassword(e.target.value)}
+                    required
+                  />
 
                   <div className="modal-action mt-4 pt-4 border-t border-slate-100 flex justify-end gap-2">
                       <button 
@@ -691,21 +687,15 @@ export default function StaffPage() {
                                 {reAuth.error}
                             </div>
                         )}
-                        <div className="form-control">
-                            <label className="label py-1">
-                                <span className="label-text text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Password *</span>
-                            </label>
-                            <LimitedInput
-                                type="password"
-                                className="input input-bordered w-full bg-slate-50 border-slate-200 focus:bg-white text-sm font-sans"
-                                placeholder="Enter password to confirm"
-                                disabled={reAuth.loading}
-                                value={reAuth.password}
-                                onChange={e => setReAuth(prev => ({ ...prev, password: e.target.value }))}
-                                required
-                                autoFocus
-                            />
-                        </div>
+                        <PasswordInput
+                            label={<span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Password *</span>}
+                            placeholder="Enter password to confirm"
+                            disabled={reAuth.loading}
+                            value={reAuth.password}
+                            onChange={e => setReAuth(prev => ({ ...prev, password: e.target.value }))}
+                            required
+                            autoFocus
+                        />
                         <div className="mt-2 flex justify-end gap-2">
                             <button
                                 type="button"

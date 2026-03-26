@@ -96,12 +96,13 @@ export default function Register() {
           {error && <div className="alert alert-error text-xs">{error}</div>}
 
           <form onSubmit={handleRegister} className="flex flex-col gap-1">
-             <div className="form-control w-full">
+              <div className="form-control w-full">
               <label className="label"><span className="label-text">Email (Must match Invite)</span></label>
               <input 
                 type="email" required className="input input-bordered w-full" 
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
+                disabled={loading}
               />
             </div>
 
@@ -109,15 +110,17 @@ export default function Register() {
               label="Create Password"
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
+              disabled={loading}
             />
 
             <PasswordInput 
               label="Confirm Password"
               value={formData.confirmPass}
               onChange={(e) => setFormData({...formData, confirmPass: e.target.value})}
+              disabled={loading}
             />
 
-            <div className="flex justify-center mt-4 min-h-[65px]">
+            <div className={`flex justify-center mt-4 min-h-[65px] ${loading ? "pointer-events-none opacity-50" : ""}`}>
               <Turnstile 
                 ref={turnstileRef}
                 siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
@@ -143,7 +146,7 @@ export default function Register() {
           </form>
 
           <div className="divider">OR</div>
-          <Link to="/login" className="btn btn-link btn-sm">
+          <Link to="/login" className={`btn btn-link btn-sm ${loading ? "pointer-events-none opacity-50" : ""}`}>
             Already registered? Login here
           </Link>
         </div>

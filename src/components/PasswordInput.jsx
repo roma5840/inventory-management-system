@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export function PasswordInput({ value, onChange, label, bottomLabel, placeholder, required = true, className = "" }) {
+export function PasswordInput({ value, onChange, label, bottomLabel, placeholder, required = true, className = "", disabled = false, ...props }) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -12,18 +12,21 @@ export function PasswordInput({ value, onChange, label, bottomLabel, placeholder
       )}
       <div className="relative w-full">
         <input
+          {...props}
           type={showPassword ? "text" : "password"}
           required={required}
           placeholder={placeholder}
-          className="input input-bordered w-full pr-10 focus:outline-offset-0"
+          className="input input-bordered w-full pr-10 focus:outline-offset-0 disabled:bg-slate-100 disabled:text-slate-500"
           value={value}
           onChange={onChange}
+          disabled={disabled}
         />
         <button
           type="button"
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
           onClick={() => setShowPassword(!showPassword)}
           tabIndex="-1"
+          disabled={disabled}
         >
           {showPassword ? (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">

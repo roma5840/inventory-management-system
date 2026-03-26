@@ -55,10 +55,11 @@ export default function ForgotPassword() {
                 <input 
                   type="email" required className="input input-bordered" 
                   value={email} onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
-              <div className="flex justify-center mt-4 min-h-[65px]">
+              <div className={`flex justify-center mt-4 min-h-[65px] ${loading ? "pointer-events-none opacity-50" : ""}`}>
                 <Turnstile 
                   ref={turnstileRef}
                   siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
@@ -87,7 +88,10 @@ export default function ForgotPassword() {
           )}
 
           <div className="divider"></div>
-          <Link to="/login" className="btn btn-link btn-sm text-gray-600 no-underline hover:underline">
+          <Link 
+            to="/login" 
+            className={`btn btn-link btn-sm text-gray-600 no-underline hover:underline ${loading ? "pointer-events-none opacity-50" : ""}`}
+          >
             Back to Login
           </Link>
         </div>

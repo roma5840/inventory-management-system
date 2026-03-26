@@ -65,6 +65,7 @@ export default function Login() {
               <input 
                 type="email" required className="input input-bordered w-full" 
                 value={email} onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
               />
             </div>
             
@@ -73,14 +74,18 @@ export default function Login() {
               className="mt-2"
               value={password} 
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
               bottomLabel={
-                <Link to="/forgot-password" className="label-text-alt link link-hover text-blue-600">
+                <Link 
+                  to="/forgot-password" 
+                  className={`label-text-alt link link-hover text-blue-600 ${loading ? "pointer-events-none opacity-50" : ""}`}
+                >
                   Forgot password?
                 </Link>
               }
             />
 
-            <div className="flex justify-center mt-4 min-h-[65px]">
+            <div className={`flex justify-center mt-4 min-h-[65px] ${loading ? "pointer-events-none opacity-50" : ""}`}>
               <Turnstile 
                 ref={turnstileRef}
                 siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
@@ -108,7 +113,7 @@ export default function Login() {
           </form>
 
           <div className="divider">OR</div>
-          <Link to="/register" className="btn btn-link btn-sm text-gray-600">
+          <Link to="/register" className={`btn btn-link btn-sm text-gray-600 ${loading ? "pointer-events-none opacity-50" : ""}`}>
             Have an invitation? Register
           </Link>
         </div>

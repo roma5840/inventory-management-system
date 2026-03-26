@@ -83,6 +83,7 @@ export default function UpdatePassword() {
               placeholder="Enter new password"
               value={password} 
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
             />
             <div className="form-control mt-6">
               <button disabled={loading} className="btn btn-primary">
