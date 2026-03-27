@@ -67,44 +67,45 @@ export default async function handler(req, res) {
     });
 
     const htmlTemplate = `
-      <div style="background-color: #f1f5f9; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-          <div style="background-color: #0f172a; padding: 30px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: -0.025em; font-weight: 700;">
-              Bookstore<span style="color: #3b82f6;">IMS</span>
-            </h1>
-            <p style="color: #94a3b8; margin: 5px 0 0 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">
-              Finance & Inventory Portal
+      <div style="background-color: #f1f5f9; padding: 40px 20px; font-family: 'DM Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 0.5px solid #e2e8f0; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);">
+          
+          <div style="background-color: #1B2D4F; padding: 40px 30px; text-align: center; border-bottom: 4px solid #C8A96E;">
+            <p style="color: #C8A96E; margin: 0 0 15px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; font-weight: 500;">
+              UPANG Bookstore Inventory Management System
             </p>
+            <h1 style="color: #F5EFDF; margin: 0; font-size: 24px; font-family: 'Playfair Display', Georgia, serif; font-weight: 600; line-height: 1.2;">
+              Inventory &amp;<br/>Issuance Portal
+            </h1>
           </div>
 
           <div style="padding: 40px 30px;">
-            <h2 style="font-size: 20px; color: #0f172a; margin-top: 0;">System Access Authorization</h2>
-            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
-              Hello <strong>${safeName}</strong>,
+            <h2 style="font-size: 20px; font-family: 'Playfair Display', Georgia, serif; color: #1e293b; margin-top: 0; font-weight: 500;">System Access Authorization</h2>
+            <p style="font-size: 14px; line-height: 1.6; color: #64748b; margin-bottom: 20px;">
+              Hello <strong style="color: #1e293b;">${safeName}</strong>,
             </p>
-            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
+            <p style="font-size: 14px; line-height: 1.6; color: #64748b; margin-bottom: 20px;">
               ${professionalMessage}
             </p>
-            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
-              To begin managing resources, please complete your secure account registration by clicking the button below.
+            <p style="font-size: 14px; line-height: 1.6; color: #64748b; margin-bottom: 30px;">
+              To begin managing resources, please complete your secure account registration by clicking the button below. Your email must match the address listed in your staff invitation.
             </p>
 
             <div style="margin: 35px 0; text-align: center;">
-              <a href="${invite_link}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
+              <a href="${invite_link}" style="display: inline-block; background-color: #1B2D4F; color: #ffffff; padding: 12px 32px; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px; letter-spacing: 0.02em;">
                 Complete Registration
               </a>
             </div>
 
-            <div style="background-color: #f8fafc; border-left: 4px solid #cbd5e1; padding: 15px; margin-bottom: 20px;">
-              <p style="font-size: 12px; color: #64748b; margin: 0;">
+            <div style="background-color: #F5EFDF; border: 1px solid rgba(200, 169, 110, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+              <p style="font-size: 12px; color: #7A5C1E; margin: 0; line-height: 1.5;">
                 <strong>Security Note:</strong> This invitation link is intended only for <strong>${cleanEmail}</strong>. Do not forward this email.
               </p>
             </div>
           </div>
 
           <div style="padding: 20px 30px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
-            <p style="font-size: 11px; color: #94a3b8; margin: 5px 0 0 0;">
+            <p style="font-size: 11px; color: #94a3b8; margin: 10px 0 0 0;">
               If you were not expecting this authorization, please contact the system administrator immediately.
             </p>
           </div>
@@ -113,7 +114,7 @@ export default async function handler(req, res) {
     `;
 
     await transporter.sendMail({
-      from: `"University Bookstore System" <${process.env.GMAIL_USER}>`,
+      from: `"UPANG Bookstore System" <${process.env.GMAIL_USER}>`,
       to: cleanEmail,
       subject: "Required: Account Registration & Authorization",
       html: htmlTemplate
