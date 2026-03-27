@@ -48,6 +48,7 @@ export default function TransactionForm({ onSuccess }) {
     department: "",
     requestedBy: "",
     releasedBy: "",
+    receivedBy: "",
     purpose: "",
     chargeTo: ""
   };
@@ -485,6 +486,7 @@ export default function TransactionForm({ onSuccess }) {
         department: headerData.department?.toUpperCase().trim() || "",
         requestedBy: headerData.requestedBy?.toUpperCase().trim() || "",
         releasedBy: headerData.releasedBy?.toUpperCase().trim() || "",
+        receivedBy: headerData.receivedBy?.toUpperCase().trim() || "",
         purpose: headerData.purpose?.toUpperCase().trim() || "",
         chargeTo: headerData.chargeTo?.toUpperCase().trim() || "",
         remarks: headerData.remarks?.trim() || "",
@@ -525,6 +527,7 @@ export default function TransactionForm({ onSuccess }) {
           department: finalHeaderData.department,
           requestedBy: finalHeaderData.requestedBy,
           releasedBy: finalHeaderData.releasedBy,
+          receivedBy: finalHeaderData.receivedBy,
           purpose: finalHeaderData.purpose,
           chargeTo: finalHeaderData.chargeTo,
           
@@ -817,6 +820,7 @@ export default function TransactionForm({ onSuccess }) {
                         yearLevel: displayYear,
                         transactionMode: validItems[0].originalMode || "", 
                         releasedBy: "",
+                        receivedBy: "",
                         remarks: ""
                     }));
                 }
@@ -1225,13 +1229,15 @@ export default function TransactionForm({ onSuccess }) {
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                                        {headerData.type === 'ISSUANCE_RETURN' ? 'Received By' : 'Released By'}
+                                    </label>
                                     <LimitedInput 
                                         maxLength={150} showCounter={true} 
                                         className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                         placeholder="Name"
-                                        value={headerData.releasedBy}
-                                        onChange={e => setHeaderData({...headerData, releasedBy: e.target.value})} 
+                                        value={headerData.type === 'ISSUANCE_RETURN' ? headerData.receivedBy : headerData.releasedBy}
+                                        onChange={e => setHeaderData({...headerData, [headerData.type === 'ISSUANCE_RETURN' ? 'receivedBy' : 'releasedBy']: e.target.value})} 
                                     />
                                 </div>
 
@@ -1287,13 +1293,15 @@ export default function TransactionForm({ onSuccess }) {
                                 )}
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Released By</label>
+                                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                                    {headerData.type === 'RECEIVING' ? 'Received By' : 'Released By'}
+                                </label>
                                 <LimitedInput 
                                     maxLength={150} showCounter={true} 
                                     className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs uppercase"
                                     placeholder="Name"
-                                    value={headerData.releasedBy}
-                                    onChange={e => setHeaderData({...headerData, releasedBy: e.target.value})} 
+                                    value={headerData.type === 'RECEIVING' ? headerData.receivedBy : headerData.releasedBy}
+                                    onChange={e => setHeaderData({...headerData, [headerData.type === 'RECEIVING' ? 'receivedBy' : 'releasedBy']: e.target.value})} 
                                 />
                             </div>
                         </>

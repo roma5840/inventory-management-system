@@ -107,6 +107,7 @@ export default function ReceiptLookup() {
         department: header.department,
         requestedBy: header.requested_by,
         releasedBy: header.released_by,
+        receivedBy: header.received_by,
         purpose: header.purpose,
         chargeTo: header.charge_to,
         staffName: resolvedStaffName,
