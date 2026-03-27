@@ -99,7 +99,7 @@ export default function Register() {
             </g>
           </svg>
           <div className="relative z-10 text-center text-white flex flex-col items-center h-full justify-center">
-            <div className="text-[10px] tracking-[0.2em] uppercase text-[#C8A96E] font-medium mb-6">University Bookstore System</div>
+            <div className="text-[10px] tracking-[0.2em] uppercase text-[#C8A96E] font-medium mb-6">UPANG Bookstore Inventory Management System</div>
             <div className="w-20 h-20 rounded-full border-[1.5px] border-[#C8A96E]/40 flex items-center justify-center mx-auto mb-5">
               <div className="w-[60px] h-[60px] rounded-full border border-[#C8A96E]/60 flex items-center justify-center">
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -110,7 +110,7 @@ export default function Register() {
             </div>
             <div className="font-['Playfair_Display',serif] text-[17px] font-semibold text-[#F5EFDF] leading-tight mb-2">Inventory &amp;<br/>Issuance Portal</div>
             <div className="w-8 h-px bg-[#C8A96E]/40 my-5 mx-auto"></div>
-            <div className="text-[11px] text-white/45 tracking-wider leading-relaxed">Textbook issuances, returns,<br/>and stock management</div>
+            <div className="text-[11px] text-white/45 tracking-wider leading-relaxed">Item issuances, returns,<br/>and stock management</div>
             <div className="w-8 h-px bg-[#C8A96E]/40 mt-6 mb-5 mx-auto"></div>
             <div className="text-[10px] text-white/30 tracking-widest uppercase">Authorized staff only</div>
           </div>
