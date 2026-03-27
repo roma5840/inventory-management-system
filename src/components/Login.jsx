@@ -47,7 +47,13 @@ export default function Login() {
   const inputStyle = "w-full h-9 bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-3 text-[13px] text-[#1e293b] transition-all outline-none focus:border-[#1B2D4F] focus:bg-white focus:ring-2 focus:ring-[#1B2D4F]/5 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed";
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#f1f5f9] font-['DM_Sans',sans-serif] text-[#1e293b]">
+      <div 
+        className="min-h-screen flex items-center justify-center p-6 bg-[#f0ede8] font-['DM_Sans',sans-serif] text-[#1e293b]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(27,45,79,0.12) 1px, transparent 1px)',
+          backgroundSize: '16px 16px'
+        }}
+      >
       <div className="flex w-full max-w-[780px] min-h-[540px] rounded-2xl overflow-hidden bg-white border-[0.5px] border-[#e2e8f0] shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
         
         {/* LEFT PANEL */}
