@@ -164,7 +164,7 @@ export default function Register() {
             </button>
             
             <div className="text-center text-[12px] text-[#64748b] mb-2">
-              Already registered? <Link to="/login" className="text-[#C8A96E] font-medium hover:underline">Sign in here</Link>
+              Already registered? <Link to="/login" className={`text-[#C8A96E] font-medium hover:underline ${loading ? "pointer-events-none opacity-50" : ""}`}>Sign in here</Link>
             </div>
 
             <div className="mt-auto pt-4 border-t border-[#e2e8f0] flex items-center justify-between">

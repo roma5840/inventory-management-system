@@ -113,7 +113,10 @@ export default function Login() {
             </div>
 
             <div className="text-right mb-4">
-              <Link to="/forgot-password" size="sm" className="text-[11.5px] text-[#C8A96E] font-medium hover:underline">
+              <Link 
+                to="/forgot-password" 
+                className={`text-[11.5px] text-[#C8A96E] font-medium hover:underline ${loading ? "pointer-events-none opacity-50" : ""}`}
+              >
                 Forgot password?
               </Link>
             </div>
@@ -132,9 +135,9 @@ export default function Login() {
             <button type="submit" disabled={loading || !captchaToken} className="h-10 bg-[#1B2D4F] rounded-lg flex items-center justify-center text-[13.5px] font-medium text-white cursor-pointer transition-all w-full mb-4 tracking-wide hover:bg-[#243d6a] disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? "Verifying..." : "Sign in"}
             </button>
-            
+
             <div className="text-center text-[12px] text-[#64748b]">
-              Don't have an account? <Link to="/register" className="text-[#C8A96E] font-medium hover:underline">Register with invite</Link>
+              Don't have an account? <Link to="/register" className={`text-[#C8A96E] font-medium hover:underline ${loading ? "pointer-events-none opacity-50" : ""}`}>Register with invite</Link>
             </div>
 
             <div className="mt-auto pt-4 border-t border-[#e2e8f0] flex items-center justify-between">
