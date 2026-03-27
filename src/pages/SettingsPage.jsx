@@ -338,19 +338,25 @@ export default function SettingsPage() {
                     <>
                       <PasswordInput 
                         label="Current Password" 
+                        name="current-password"
                         value={currentPassword} 
                         onChange={(e) => setCurrentPassword(e.target.value)} 
+                        disabled={pwLoading}
                       />
                       <div className="divider my-1 text-slate-300"></div>
                       <PasswordInput 
                         label="New Password" 
+                        name="new-password"
                         value={newPassword} 
                         onChange={(e) => setNewPassword(e.target.value)} 
+                        disabled={pwLoading}
                       />
                       <PasswordInput 
                         label="Confirm New Password" 
+                        name="confirm-password"
                         value={confirmPassword} 
                         onChange={(e) => setConfirmPassword(e.target.value)} 
+                        disabled={pwLoading}
                       />
                       
                       {/* Interaction-only Turnstile: Invisible unless Cloudflare suspects a bot */}
