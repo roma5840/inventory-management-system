@@ -68,13 +68,13 @@ export default function Sidebar() {
       
       {/* HEADER */}
       {!isCollapsed ? (
-        <div className="relative p-[24px_20px_20px] border-b border-[#C8A96E]/20 shrink-0">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-[#DBC08D] font-bold mb-1.5">UPANG Bookstore</div>
-          <div className="font-['Playfair_Display',serif] text-[17px] font-semibold text-[#F5EFDF] leading-[1.25]">Inventory &amp;<br/>Issuance Portal</div>
+        <div className="relative p-[24px_20px_20px] border-b border-white/5 shrink-0">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-slate-400 font-bold mb-1.5">UPANG Bookstore</div>
+          <div className="font-['Playfair_Display',serif] text-[17px] font-semibold text-white leading-[1.25]">Inventory &amp;<br/>Issuance Portal</div>
           
           <button 
             onClick={toggleSidebar}
-            className="absolute top-6 right-4 w-6 h-6 flex items-center justify-center text-[#C8A96E]/40 hover:text-[#C8A96E] hover:bg-white/10 rounded transition-all"
+            className="absolute top-6 right-4 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/10 rounded transition-all"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
           </button>
@@ -83,7 +83,7 @@ export default function Sidebar() {
         <div className="pt-[20px] pb-4 flex flex-col items-center shrink-0">
           <div 
             onClick={toggleSidebar}
-            className="w-[38px] h-[38px] rounded-[10px] bg-white/[0.08] flex items-center justify-center cursor-pointer text-[#C8A96E]/60 hover:bg-[#C8A96E]/20 hover:text-[#F5EFDF] transition-all"
+            className="w-[38px] h-[38px] rounded-[10px] bg-white/[0.08] flex items-center justify-center cursor-pointer text-slate-400 hover:bg-white/20 hover:text-white transition-all"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="rotate-180"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
           </div>
@@ -96,7 +96,7 @@ export default function Sidebar() {
           <div key={group.title} className={`flex flex-col ${isCollapsed ? 'items-center w-full mb-4' : 'gap-[4px]'}`}>
             
             {!isCollapsed && (
-              <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-[#C8A96E]/80 px-2.5 mb-2">
+              <div className="text-[10px] font-bold tracking-[0.15em] uppercase text-slate-500 px-2.5 mb-2">
                 {group.title}
               </div>
             )}
@@ -113,8 +113,8 @@ export default function Sidebar() {
                       title={item.label}
                       className={`w-[40px] h-[40px] rounded-[10px] flex items-center justify-center transition-all ${
                         isActive 
-                          ? "bg-[#C8A96E] text-[#1B2D4F] shadow-lg shadow-black/20" 
-                          : "text-white/50 hover:bg-white/10 hover:text-white"
+                          ? "bg-[#C8A96E] text-[#1B2D4F] shadow-lg" 
+                          : "text-slate-400 hover:bg-white/10 hover:text-white"
                       }`}
                     >
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? "2" : "1.5"}>
@@ -130,14 +130,14 @@ export default function Sidebar() {
                     to={item.path}
                     className={`flex items-center gap-[12px] px-[12px] py-[10px] rounded-[10px] transition-all text-[13.5px] group ${
                       isActive 
-                        ? "bg-[#C8A96E]/20 text-[#F5EFDF] font-semibold relative" 
-                        : "text-white/70 hover:bg-white/[0.07] hover:text-[#F5EFDF] font-medium"
+                        ? "bg-white/10 text-white font-semibold relative" 
+                        : "text-slate-300 hover:bg-white/[0.07] hover:text-white font-medium"
                     }`}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-[20%] h-[60%] w-[3px] bg-[#C8A96E] rounded-r-full" />
+                      <span className="absolute left-0 top-[20%] h-[60%] w-[3px] bg-[#C8A96E] rounded-r-full shadow-[0_0_8px_rgba(200,169,110,0.5)]" />
                     )}
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? "2" : "1.5"} className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-[#C8A96E]' : 'text-white/30 group-hover:text-white/60'}`}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? "2" : "1.5"} className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-[#C8A96E]' : 'text-slate-500 group-hover:text-slate-300'}`}>
                       <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                     </svg>
                     {item.label}
@@ -197,25 +197,25 @@ export default function Sidebar() {
             isCollapsed ? 'justify-center p-0 h-[38px] w-[38px] mx-auto' : 'gap-3 p-[10px] pr-3'
           } ${
             isUserMenuOpen 
-              ? 'bg-[#C8A96E]/20 border-[#C8A96E]/40' 
-              : 'bg-white/[0.03] border-white/10 hover:border-[#C8A96E]/30 hover:bg-white/[0.06]'
+              ? 'bg-white/10 border-white/20' 
+              : 'bg-white/[0.03] border-white/5 hover:border-white/20 hover:bg-white/[0.06]'
           }`}
         >
-          <div className="w-[32px] h-[32px] rounded-full bg-[#C8A96E] flex items-center justify-center text-[12px] font-bold text-[#1B2D4F] shrink-0 shadow-lg">
+          <div className="w-[32px] h-[32px] rounded-full bg-[#C8A96E] flex items-center justify-center text-[12px] font-bold text-[#1B2D4F] shrink-0 shadow-md">
             {(currentUser?.fullName || currentUser?.email || "JD").slice(0, 2).toUpperCase()}
           </div>
           
           {!isCollapsed && (
             <>
               <div className="flex-1 min-w-0 text-left">
-                <div className="text-[13px] font-bold text-[#F5EFDF] leading-tight truncate">
+                <div className="text-[13px] font-bold text-white leading-tight truncate">
                   {currentUser?.fullName || "User Account"}
                 </div>
-                <div className="text-[10px] text-[#C8A96E] font-bold uppercase tracking-wider mt-0.5 truncate opacity-90">
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">
                   {userRole?.replace('_', ' ') || 'Guest'}
                 </div>
               </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-white/30 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-slate-500 transition-transform duration-300 ${isUserMenuOpen ? 'rotate-180' : ''}`}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
               </svg>
             </>
