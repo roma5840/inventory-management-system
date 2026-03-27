@@ -220,14 +220,14 @@ export default function SettingsPage() {
     
     setPwLoading(true);
     try {
-        // 1. Strict Fallback Status Check
-        const { data: checkData } = await supabase
+        // 1. Strict Fallback Status Check (FIX: Using auth_uid to prevent 406 error)
+        const { data: checkData, error: checkError } = await supabase
             .from('authorized_users')
             .select('status')
-            .eq('auth_uid', currentUser.id)
+            .eq('auth_uid', currentUser.auth_uid)
             .single();
 
-        if (!checkData || checkData.status !== 'REGISTERED') {
+        if (checkError || !checkData || checkData.status !== 'REGISTERED') {
             await supabase.auth.signOut();
             window.location.href = '/login';
             throw new Error("Action denied: Your account is no longer active.");
