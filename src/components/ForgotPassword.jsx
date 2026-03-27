@@ -26,7 +26,7 @@ export default function ForgotPassword() {
       });
 
       if (error) throw error;
-      setMsg("Check your email for the password reset link.");
+      setMsg("Action complete. Please check your inbox.");
     } catch (err) {
       setError(err.message);
       turnstileRef.current?.reset();
@@ -122,7 +122,7 @@ export default function ForgotPassword() {
           ) : (
             <div className="flex flex-col flex-1">
               <div className="text-center text-[12.5px] text-[#1e293b] mt-4 mb-6 leading-relaxed">
-                Check your inbox and follow the instructions provided to reset your password.
+                If an account is associated with that email, you will receive a password reset link shortly.
               </div>
               
               <div className="text-center text-[12px] text-[#64748b]">
