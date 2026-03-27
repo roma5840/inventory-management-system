@@ -286,6 +286,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                               <div className="space-y-1 text-[11px] text-slate-600">
                                                   {first.requested_by && <div><span className="font-bold text-slate-400">Req:</span> {first.requested_by}</div>}
                                                   {first.released_by && <div><span className="font-bold text-slate-400">Rel:</span> {first.released_by}</div>}
+                                                  {first.received_by && <div><span className="font-bold text-slate-400">Rec:</span> {first.received_by}</div>}
                                                   {first.charge_to && <div><span className="font-bold text-slate-400">Charge:</span> {first.charge_to}</div>}
                                                   {first.purpose && <div className="italic text-slate-500 mt-2">"{first.purpose}"</div>}
                                               </div>
@@ -293,7 +294,7 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                       )}
 
                                       {/* Standard Entity / Released By Info (Non-Transmittal) */}
-                                      {first.transaction_mode !== 'TRANSMITTAL' && (first.student_name || first.supplier || first.released_by) && (
+                                      {first.transaction_mode !== 'TRANSMITTAL' && (first.student_name || first.supplier || first.released_by || first.received_by) && (
                                           <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
                                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                                                   {first.student_name ? 'Student Details' : first.supplier ? 'Supplier Details' : 'Transaction Info'}
@@ -314,9 +315,13 @@ export default function TransactionHistory({ lastUpdated, onUpdate }) {
                                                   </div>
                                               )}
 
-                                              {first.released_by && (
+                                              {(first.released_by || first.received_by) && (
                                                   <div className="text-[11px] text-slate-600">
-                                                      <span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel:</span> {first.released_by}
+                                                      {first.received_by ? (
+                                                          <><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rec:</span> {first.received_by}</>
+                                                      ) : (
+                                                          <><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel:</span> {first.released_by}</>
+                                                      )}
                                                   </div>
                                               )}
                                           </div>

@@ -427,6 +427,7 @@ export default function ProductDetailsPage() {
                                                                     <div className="text-[10px] text-slate-600 space-y-0.5 leading-tight">
                                                                         {tx.requested_by && <div><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Req</span> {tx.requested_by}</div>}
                                                                         {tx.released_by && <div><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel</span> {tx.released_by}</div>}
+                                                                        {tx.received_by && <div><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rec</span> {tx.received_by}</div>}
                                                                         {tx.charge_to && <div><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Chg</span> {tx.charge_to}</div>}
                                                                         {tx.purpose && <div className="italic text-slate-500 mt-1">"{tx.purpose}"</div>}
                                                                     </div>
@@ -452,10 +453,14 @@ export default function ProductDetailsPage() {
                                                                 <span className="text-slate-400 italic text-[10px] font-medium">No Entity Context</span>
                                                             )}
 
-                                                            {/* Released By */}
-                                                            {tx.released_by && tx.transaction_mode !== 'TRANSMITTAL' && (
+                                                            {/* Released / Received By */}
+                                                            {(tx.released_by || tx.received_by) && tx.transaction_mode !== 'TRANSMITTAL' && (
                                                                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
-                                                                    <span className="font-bold text-slate-400 uppercase tracking-widest">Rel:</span> {tx.released_by}
+                                                                    {tx.received_by ? (
+                                                                        <><span className="font-bold text-slate-400 uppercase tracking-widest">Rec:</span> {tx.received_by}</>
+                                                                    ) : (
+                                                                        <><span className="font-bold text-slate-400 uppercase tracking-widest">Rel:</span> {tx.released_by}</>
+                                                                    )}
                                                                 </div>
                                                             )}
                                                         </>

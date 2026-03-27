@@ -218,6 +218,7 @@ export default function TransactionsManager() {
                 "Department": item.department || "",
                 "Requested By": item.requested_by || "",
                 "Released By": item.released_by || "",
+                "Received By": item.received_by || "",
                 "Charge To": item.charge_to || "",
                 "Purpose": item.purpose || "",
                 "Supplier": item.supplier || "",
@@ -475,6 +476,7 @@ export default function TransactionsManager() {
                                                                 {first.transmittal_no && <div><span className="font-bold text-slate-400">TR #:</span> <span className="font-mono">{first.transmittal_no}</span></div>}
                                                                 {first.requested_by && <div><span className="font-bold text-slate-400">Req:</span> {first.requested_by}</div>}
                                                                 {first.released_by && <div><span className="font-bold text-slate-400">Rel:</span> {first.released_by}</div>}
+                                                                {first.received_by && <div><span className="font-bold text-slate-400">Rec:</span> {first.received_by}</div>}
                                                                 {first.charge_to && <div><span className="font-bold text-slate-400">Charge:</span> {first.charge_to}</div>}
                                                                 {first.purpose && <div className="italic text-slate-500 mt-1">"{first.purpose}"</div>}
                                                             </div>
@@ -482,7 +484,7 @@ export default function TransactionsManager() {
                                                     )}
 
                                                     {/* Standard Entity / Released By Info (Non-Transmittal) */}
-                                                    {first.transaction_mode !== 'TRANSMITTAL' && (first.student_name || first.supplier || first.released_by) && (
+                                                    {first.transaction_mode !== 'TRANSMITTAL' && (first.student_name || first.supplier || first.released_by || first.received_by) && (
                                                         <div className="bg-white p-3 rounded-lg border border-slate-200">
                                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">
                                                                 {first.student_name ? 'Student Info' : first.supplier ? 'Supplier Info' : 'Details'}
@@ -501,9 +503,13 @@ export default function TransactionsManager() {
                                                                     <div className="font-semibold text-slate-700">{first.supplier}</div>
                                                                 )}
 
-                                                                {first.released_by && (
+                                                                {(first.released_by || first.received_by) && (
                                                                     <div className={`pt-1.5 ${first.student_name || first.supplier ? 'mt-1.5 border-t border-slate-100' : ''}`}>
-                                                                        <span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel:</span> {first.released_by}
+                                                                        {first.received_by ? (
+                                                                            <><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rec:</span> {first.received_by}</>
+                                                                        ) : (
+                                                                            <><span className="font-bold text-slate-400 uppercase tracking-widest text-[9px] mr-1">Rel:</span> {first.released_by}</>
+                                                                        )}
                                                                     </div>
                                                                 )}
                                                             </div>
