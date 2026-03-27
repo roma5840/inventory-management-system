@@ -85,13 +85,13 @@ export default function SystemLogsPage() {
       return <span>Sent invitation for <b className="text-slate-700">{log.new_values?.email}</b> as <b className="text-indigo-600">{log.new_values?.role?.replace('_', ' ')}</b></span>;
     }
     if (log.action_type === 'DEACTIVATE') {
-      return <span>Access was <b className="text-amber-600">suspended</b> for this user.</span>;
+      return <span>Access was suspended for this user.</span>;
     }
     if (log.action_type === 'REACTIVATE') {
-      return <span>Access was <b className="text-emerald-600">restored</b> for this user.</span>;
+      return <span>Access was restored for this user.</span>;
     }
     if (log.action_type === 'REVOKE') {
-      return <span>Permanently <b className="text-rose-600">deleted</b> user profile and system access.</span>;
+      return <span>Permanently deleted user profile and system access.</span>;
     }
 
     // Generic fallback for future proofing
@@ -136,11 +136,19 @@ export default function SystemLogsPage() {
             <div className="overflow-x-auto min-h-[450px]">
               {activeTab !== 'STAFF' ? (
                 <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12 mb-4 opacity-50 fill-current">
-                    <path d="M21.71,15.58l-4.52-4.51a6.85,6.85,0,0,0,.14-1.4A7.67,7.67,0,0,0,6.42,2.72a1,1,0,0,0-.57.74,1,1,0,0,0,.28.88l4.35,4.34-1.8,1.8L4.34,6.13a1,1,0,0,0-.88-.27,1,1,0,0,0-.74.56,7.67,7.67,0,0,0,7,10.91,6.85,6.85,0,0,0,1.4-.14l4.51,4.52a1,1,0,0,0,1.42,0,1,1,0,0,0,0-1.42l-4.9-4.9a1,1,0,0,0-.95-.26,5.88,5.88,0,0,1-1.48.2A5.67,5.67,0,0,1,4,9.67a6,6,0,0,1,.08-1L8,12.6a1,1,0,0,0,1.42,0L12.6,9.39A1,1,0,0,0,12.6,8L8.71,4.08a6.12,6.12,0,0,1,1-.08,5.67,5.67,0,0,1,5.66,5.67,5.88,5.88,0,0,1-.2,1.48,1,1,0,0,0,.26.95l4.9,4.9a1,1,0,0,0,1.42-1.42Z" />
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 16 16" 
+                    className="w-12 h-12 mb-4 opacity-50 fill-current"
+                  >
+                    <path 
+                      fillRule="evenodd" 
+                      clipRule="evenodd" 
+                      d="M16,8 C16,12.4183 12.4183,16 8,16 C3.58172,16 0,12.4183 0,8 C0,3.58172 3.58172,0 8,0 C12.4183,0 16,3.58172 16,8 Z M9,5 C9,5.55228 8.55229,6 8,6 C7.44772,6 7,5.55228 7,5 C7,4.44772 7.44772,4 8,4 C8.55229,4 9,4.44772 9,5 Z M8,7 C7.44772,7 7,7.44772 7,8 L7,11 C7,11.5523 7.44772,12 8,12 C8.55229,12 9,11.5523 9,11 L9,8 C9,7.44772 8.55229,7 8,7 Z" 
+                    />
                   </svg>
-                  <p className="font-semibold text-sm">Logging for {tabs.find(t => t.id === activeTab)?.label} is currently under construction.</p>
-                  <p className="text-xs mt-1">This functionality is under development and not currently accessible.</p>
+                  <p className="font-semibold text-sm">Logging for {tabs.find(t => t.id === activeTab)?.label} is Not Available</p>
+                  <p className="text-xs mt-1">This feature is planned for future enhancement and is not included in the current release.</p>
                 </div>
               ) : (
                 <table className="table w-full">
