@@ -146,10 +146,6 @@ export default function Login() {
 
             <div className="mt-auto pt-4 border-t border-[#e2e8f0] flex items-center justify-between">
               <div className="text-[10px] text-[#94a3b8] tracking-widest uppercase">Finance &amp; Records Dept.</div>
-              <div className="text-[10px] text-[#94a3b8] flex items-center">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#4CAF82] mr-1.5"></span>
-                System online
-              </div>
             </div>
           </form>
         </div>
