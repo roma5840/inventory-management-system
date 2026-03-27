@@ -2,12 +2,11 @@ import { useState } from "react";
 
 export function PasswordInput({ value, onChange, label, bottomLabel, placeholder, required = true, className = "", disabled = false, ...props }) {
   const [showPassword, setShowPassword] = useState(false);
-  // Destructure className out of props so it doesn't spread onto the input
   const { className: inputClassName, ...inputProps } = props;
 
   return (
     <div className={`flex flex-col w-full ${className}`}>
-      {label && <label className="field-label">{label}</label>}
+      {label && <label className="text-[11.5px] font-medium text-[#64748b] tracking-wide mb-1.5 block">{label}</label>}
       
       <div className="relative w-full">
         <input
@@ -15,7 +14,7 @@ export function PasswordInput({ value, onChange, label, bottomLabel, placeholder
           type={showPassword ? "text" : "password"}
           required={required}
           placeholder={placeholder}
-          className="auth-input pr-10"
+          className={`w-full h-9 bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-3 pr-10 text-[13px] text-[#1e293b] transition-all outline-none focus:border-[#1B2D4F] focus:bg-white focus:ring-2 focus:ring-[#1B2D4F]/5 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed ${inputClassName || ""}`}
           value={value}
           onChange={onChange}
           disabled={disabled}

@@ -1,63 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-[#f1f5f9] text-[#1e293b] antialiased;
-    font-family: 'DM Sans', sans-serif;
+    @apply bg-slate-100 text-slate-800 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  input, select, textarea {
+    @apply bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm transition-all focus:ring-2 focus:ring-slate-900/5 focus:border-slate-900 outline-none disabled:bg-slate-50 disabled:border-slate-200 disabled:text-slate-400 placeholder:text-slate-400;
   }
 }
 
-/* Layout Containers */
-.auth-wrap { @apply min-h-screen flex items-center justify-center p-6; }
-.auth-shell { 
-  @apply flex w-full max-w-[780px] min-h-[540px] rounded-2xl overflow-hidden bg-white;
-  border: 0.5px solid #e2e8f0;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+/* Custom Scrollbar for Finance density */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
 }
-
-/* Left Panel Style */
-.left-panel { @apply w-[280px] shrink-0 bg-[#1B2D4F] flex flex-col items-center justify-center p-8 relative overflow-hidden hidden md:flex; }
-.left-pattern { 
-  @apply absolute inset-0 opacity-[0.07] w-full h-full; 
-  pointer-events: none;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full;
 }
-.left-content { @apply relative z-10 text-center text-white flex flex-col items-center h-full justify-center; }
-.system-badge { @apply text-[10px] tracking-[0.2em] uppercase text-[#C8A96E] font-medium mb-6; }
-.crest-ring { @apply w-20 h-20 rounded-full border-[1.5px] border-[#C8A96E]/40 flex items-center justify-center mx-auto mb-5; }
-.crest-inner { @apply w-[60px] h-[60px] rounded-full border border-[#C8A96E]/60 flex items-center justify-center; }
-.system-name { font-family: 'Playfair Display', serif; @apply text-[17px] font-semibold text-[#F5EFDF] leading-tight mb-2; }
-.system-sub { @apply text-[11px] text-white/45 tracking-wider leading-relaxed; }
-.divider-left { @apply w-8 h-px bg-[#C8A96E]/40 my-5 mx-auto; }
-.access-note { @apply text-[10px] text-white/30 tracking-widest uppercase; }
-
-/* Right Panel Style */
-.right-panel { @apply flex-1 p-8 md:p-10 flex flex-col; }
-.tab-row { @apply flex border-b border-[#e2e8f0] mb-7; }
-.tab { @apply px-5 py-2 text-[13px] font-medium text-[#64748b] cursor-pointer transition-all mb-[-1px] border-b-2 border-transparent; }
-.tab.active { @apply text-[#1B2D4F] border-[#C8A96E]; }
-
-/* Form Elements */
-.form-title { font-family: 'Playfair Display', serif; @apply text-[22px] font-medium text-[#1e293b] mb-1; }
-.form-desc { @apply text-[12px] text-[#64748b] mb-6; }
-.field-label { @apply text-[11.5px] font-medium text-[#64748b] tracking-wide mb-1.5 block; }
-
-.auth-input { 
-  @apply w-full h-9 bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-3 text-[13px] text-[#1e293b] transition-all flex items-center;
-  outline: none;
-}
-.auth-input:focus { @apply border-[#1B2D4F] bg-white ring-2 ring-[#1B2D4F]/5; }
-.auth-input:disabled { @apply bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed; }
-
-.primary-btn { 
-  @apply h-10 bg-[#1B2D4F] rounded-lg flex items-center justify-center text-[13.5px] font-medium text-white cursor-pointer transition-all w-full mb-4 tracking-wide; 
-}
-.primary-btn:hover:not(:disabled) { @apply bg-[#243d6a]; }
-.primary-btn:disabled { @apply opacity-50 cursor-not-allowed; }
-
-.invite-notice { @apply bg-[#F5EFDF] border border-[#C8A96E]/30 rounded-lg p-3 text-[11.5px] text-[#7A5C1E] mb-4 flex gap-2; }
-
-/* Turnstile styling adjustment */
-.cf-turnstile { @apply transform scale-[0.85] md:scale-100; }

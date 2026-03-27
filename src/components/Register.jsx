@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
-import { Logo } from "./Logo";
 import { PasswordInput } from "./PasswordInput";
 import { Turnstile } from "@marsidev/react-turnstile";
 
@@ -43,7 +42,6 @@ export default function Register() {
       });
 
       if (signUpError) {
-        // Supabase masks custom trigger exceptions as "Database error saving new user"
         if (signUpError.message.includes('Database error saving new user') || signUpError.message.includes('Security Policy:')) {
             throw new Error("ACCESS DENIED: This email has not been invited, or the invite is invalid/revoked.");
         }
@@ -57,25 +55,18 @@ export default function Register() {
         }
         throw signUpError;
       }
-
-      // SUCCESS:
-      // We do NOT use alert() or navigate("/login") here. 
-      // Supabase has already logged the user in. We leave setLoading(true) 
-      // so the UI shows the spinner while AuthContext automatically routes them to the Dashboard!
-
     } catch (err) {
       console.error("Registration Error:", err.message);
       setError(err.message);
       turnstileRef.current?.reset();
       setCaptchaToken("");
-      setLoading(false); // Only stop loading if there is an error
+      setLoading(false); 
     }
   };
 
-  // RENDER GUARD
   if (currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-200">
+      <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9]">
         <div className="flex flex-col items-center gap-4">
           <span className="loading loading-spinner loading-lg text-primary"></span>
           <p className="text-gray-500 animate-pulse">Setting up your dashboard...</p>
@@ -84,17 +75,15 @@ export default function Register() {
     );
   }
 
+  const inputStyle = "w-full h-9 bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-3 text-[13px] text-[#1e293b] transition-all outline-none focus:border-[#1B2D4F] focus:bg-white focus:ring-2 focus:ring-[#1B2D4F]/5 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed";
+
   return (
-    <div className="auth-wrap">
-      <div className="auth-shell">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#f1f5f9] font-['DM_Sans',sans-serif] text-[#1e293b]">
+      <div className="flex w-full max-w-[780px] min-h-[540px] rounded-2xl overflow-hidden bg-white border-[0.5px] border-[#e2e8f0] shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
+        
         {/* LEFT PANEL */}
-        <div className="left-panel">
-          <svg 
-            className="left-pattern" 
-            viewBox="0 0 280 540" 
-            xmlns="http://www.w3.org/2000/svg" 
-            preserveAspectRatio="xMidYMax slice"
-          >
+        <div className="w-[280px] shrink-0 bg-[#1B2D4F] flex flex-col items-center justify-center p-8 relative overflow-hidden hidden md:flex">
+          <svg className="absolute inset-0 opacity-[0.07] w-full h-full pointer-events-none" viewBox="0 0 280 540" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax slice">
             <g fill="white">
               <rect x="20" y="420" width="14" height="60" rx="2"/><rect x="38" y="430" width="10" height="50" rx="2"/>
               <rect x="52" y="415" width="16" height="65" rx="2"/><rect x="72" y="425" width="12" height="55" rx="2"/>
@@ -109,36 +98,32 @@ export default function Register() {
               <circle cx="240" cy="80" r="12" fill="none" stroke="white" strokeWidth="1"/>
             </g>
           </svg>
-          <div className="left-content">
-            <div className="system-badge">University Bookstore System</div>
-            <div className="crest-ring">
-              <div className="crest-inner">
+          <div className="relative z-10 text-center text-white flex flex-col items-center h-full justify-center">
+            <div className="text-[10px] tracking-[0.2em] uppercase text-[#C8A96E] font-medium mb-6">University Bookstore System</div>
+            <div className="w-20 h-20 rounded-full border-[1.5px] border-[#C8A96E]/40 flex items-center justify-center mx-auto mb-5">
+              <div className="w-[60px] h-[60px] rounded-full border border-[#C8A96E]/60 flex items-center justify-center">
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                  <path d="M4 8h20M4 14h14M4 20h8" stroke="#C8A96E" stroke-width="1.5" stroke-linecap="round"/>
-                  <path d="M22 12 l3 3 l-3 3" stroke="#C8A96E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 8h20M4 14h14M4 20h8" stroke="#C8A96E" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M22 12 l3 3 l-3 3" stroke="#C8A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
             </div>
-            <div className="system-name">Inventory &amp;<br/>Issuance Portal</div>
-            <div className="divider-left"></div>
-            <div className="system-sub">Textbook issuances, returns,<br/>and stock management</div>
-            <div className="divider-left" style={{marginTop: '1.5rem'}}></div>
-            <div className="access-note">Authorized staff only</div>
+            <div className="font-['Playfair_Display',serif] text-[17px] font-semibold text-[#F5EFDF] leading-tight mb-2">Inventory &amp;<br/>Issuance Portal</div>
+            <div className="w-8 h-px bg-[#C8A96E]/40 my-5 mx-auto"></div>
+            <div className="text-[11px] text-white/45 tracking-wider leading-relaxed">Textbook issuances, returns,<br/>and stock management</div>
+            <div className="w-8 h-px bg-[#C8A96E]/40 mt-6 mb-5 mx-auto"></div>
+            <div className="text-[10px] text-white/30 tracking-widest uppercase">Authorized staff only</div>
           </div>
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="right-panel">
-          <div className="tab-row">
-            <Link to="/login" className="tab">Staff Login</Link>
-            <div className="tab active">New Registration</div>
-          </div>
+        <div className="flex-1 p-8 md:p-10 flex flex-col">
 
-          <div className="form-title">Staff Registration</div>
-          <div className="form-desc">Complete your account setup using your invitation email.</div>
+          <div className="font-['Playfair_Display',serif] text-[22px] font-medium text-[#1e293b] mb-1">Staff Registration</div>
+          <div className="text-[12px] text-[#64748b] mb-6">Complete your account setup using your invitation email.</div>
 
-          <div className="invite-notice">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#C8A96E" stroke-width="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="#C8A96E" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <div className="bg-[#F5EFDF] border border-[#C8A96E]/30 rounded-lg p-3 text-[11.5px] text-[#7A5C1E] mb-4 flex gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#C8A96E" strokeWidth="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="#C8A96E" strokeWidth="1.2" strokeLinecap="round"/></svg>
             <span>Your email must match the address listed in your staff invitation.</span>
           </div>
           
@@ -146,9 +131,9 @@ export default function Register() {
 
           <form onSubmit={handleRegister} className="flex flex-col flex-1">
             <div className="mb-4">
-              <label className="field-label">Invited email address</label>
+              <label className="text-[11.5px] font-medium text-[#64748b] tracking-wide mb-1.5 block">Invited email address</label>
               <input 
-                type="email" required className="auth-input" 
+                type="email" required className={inputStyle} 
                 value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
                 disabled={loading}
               />
@@ -156,38 +141,30 @@ export default function Register() {
 
             <div className="flex gap-3 mb-4">
               <div className="flex-1">
-                <PasswordInput 
-                  label="Create password" 
-                  value={formData.password} 
-                  onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                  disabled={loading} 
-                />
+                <PasswordInput label="Create password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} disabled={loading} />
               </div>
               <div className="flex-1">
-                <PasswordInput 
-                  label="Confirm password" 
-                  value={formData.confirmPass} 
-                  onChange={(e) => setFormData({...formData, confirmPass: e.target.value})} 
-                  disabled={loading} 
-                />
+                <PasswordInput label="Confirm password" value={formData.confirmPass} onChange={(e) => setFormData({...formData, confirmPass: e.target.value})} disabled={loading} />
               </div>
             </div>
 
-            <div className={`flex justify-center mb-4 min-h-[65px] ${loading ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className={`transform scale-[0.85] md:scale-100 flex justify-center mb-4 min-h-[65px] ${loading ? "opacity-50 pointer-events-none" : ""}`}>
               <Turnstile 
                 ref={turnstileRef}
                 siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} 
-                onSuccess={(token) => setCaptchaToken(token)}
+                onSuccess={(token) => { setCaptchaToken(token); setError(""); }}
+                onError={() => { setCaptchaToken(""); setError("Security verification failed. Please refresh or try again."); }}
+                onExpire={() => { setCaptchaToken(""); setError("Security verification expired. Please check the box again."); }}
                 options={{ theme: 'light', size: 'normal' }}
               />
             </div>
 
-            <button type="submit" disabled={loading || !captchaToken} className="primary-btn">
+            <button type="submit" disabled={loading || !captchaToken} className="h-10 bg-[#1B2D4F] rounded-lg flex items-center justify-center text-[13.5px] font-medium text-white cursor-pointer transition-all w-full mb-4 tracking-wide hover:bg-[#243d6a] disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? "Registering..." : "Complete Registration"}
             </button>
             
-            <div className="text-center text-[12px] text-[#64748b]">
-              Already registered? <Link to="/login" className="text-[#C8A96E] font-medium">Sign in here</Link>
+            <div className="text-center text-[12px] text-[#64748b] mb-2">
+              Already registered? <Link to="/login" className="text-[#C8A96E] font-medium hover:underline">Sign in here</Link>
             </div>
 
             <div className="mt-auto pt-4 border-t border-[#e2e8f0] flex items-center justify-between">
