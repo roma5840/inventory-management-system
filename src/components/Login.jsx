@@ -52,7 +52,12 @@ export default function Login() {
       <div className="auth-shell">
         {/* LEFT PANEL */}
         <div className="left-panel">
-          <svg className="left-pattern" viewBox="0 0 280 540" xmlns="http://www.w3.org/2000/svg">
+          <svg 
+            className="left-pattern" 
+            viewBox="0 0 280 540" 
+            xmlns="http://www.w3.org/2000/svg" 
+            preserveAspectRatio="xMidYMax slice"
+          >
             <g fill="white">
               <rect x="20" y="420" width="14" height="60" rx="2"/><rect x="38" y="430" width="10" height="50" rx="2"/>
               <rect x="52" y="415" width="16" height="65" rx="2"/><rect x="72" y="425" width="12" height="55" rx="2"/>
@@ -61,6 +66,10 @@ export default function Login() {
               <rect x="161" y="412" width="17" height="68" rx="2"/><rect x="182" y="424" width="12" height="56" rx="2"/>
               <rect x="198" y="416" width="14" height="64" rx="2"/><rect x="216" y="420" width="16" height="60" rx="2"/>
               <rect x="236" y="430" width="10" height="50" rx="2"/><rect x="250" y="414" width="14" height="66" rx="2"/>
+              <rect x="20" y="60" width="240" height="1" rx="1"/><rect x="20" y="100" width="180" height="1" rx="1"/>
+              <rect x="20" y="140" width="200" height="1" rx="1"/><rect x="20" y="180" width="160" height="1" rx="1"/>
+              <circle cx="240" cy="80" r="20" fill="none" stroke="white" strokeWidth="1"/>
+              <circle cx="240" cy="80" r="12" fill="none" stroke="white" strokeWidth="1"/>
             </g>
           </svg>
           <div className="left-content">
