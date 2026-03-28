@@ -18,6 +18,16 @@ export default function SystemLogsPage() {
   // Import Details Modal State
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedImportLog, setSelectedImportLog] = useState(null);
+  const [importCreatedPage, setImportCreatedPage] = useState(1);
+  const [importUpdatedPage, setImportUpdatedPage] = useState(1);
+  const IMPORT_ITEMS_PER_PAGE = 20;
+
+  const handleOpenImportModal = (log) => {
+      setSelectedImportLog(log);
+      setImportCreatedPage(1); // Reset page on new open
+      setImportUpdatedPage(1); // Reset page on new open
+      setShowImportModal(true);
+  };
 
   const tabs = [
     { id: 'STAFF', label: 'Staff Management' },
@@ -151,10 +161,7 @@ export default function SystemLogsPage() {
           <span>Processed batch import: <b className="text-emerald-600">{log.new_values?.inserted || 0} inserted</b>, <b className="text-blue-600">{log.new_values?.updated || 0} updated</b>, <b className="text-slate-500">{log.new_values?.unchanged || 0} unchanged</b></span>
           {hasDetails && (
             <button 
-                onClick={() => {
-                    setSelectedImportLog(log);
-                    setShowImportModal(true);
-                }}
+                onClick={() => handleOpenImportModal(log)}
                 className="btn btn-xs bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded shadow-sm normal-case flex items-center gap-1 mt-1"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -307,103 +314,129 @@ export default function SystemLogsPage() {
             
             <div className="flex-1 overflow-auto custom-scrollbar p-6 space-y-8">
                 {/* Inserted Items */}
-                {selectedImportLog.new_values?.insertedItems?.length > 0 && (
-                    <div>
-                        <h4 className="text-md font-bold text-emerald-700 mb-3 flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-                            Created Items ({selectedImportLog.new_values.insertedItems.length})
-                        </h4>
-                        <div className="border border-slate-200 rounded-xl overflow-hidden">
-                            <table className="table table-sm w-full border-separate border-spacing-0">
-                                <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
-                                    <tr>
-                                        <th className="py-3 pl-4">Barcode</th>
-                                        <th className="py-3">Product Name</th>
-                                        <th className="py-3">Unit Cost</th>
-                                        <th className="py-3">Price</th>
-                                        <th className="py-3">Cash Price</th>
-                                        <th className="py-3 pr-4 text-center">Initial Stock</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 bg-white">
-                                    {selectedImportLog.new_values.insertedItems.map((item, idx) => (
-                                        <tr key={idx} className="hover:bg-emerald-50/30 transition-colors group">
-                                            <td className="pl-4 py-3">
-                                                <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors uppercase tracking-tighter">
-                                                    {item.barcode}
-                                                </code>
-                                            </td>
-                                            <td className="py-3 font-semibold text-sm text-slate-800">{item.name}</td>
-                                            <td className="py-3 text-slate-500 text-xs font-mono">₱{Number(item.unit_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                            <td className="py-3 text-slate-600 text-xs font-mono">₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                            <td className="py-3 text-emerald-600 text-xs font-mono font-medium">₱{Number(item.cash_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                            <td className="py-3 pr-4 text-center font-bold text-slate-700">{item.current_stock}</td>
+                {selectedImportLog.new_values?.insertedItems?.length > 0 && (() => {
+                    const createdItems = selectedImportLog.new_values.insertedItems;
+                    const paginatedCreated = createdItems.slice((importCreatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importCreatedPage * IMPORT_ITEMS_PER_PAGE);
+                    
+                    return (
+                        <div>
+                            <h4 className="text-md font-bold text-emerald-700 mb-3 flex items-center gap-2">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                                Created Items ({createdItems.length})
+                            </h4>
+                            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col">
+                                <table className="table table-sm w-full border-separate border-spacing-0">
+                                    <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
+                                        <tr>
+                                            <th className="py-3 pl-4">Barcode</th>
+                                            <th className="py-3">Product Name</th>
+                                            <th className="py-3">Unit Cost</th>
+                                            <th className="py-3">Price</th>
+                                            <th className="py-3">Cash Price</th>
+                                            <th className="py-3 pr-4 text-center">Initial Stock</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Updated Items */}
-                {selectedImportLog.new_values?.updatedItems?.length > 0 && (
-                    <div>
-                        <h4 className="text-md font-bold text-blue-700 mb-3 flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Updated Items ({selectedImportLog.new_values.updatedItems.length})
-                        </h4>
-                        <div className="border border-slate-200 rounded-xl overflow-hidden">
-                            <table className="table table-sm w-full border-separate border-spacing-0">
-                                <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
-                                    <tr>
-                                        <th className="py-3 pl-4 w-[140px]">Barcode</th>
-                                        <th className="py-3 w-1/3">Product Name</th>
-                                        <th className="py-3 pr-4">Specific Changes</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 bg-white">
-                                    {selectedImportLog.new_values.updatedItems.map((itemPair, idx) => {
-                                        const { old: o, new: n } = itemPair;
-                                        const labels = {
-                                            name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
-                                            price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
-                                            min_stock_level: 'Min Stock Level', location: 'Location'
-                                        };
-                                        const changes = [];
-                                        Object.keys(labels).forEach(key => {
-                                            if (n[key] !== undefined && String(o[key]) !== String(n[key])) {
-                                                changes.push(
-                                                    <li key={key}>
-                                                        Changed {labels[key]} from <b className="text-slate-500">{o[key] || 'None'}</b> to <b className="text-blue-600">{n[key] || 'None'}</b>
-                                                    </li>
-                                                );
-                                            }
-                                        });
-
-                                        return (
-                                            <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                                                <td className="pl-4 py-3 align-top">
-                                                    <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 uppercase tracking-tighter whitespace-nowrap">
-                                                        {n.barcode || o.barcode}
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {paginatedCreated.map((item, idx) => (
+                                            <tr key={idx} className="hover:bg-emerald-50/30 transition-colors group">
+                                                <td className="pl-4 py-3">
+                                                    <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors uppercase tracking-tighter">
+                                                        {item.barcode}
                                                     </code>
                                                 </td>
-                                                <td className="py-3 font-semibold text-sm text-slate-800 align-top leading-tight pr-4">
-                                                    {o.name}
-                                                </td>
-                                                <td className="py-3 pr-4 align-top">
-                                                    <ul className="text-xs space-y-1.5 list-disc pl-4 text-slate-600 leading-tight">
-                                                        {changes.length > 0 ? changes : <span className="italic text-slate-400">Merged (No modified fields tracked)</span>}
-                                                    </ul>
-                                                </td>
+                                                <td className="py-3 font-semibold text-sm text-slate-800">{item.name}</td>
+                                                <td className="py-3 text-slate-500 text-xs font-mono">₱{Number(item.unit_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                <td className="py-3 text-slate-600 text-xs font-mono">₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                <td className="py-3 text-emerald-600 text-xs font-mono font-medium">₱{Number(item.cash_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                <td className="py-3 pr-4 text-center font-bold text-slate-700">{item.current_stock}</td>
                                             </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {createdItems.length > IMPORT_ITEMS_PER_PAGE && (
+                                    <Pagination 
+                                        totalCount={createdItems.length}
+                                        itemsPerPage={IMPORT_ITEMS_PER_PAGE}
+                                        currentPage={importCreatedPage}
+                                        onPageChange={setImportCreatedPage}
+                                    />
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
+
+                {/* Updated Items */}
+                {selectedImportLog.new_values?.updatedItems?.length > 0 && (() => {
+                    const updatedItems = selectedImportLog.new_values.updatedItems;
+                    const paginatedUpdated = updatedItems.slice((importUpdatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importUpdatedPage * IMPORT_ITEMS_PER_PAGE);
+                    
+                    return (
+                        <div>
+                            <h4 className="text-md font-bold text-blue-700 mb-3 flex items-center gap-2">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                Updated Items ({updatedItems.length})
+                            </h4>
+                            <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col">
+                                <table className="table table-sm w-full border-separate border-spacing-0">
+                                    <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
+                                        <tr>
+                                            <th className="py-3 pl-4 w-[140px]">Barcode</th>
+                                            <th className="py-3 w-1/3">Product Name</th>
+                                            <th className="py-3 pr-4">Specific Changes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {paginatedUpdated.map((itemPair, idx) => {
+                                            const { old: o, new: n } = itemPair;
+                                            const labels = {
+                                                name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
+                                                price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
+                                                min_stock_level: 'Min Stock Level', location: 'Location'
+                                            };
+                                            const changes = [];
+                                            Object.keys(labels).forEach(key => {
+                                                if (n[key] !== undefined && String(o[key]) !== String(n[key])) {
+                                                    changes.push(
+                                                        <li key={key}>
+                                                            Changed {labels[key]} from <b className="text-slate-500">{o[key] || 'None'}</b> to <b className="text-blue-600">{n[key] || 'None'}</b>
+                                                        </li>
+                                                    );
+                                                }
+                                            });
+
+                                            return (
+                                                <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                                                    <td className="pl-4 py-3 align-top">
+                                                        <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 uppercase tracking-tighter whitespace-nowrap">
+                                                            {n.barcode || o.barcode}
+                                                        </code>
+                                                    </td>
+                                                    <td className="py-3 font-semibold text-sm text-slate-800 align-top leading-tight pr-4">
+                                                        {o.name}
+                                                    </td>
+                                                    <td className="py-3 pr-4 align-top">
+                                                        <ul className="text-xs space-y-1.5 list-disc pl-4 text-slate-600 leading-tight">
+                                                            {changes.length > 0 ? changes : <span className="italic text-slate-400">Merged (No modified fields tracked)</span>}
+                                                        </ul>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                                {updatedItems.length > IMPORT_ITEMS_PER_PAGE && (
+                                    <Pagination 
+                                        totalCount={updatedItems.length}
+                                        itemsPerPage={IMPORT_ITEMS_PER_PAGE}
+                                        currentPage={importUpdatedPage}
+                                        onPageChange={setImportUpdatedPage}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
           </div>
         </div>
