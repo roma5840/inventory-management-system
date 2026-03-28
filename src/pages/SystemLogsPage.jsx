@@ -67,6 +67,10 @@ export default function SystemLogsPage() {
       case 'DEACTIVATE': return <span className="text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Deactivated</span>;
       case 'CHANGE_ROLE': return <span className="text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Role Change</span>;
       case 'UPDATE_NAME': return <span className="text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Name Change</span>;
+      case 'CREATE': return <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Created</span>;
+      case 'UPDATE': return <span className="text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Updated</span>;
+      case 'DELETE': return <span className="text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Deleted</span>;
+      case 'IMPORT': return <span className="text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Imported</span>;
       default: return <span className="text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">{actionType}</span>;
     }
   };
@@ -74,7 +78,7 @@ export default function SystemLogsPage() {
   const renderDetails = (log) => {
     if (!log.new_values && !log.old_values && !log.metadata) return <span className="text-slate-400 italic">No details captured</span>;
     
-    // --- HUMAN READABLE STAFF LOGS ---
+    // --- STAFF LOGS ---
     if (log.action_type === 'CHANGE_ROLE') {
       return <span>Changed role from <b className="text-slate-700">{log.old_values?.role?.replace('_', ' ')}</b> to <b className="text-indigo-600">{log.new_values?.role?.replace('_', ' ')}</b></span>;
     }
@@ -92,6 +96,52 @@ export default function SystemLogsPage() {
     }
     if (log.action_type === 'REVOKE') {
       return <span>Permanently deleted user profile and system access.</span>;
+    }
+
+    // --- INVENTORY LOGS ---
+    if (log.action_type === 'CREATE') {
+      return <span>Added new product <b className="text-slate-700">{log.entity_name}</b> ({log.new_values?.barcode})</span>;
+    }
+    if (log.action_type === 'UPDATE') {
+      const changes = [];
+      const labels = {
+        name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
+        price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
+        min_stock_level: 'Min Stock Level', location: 'Location'
+      };
+      
+      Object.keys(labels).forEach(key => {
+        const oldVal = log.old_values?.[key];
+        const newVal = log.new_values?.[key];
+        
+        // Strict comparison to only log actual modifications
+        if (newVal !== undefined && String(oldVal) !== String(newVal)) {
+          changes.push(
+            <li key={key}>
+              Changed {labels[key]} from <b className="text-slate-500">{oldVal || 'None'}</b> to <b className="text-blue-600">{newVal || 'None'}</b>
+            </li>
+          );
+        }
+      });
+
+      return (
+        <div>
+          <span className="block mb-1.5 font-medium">Updated product <b className="text-slate-700">{log.entity_name}</b>:</span>
+          {changes.length > 0 ? (
+            <ul className="text-[11px] space-y-1 list-disc pl-4 text-slate-600 leading-tight">
+              {changes}
+            </ul>
+          ) : (
+            <span className="text-[10px] text-slate-400 italic">No specific field changes tracked.</span>
+          )}
+        </div>
+      );
+    }
+    if (log.action_type === 'DELETE') {
+      return <span>Deleted product <b className="text-slate-700">{log.entity_name}</b></span>;
+    }
+    if (log.action_type === 'IMPORT') {
+      return <span>Processed batch import: <b className="text-emerald-600">{log.new_values?.inserted || 0} inserted</b>, <b className="text-blue-600">{log.new_values?.updated || 0} updated</b>, <b className="text-slate-500">{log.new_values?.unchanged || 0} unchanged</b></span>;
     }
 
     // Generic fallback for future proofing
@@ -134,7 +184,7 @@ export default function SystemLogsPage() {
 
             {/* Content Area */}
             <div className="overflow-x-auto min-h-[450px]">
-              {activeTab !== 'STAFF' ? (
+              {['STUDENTS', 'SUPPLIERS'].includes(activeTab) ? (
                 <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
@@ -194,7 +244,7 @@ export default function SystemLogsPage() {
               )}
             </div>
 
-            {activeTab === 'STAFF' && (
+            {['STAFF', 'INVENTORY'].includes(activeTab) && (
               <Pagination 
                 totalCount={totalCount}
                 itemsPerPage={ITEMS_PER_PAGE}

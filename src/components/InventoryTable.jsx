@@ -59,39 +59,19 @@ export default function InventoryTable({ lastUpdated }) {
         setCreateLoading(false); return;
     }
 
-    const sanitizedId = newItemForm.id.toUpperCase();
-    const sanitizedAccPac = newItemForm.accpacCode ? newItemForm.accpacCode.toUpperCase() : null;
-    const sanitizedName = newItemForm.name.toUpperCase();
-    const sanitizedLocation = newItemForm.location ? newItemForm.location.toUpperCase() : "";
-
     try {
-        const { data: existing } = await supabase
-            .from('products')
-            .select('barcode, accpac_code')
-            .or(`barcode.eq.${sanitizedId},accpac_code.eq.${sanitizedAccPac}`)
-            .maybeSingle();
-            
-        if (existing) {
-            showToast("Duplicate Error", existing.barcode === sanitizedId ? "Barcode already exists." : "AccPac Code already exists.", "error");
-            setCreateLoading(false); return;
-        }
-
-        const { error } = await supabase.from('products').insert({
-            barcode: sanitizedId, 
-            accpac_code: sanitizedAccPac,
-            name: sanitizedName,
-            price: Number(newItemForm.price) || 0,
-            cash_price: Number(newItemForm.cashPrice) || 0,
-            unit_cost: Number(newItemForm.unitCost || 0),
-            min_stock_level: Number(newItemForm.minStockLevel) || 0,
-            current_stock: Number(newItemForm.initialStock) || 0, 
-            location: sanitizedLocation,
-            last_updated: new Date()
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const res = await fetch('/api/manage-inventory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'CREATE', payload: newItemForm })
         });
+        
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to register product");
 
-        if (error) throw error;
-
-        showToast("Registration Success", `${sanitizedName} added to catalog.`);
+        showToast("Registration Success", `${newItemForm.name.toUpperCase()} added to catalog.`);
         setIsAddModalOpen(false);
         setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "", minStockLevel: "10", location: "", initialStock: "" });
         fetchInventory();
@@ -218,37 +198,23 @@ export default function InventoryTable({ lastUpdated }) {
     e.preventDefault();
     setUpdateLoading(true);
 
-    const newPrice = Number(editForm.price) || 0;
-    const newCashPrice = Number(editForm.cashPrice) || 0;
-    const newMinLevel = Number(editForm.minStockLevel) || 0;
-
     if (!editingProduct.id || !editingProduct.id.trim()) {
         showToast("Error", "Barcode is required.", "error");
         setUpdateLoading(false); return;
     }
 
     try {
-        const sanitizedBarcode = editingProduct.id.trim().toUpperCase();
-        const sanitizedName = editForm.name.toUpperCase();
-        const sanitizedLocation = editForm.location ? editForm.location.toUpperCase() : "";
-        const sanitizedAccPac = editForm.accpacCode ? editForm.accpacCode.toUpperCase() : null;
+        const { data: { session } } = await supabase.auth.getSession();
+        const payload = { ...editForm, barcode: editingProduct.id };
+        
+        const res = await fetch('/api/manage-inventory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'UPDATE', internal_id: editingProduct.internal_id, payload })
+        });
 
-        const { error } = await supabase
-            .from('products')
-            .update({
-                barcode: sanitizedBarcode, 
-                name: sanitizedName,
-                price: newPrice,
-                cash_price: newCashPrice,
-                unit_cost: Number(editForm.unitCost) || 0,
-                min_stock_level: newMinLevel,
-                location: sanitizedLocation,
-                accpac_code: sanitizedAccPac,
-                last_updated: new Date()
-            })
-            .eq('internal_id', editingProduct.internal_id);
-
-        if (error) throw error;
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to update product");
         
         setEditingProduct(null);
         showToast("Update Successful", "Product details have been saved.");
@@ -259,9 +225,7 @@ export default function InventoryTable({ lastUpdated }) {
         });
 
     } catch (err) {
-        const msg = err.message.includes("products_barcode_key") ? "Barcode already in use." : 
-                    err.message.includes("products_accpac_code_key") ? "AccPac Code already in use." : err.message;
-        showToast("Update Failed", msg, "error");
+        showToast("Update Failed", err.message, "error");
     } finally {
         setUpdateLoading(false);
     }
@@ -278,12 +242,16 @@ export default function InventoryTable({ lastUpdated }) {
     if (!deletingProduct?.internal_id) return;
     setDeleteLoading(true);
     try {
-        const { error } = await supabase
-            .from('products')
-            .delete()
-            .eq('internal_id', deletingProduct.internal_id);
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (error) throw error;
+        const res = await fetch('/api/manage-inventory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'DELETE', internal_id: deletingProduct.internal_id })
+        });
+        
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to delete product");
 
         fetchInventory();
         showToast("Item Deleted", `${deletingProduct.name} removed from system.`, "delete");
@@ -293,8 +261,7 @@ export default function InventoryTable({ lastUpdated }) {
             type: 'broadcast', event: 'inventory_update', payload: {} 
         });
     } catch (error) {
-        const msg = error.code === '23503' ? "Item has existing transaction history." : error.message;
-        showToast("Delete Failed", msg, "error");
+        showToast("Delete Failed", error.message, "error");
     } finally {
         setDeleteLoading(false);
     }
@@ -381,7 +348,6 @@ export default function InventoryTable({ lastUpdated }) {
                 return /^[=+\-@]/.test(clean) ? "'" + clean : clean;
             };
 
-            // Catch all standard Excel/CSV export error values
             const isExcelError = (val) => {
                 if (!val) return false;
                 const upper = String(val).trim().toUpperCase();
@@ -392,24 +358,20 @@ export default function InventoryTable({ lastUpdated }) {
                 return excelErrors.includes(upper);
             };
 
-            // Helper to handle Excel errors and empty strings for numbers cleanly
             const parseNumeric = (val, defaultVal = 0) => {
                 if (!val) return defaultVal;
                 const cleanVal = String(val).trim();
                 if (cleanVal === '' || isExcelError(cleanVal)) return defaultVal;
-                
-                // Strip commas and potential currency symbols before checking isNaN
                 const num = Number(cleanVal.replace(/,/g, '').replace(/[₱$€]/g, ''));
                 return isNaN(num) ? NaN : num;
             };
 
             const rawRows = rows.map((r, index) => {
-                
                 let rawBarcode = sanitize(r['BARCODE']);
                 const barcode = (!rawBarcode || isExcelError(rawBarcode)) ? null : rawBarcode.toUpperCase();
                 
-                let rawAccpac = sanitize(r['ACCPAC ITEM CODE']);
-                const accpac = (!rawAccpac || isExcelError(rawAccpac)) ? null : rawAccpac.toUpperCase();
+                let rawAccPac = sanitize(r['ACCPAC ITEM CODE']);
+                const accpac = (!rawAccPac || isExcelError(rawAccPac)) ? null : rawAccPac.toUpperCase();
                 
                 let rawName = sanitize(r['ITEM DESCRIPTION']);
                 const name = (!rawName || isExcelError(rawName)) ? null : rawName.toUpperCase();
@@ -417,73 +379,38 @@ export default function InventoryTable({ lastUpdated }) {
                 const price = parseNumeric(sanitize(r['PRICE']), 0);
                 const cost = parseNumeric(sanitize(r['COST']), 0);
                 const cash = parseNumeric(sanitize(r['CASH']), 0);
-                
                 const location = sanitize(r['LOCATION'])?.toUpperCase() || '';
-                
                 const initialStock = parseInt(parseNumeric(sanitize(r['INITIAL STOCK']), 0), 10);
                 const minStockLevel = parseInt(parseNumeric(sanitize(r['MIN. STOCK ALERT LEVEL']), 10), 10);
 
                 const rowId = barcode || accpac || `Row ${index + 2}`;
                 let rowValid = true;
 
-                if (!name) {
-                    validationErrors.push(`[${rowId}] Missing Item Description (or contains Excel error). Row Skipped.`);
-                    rowValid = false;
-                } else if (name.length > 300) {
-                    validationErrors.push(`[${rowId}] Name exceeds 300 characters.`);
-                    rowValid = false;
-                }
-                if (barcode && barcode.length > 50) {
-                    validationErrors.push(`[${rowId}] Barcode exceeds 50 characters.`);
-                    rowValid = false;
-                }
-                if (accpac && accpac.length > 50) {
-                    validationErrors.push(`[${rowId}] AccPac Code exceeds 50 characters.`);
-                    rowValid = false;
-                }
-                if (location && location.length > 150) {
-                    validationErrors.push(`[${rowId}] Location exceeds 150 characters.`);
-                    rowValid = false;
-                }
-                if (isNaN(price) || price < 0 || price >= 10000000000) {
-                    validationErrors.push(`[${rowId}] Invalid price format.`);
-                    rowValid = false;
-                }
-                if (isNaN(cost) || cost < 0 || cost >= 10000000000) {
-                    validationErrors.push(`[${rowId}] Invalid cost format.`);
-                    rowValid = false;
-                }
-                if (isNaN(cash) || cash < 0 || cash >= 10000000000) {
-                    validationErrors.push(`[${rowId}] Invalid cash price format.`);
-                    rowValid = false;
-                }
-                if (isNaN(initialStock) || isNaN(minStockLevel)) {
-                    validationErrors.push(`[${rowId}] Stock values must be valid numbers.`);
-                    rowValid = false;
-                }
+                if (!name) { validationErrors.push(`[${rowId}] Missing Item Description. Row Skipped.`); rowValid = false; }
+                else if (name.length > 300) { validationErrors.push(`[${rowId}] Name exceeds 300 characters.`); rowValid = false; }
+                if (barcode && barcode.length > 50) { validationErrors.push(`[${rowId}] Barcode exceeds 50 characters.`); rowValid = false; }
+                if (accpac && accpac.length > 50) { validationErrors.push(`[${rowId}] AccPac Code exceeds 50 characters.`); rowValid = false; }
+                if (location && location.length > 150) { validationErrors.push(`[${rowId}] Location exceeds 150 characters.`); rowValid = false; }
+                if (isNaN(price) || price < 0 || price >= 10000000000) { validationErrors.push(`[${rowId}] Invalid price format.`); rowValid = false; }
+                if (isNaN(cost) || cost < 0 || cost >= 10000000000) { validationErrors.push(`[${rowId}] Invalid cost format.`); rowValid = false; }
+                if (isNaN(cash) || cash < 0 || cash >= 10000000000) { validationErrors.push(`[${rowId}] Invalid cash price format.`); rowValid = false; }
+                if (isNaN(initialStock) || isNaN(minStockLevel)) { validationErrors.push(`[${rowId}] Stock values must be valid numbers.`); rowValid = false; }
 
                 if (!rowValid) return null;
                 return { barcode, accpac, name, price, cost, cash, location, initialStock, minStockLevel };
             }).filter(Boolean);
 
-            if (rawRows.length === 0 && validationErrors.length === 0) {
-                throw new Error("Could not parse rows.");
-            }
+            if (rawRows.length === 0 && validationErrors.length === 0) throw new Error("Could not parse rows.");
 
-            // Global Deduplication Phase (Stock Merging)
             const uniqueMap = new Map();
             rawRows.forEach((r) => {
                 const key = r.barcode || r.accpac || r.name; 
-                
                 if (uniqueMap.has(key)) {
                     const existing = uniqueMap.get(key);
                     const addedStock = r.initialStock || 0;
-                    
                     existing.initialStock = (existing.initialStock || 0) + addedStock;
-                    
                     if (!existing.accpac && r.accpac) existing.accpac = r.accpac;
                     if (!existing.barcode && r.barcode) existing.barcode = r.barcode;
-
                     uniqueMap.set(key, existing);
                     validationErrors.push(`[${key}] CSV Duplicate Merged: +${addedStock} Initial Stock.`);
                 } else {
@@ -492,163 +419,32 @@ export default function InventoryTable({ lastUpdated }) {
             });
 
             const cleanRows = Array.from(uniqueMap.values());
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            // FRONTEND BATCHING: Send 500 rows per API request to avoid Vercel Timeouts
+            const CHUNK_SIZE = 500;
+            let totalInserted = 0, totalUpdated = 0, totalUnchanged = 0;
+            const allErrors = [...validationErrors];
 
-            const BATCH_SIZE = 300;
-            let insertedCount = 0;
-            let updatedCount = 0;
-            let unchangedCount = 0;
-            const processErrors = [...validationErrors]; 
-
-            for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
-                const batch = cleanRows.slice(i, i + BATCH_SIZE);
+            for (let i = 0; i < cleanRows.length; i += CHUNK_SIZE) {
+                const chunk = cleanRows.slice(i, i + CHUNK_SIZE);
                 
-                const batchBarcodes = batch.map(r => r.barcode).filter(Boolean);
-                const batchAccPacs = batch.map(r => r.accpac).filter(Boolean);
-                const batchNames = batch.filter(r => !r.barcode && !r.accpac).map(r => r.name).filter(Boolean);
-
-                let existingItems = [];
-                
-                if (batchBarcodes.length > 0) {
-                    const { data, error } = await supabase.from('products').select('*').in('barcode', batchBarcodes);
-                    if (error) throw error;
-                    if (data) existingItems.push(...data);
-                }
-                if (batchAccPacs.length > 0) {
-                    const { data, error } = await supabase.from('products').select('*').in('accpac_code', batchAccPacs);
-                    if (error) throw error;
-                    if (data) existingItems.push(...data);
-                }
-                if (batchNames.length > 0) {
-                    const { data, error } = await supabase.from('products').select('*').in('name', batchNames);
-                    if (error) throw error;
-                    if (data) existingItems.push(...data);
-                }
-
-                const existingByBarcode = new Map();
-                const existingByAccPac = new Map();
-                const existingByName = new Map();
-                
-                existingItems.forEach(item => {
-                    if (item.barcode) existingByBarcode.set(item.barcode.toUpperCase(), item);
-                    if (item.accpac_code) existingByAccPac.set(item.accpac_code.toUpperCase(), item);
-                    if (item.name) existingByName.set(item.name.toUpperCase(), item);
+                const res = await fetch('/api/manage-inventory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+                    body: JSON.stringify({ action: 'IMPORT', rows: chunk })
                 });
+                
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || `Failed to process import at chunk ${Math.floor(i/CHUNK_SIZE) + 1}`);
 
-                const toInsert = [];
-                const toUpdate = [];
-
-                batch.forEach((row) => {
-                    let existing = null;
-                    let conflictMsg = null;
-
-                    if (row.barcode && existingByBarcode.has(row.barcode)) {
-                        existing = existingByBarcode.get(row.barcode);
-                    } else if (row.accpac && existingByAccPac.has(row.accpac)) {
-                        const matchedByAccpac = existingByAccPac.get(row.accpac);
-                        if (row.barcode && matchedByAccpac.barcode && matchedByAccpac.barcode !== row.barcode) {
-                            conflictMsg = `[${row.barcode}] Conflict: AccPac '${row.accpac}' is already assigned to Barcode '${matchedByAccpac.barcode}'. Row skipped.`;
-                        } else {
-                            existing = matchedByAccpac;
-                        }
-                    } else if (!row.barcode && !row.accpac && existingByName.has(row.name)) {
-                        existing = existingByName.get(row.name);
-                    }
-
-                    if (conflictMsg) {
-                        processErrors.push(conflictMsg);
-                        return;
-                    }
-
-                    if (existing) {
-                        let needsUpdate = false;
-                        const updatePayload = { internal_id: existing.internal_id, last_updated: new Date() };
-
-                        if (row.name && existing.name !== row.name) {
-                            needsUpdate = true; updatePayload.name = row.name;
-                        }
-                        if (row.barcode && existing.barcode !== row.barcode) {
-                            needsUpdate = true; updatePayload.barcode = row.barcode;
-                        }
-                        if (row.accpac && existing.accpac_code !== row.accpac) {
-                            needsUpdate = true; updatePayload.accpac_code = row.accpac;
-                        }
-                        if (row.price !== undefined && existing.price !== row.price) {
-                            needsUpdate = true; updatePayload.price = row.price;
-                        }
-                        if (row.cash !== undefined && existing.cash_price !== row.cash) {
-                            needsUpdate = true; updatePayload.cash_price = row.cash;
-                        }
-                        if (row.location !== undefined && existing.location !== row.location) {
-                            needsUpdate = true; updatePayload.location = row.location;
-                        }
-                        if (row.minStockLevel !== undefined && existing.min_stock_level !== row.minStockLevel) {
-                            needsUpdate = true; updatePayload.min_stock_level = row.minStockLevel;
-                        }
-
-                        if (needsUpdate) {
-                            toUpdate.push(updatePayload);
-                        } else {
-                            unchangedCount++;
-                        }
-                    } else {
-                        const newBarcode = row.barcode || generateClientBarcode();
-                        
-                        toInsert.push({
-                            barcode: newBarcode,
-                            accpac_code: row.accpac || null,
-                            name: row.name,
-                            price: row.price !== undefined ? row.price : 0,
-                            cash_price: row.cash !== undefined ? row.cash : 0,
-                            unit_cost: row.cost !== undefined ? row.cost : 0,
-                            min_stock_level: row.minStockLevel !== undefined ? row.minStockLevel : 10,
-                            current_stock: row.initialStock !== undefined ? row.initialStock : 0,
-                            location: row.location !== undefined ? row.location : 'N/A',
-                            last_updated: new Date()
-                        });
-                    }
-                });
-
-                if (toInsert.length > 0) {
-                    const { error: insError } = await supabase.from('products').insert(toInsert);
-                    if (insError) {
-                        for (const item of toInsert) {
-                            const { error: singleErr } = await supabase.from('products').insert(item);
-                            if (singleErr) {
-                                processErrors.push(`[${item.barcode || item.name}] Insert Failed: ${singleErr.message}`);
-                            } else {
-                                insertedCount++;
-                            }
-                        }
-                    } else {
-                        insertedCount += toInsert.length;
-                    }
-                }
-
-                if (toUpdate.length > 0) {
-                    const updatePromises = toUpdate.map(async (item) => {
-                        const { internal_id, ...fieldsToUpdate } = item;
-                        const { error } = await supabase.from('products').update(fieldsToUpdate).eq('internal_id', internal_id);
-                        if (error) throw new Error(`[${item.barcode || 'Update'}] Failed: ${error.message}`);
-                        return true;
-                    });
-
-                    const results = await Promise.allSettled(updatePromises);
-                    results.forEach(res => {
-                        if (res.status === 'fulfilled') {
-                            updatedCount++;
-                        } else {
-                            processErrors.push(res.reason.message);
-                        }
-                    });
-                }
+                totalInserted += result.importResult.inserted;
+                totalUpdated += result.importResult.updated;
+                totalUnchanged += result.importResult.unchanged;
+                if (result.importResult.errors) allErrors.push(...result.importResult.errors);
             }
 
-            setImportResult({ 
-                inserted: insertedCount, 
-                updated: updatedCount, 
-                unchanged: unchangedCount,
-                errors: processErrors 
-            });
+            setImportResult({ inserted: totalInserted, updated: totalUpdated, unchanged: totalUnchanged, errors: allErrors });
             setIsImportModalOpen(false);
             fetchInventory();
 
