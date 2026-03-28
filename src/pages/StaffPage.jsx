@@ -708,9 +708,13 @@ export default function StaffPage() {
                             <button 
                                 type="submit" 
                                 disabled={reAuth.loading} 
-                                className={`btn btn-primary ${reAuth.loading ? 'loading' : ''}`}
+                                className="btn btn-primary px-6 normal-case"
                             >
-                                {reAuth.loading ? <span className="loading loading-spinner loading-sm"></span> : "Confirm Action"}
+                                {reAuth.loading ? (
+                                    <span className="loading loading-spinner loading-sm"></span>
+                                ) : (
+                                    "Confirm Action"
+                                )}
                             </button>
                         </div>
                     </form>
