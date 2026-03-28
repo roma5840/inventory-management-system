@@ -140,7 +140,6 @@ export default function SystemLogsPage() {
 
       return (
         <div>
-          <span className="block mb-1.5 font-medium">Updated product <b className="text-slate-700">{log.entity_name}</b>:</span>
           {changes.length > 0 ? (
             <ul className="text-[11px] space-y-1 list-disc pl-4 text-slate-600 leading-tight">
               {changes}
