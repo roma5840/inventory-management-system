@@ -642,13 +642,13 @@ export default function InventoryTable({ lastUpdated }) {
         {/* EDIT MODAL (Pop-up) */}
       {editingProduct && (
         <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg text-gray-700 mb-4">
-                Update Item Details
-            </h3>
+          <div className="modal-box max-w-xl border border-slate-200 shadow-2xl p-0 overflow-hidden">
+            <div className="p-6 border-b bg-slate-50">
+                <h3 className="font-bold text-lg text-slate-800">Update Item Details</h3>
+                <p className="text-xs text-slate-500 font-medium mt-1 uppercase tracking-wider">Modify product specifications and pricing.</p>
+            </div>
             
-            <form onSubmit={handleUpdate} className="flex flex-col gap-4">
-                
+            <form onSubmit={handleUpdate} className="p-6 flex flex-col gap-4">
                 {/* Barcode & Stock Row */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="form-control">
@@ -660,13 +660,15 @@ export default function InventoryTable({ lastUpdated }) {
                                 showCounter={true}
                                 value={editingProduct.id} 
                                 onChange={(e) => setEditingProduct({...editingProduct, id: e.target.value})}
-                                className="input input-bordered input-sm font-mono font-bold text-blue-800 uppercase w-full" 
+                                className="input input-bordered input-sm font-mono font-bold text-blue-800 uppercase w-full bg-slate-50" 
                                 required
+                                disabled={updateLoading}
                             />
                             <button type="button" 
                                 onClick={() => setEditingProduct({...editingProduct, id: generateClientBarcode()})}
                                 className="btn btn-square btn-outline btn-primary btn-sm shrink-0" 
                                 title="Generate New ID"
+                                disabled={updateLoading}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -678,36 +680,36 @@ export default function InventoryTable({ lastUpdated }) {
                         <label className="label text-xs uppercase font-bold text-gray-400">Current Stock</label>
                         <input type="text" value={editingProduct.currentStock} disabled className="input input-bordered input-sm bg-gray-100 font-bold text-gray-700" />
                         <label className="label text-[10px] text-orange-500">
-                            *Stock cannot be edited here. Use Transaction Form.
+                            *Stock managed via Transactions.
                         </label>
                     </div>
                 </div>
 
-                {/* EDITABLE FIELDS */}
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">Item Name *</label>
                     <LimitedInput 
                         type="text" 
                         maxLength={300}
                         showCounter={true}
-                        className="input input-bordered w-full uppercase" 
+                        className="input input-bordered w-full uppercase bg-slate-50 focus:bg-white" 
                         value={editForm.name}
                         onChange={e => setEditForm({...editForm, name: e.target.value})}
                         required
+                        disabled={updateLoading}
                     />
                 </div>
 
-                {/* AccPac Field in Edit Mode */}
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">AccPac Code</label>
                     <LimitedInput 
                         type="text" 
                         maxLength={50}
                         showCounter={true}
-                        className="input input-bordered w-full font-mono text-blue-900 uppercase" 
+                        className="input input-bordered w-full font-mono text-blue-900 uppercase bg-slate-50 focus:bg-white" 
                         placeholder="Optional"
                         value={editForm.accpacCode}
                         onChange={e => setEditForm({...editForm, accpacCode: e.target.value})}
+                        disabled={updateLoading}
                     />
                 </div>
 
@@ -717,9 +719,10 @@ export default function InventoryTable({ lastUpdated }) {
                         type="text" 
                         maxLength={150}
                         showCounter={true}
-                        className="input input-bordered w-full uppercase" 
+                        className="input input-bordered w-full uppercase bg-slate-50 focus:bg-white" 
                         value={editForm.location}
                         onChange={e => setEditForm({...editForm, location: e.target.value})}
+                        disabled={updateLoading}
                     />
                 </div>
 
@@ -731,12 +734,13 @@ export default function InventoryTable({ lastUpdated }) {
                             step="0.01"
                             min="0"
                             maxLength={10}
-                            className="input input-bordered w-full" 
+                            className="input input-bordered w-full bg-slate-50 focus:bg-white" 
                             value={editForm.price}
                             placeholder="0"
                             onChange={e => setEditForm({...editForm, price: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
+                            disabled={updateLoading}
                         />
                     </div>
                     <div className="form-control">
@@ -746,34 +750,51 @@ export default function InventoryTable({ lastUpdated }) {
                             step="0.01"
                             min="0"
                             maxLength={10}
-                            className="input input-bordered w-full border-emerald-200 focus:border-emerald-500" 
+                            className="input input-bordered w-full border-emerald-200 focus:border-emerald-500 bg-slate-50" 
                             value={editForm.cashPrice}
                             placeholder="0"
                             onChange={e => setEditForm({...editForm, cashPrice: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
+                            disabled={updateLoading}
                         />
                     </div>
                     <div className="form-control md:col-span-1 col-span-2">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert Level *</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert *</label>
                         <LimitedInput 
                             type="number" 
                             min="0"
                             step="1"
                             maxLength={10}
-                            className="input input-bordered w-full" 
+                            className="input input-bordered w-full bg-slate-50 focus:bg-white" 
                             value={editForm.minStockLevel}
                             onChange={e => setEditForm({...editForm, minStockLevel: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
                             required
+                            disabled={updateLoading}
                         />
                     </div>
                 </div>
 
-                <div className="modal-action">
-                    <button type="button" className="btn btn-ghost" onClick={() => setEditingProduct(null)}>Cancel</button>
-                    <button type="submit" className={`btn btn-primary ${updateLoading ? 'loading' : ''}`}>
-                        {updateLoading ? "Updating..." : "Save Changes"}
+                <div className="modal-action mt-2 pt-4 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        className="btn btn-ghost text-slate-500 normal-case" 
+                        onClick={() => setEditingProduct(null)} 
+                        disabled={updateLoading}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit" 
+                        className="btn btn-primary px-8 normal-case min-w-[140px]" 
+                        disabled={updateLoading}
+                    >
+                        {updateLoading ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            "Save Changes"
+                        )}
                     </button>
                 </div>
             </form>
@@ -784,13 +805,13 @@ export default function InventoryTable({ lastUpdated }) {
       {/* === REGISTER NEW ITEM MODAL === */}
       {isAddModalOpen && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
-            <h3 className="font-bold text-lg text-gray-700 mb-4">
-                Register New Product
-            </h3>
+          <div className="modal-box max-w-xl border border-slate-200 shadow-2xl p-0 overflow-hidden">
+            <div className="p-6 border-b bg-slate-50">
+                <h3 className="font-bold text-lg text-slate-800">Register New Product</h3>
+                <p className="text-xs text-slate-500 font-medium mt-1 uppercase tracking-wider">Add a new item to the inventory catalog.</p>
+            </div>
             
-            <form onSubmit={handleCreateProduct} className="flex flex-col gap-3">
-                
+            <form onSubmit={handleCreateProduct} className="p-6 flex flex-col gap-3">
                 {/* Barcode & AccPac Row */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="form-control">
@@ -800,16 +821,18 @@ export default function InventoryTable({ lastUpdated }) {
                                 type="text" 
                                 maxLength={50}
                                 showCounter={true}
-                                className="input input-bordered w-full font-mono font-bold text-blue-800 uppercase" 
+                                className="input input-bordered w-full font-mono font-bold text-blue-800 uppercase bg-slate-50 focus:bg-white" 
                                 placeholder="Scan/Type"
                                 value={newItemForm.id}
                                 onChange={e => setNewItemForm({...newItemForm, id: e.target.value})}
                                 required
+                                disabled={createLoading}
                             />
                             <button type="button" 
                                 onClick={() => setNewItemForm({...newItemForm, id: generateClientBarcode()})}
                                 className="btn btn-square btn-outline btn-primary btn-sm shrink-0" 
                                 title="Generate ID"
+                                disabled={createLoading}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -823,10 +846,11 @@ export default function InventoryTable({ lastUpdated }) {
                             type="text" 
                             maxLength={50}
                             showCounter={true}
-                            className="input input-bordered w-full font-mono text-gray-700 uppercase" 
+                            className="input input-bordered w-full font-mono text-gray-700 uppercase bg-slate-50 focus:bg-white" 
                             placeholder="Optional"
                             value={newItemForm.accpacCode}
                             onChange={e => setNewItemForm({...newItemForm, accpacCode: e.target.value})}
+                            disabled={createLoading}
                         />
                     </div>
                 </div>
@@ -837,11 +861,12 @@ export default function InventoryTable({ lastUpdated }) {
                         type="text" 
                         maxLength={300}
                         showCounter={true}
-                        className="input input-bordered w-full uppercase" 
+                        className="input input-bordered w-full uppercase bg-slate-50 focus:bg-white" 
                         placeholder="Product Title"
                         value={newItemForm.name}
                         onChange={e => setNewItemForm({...newItemForm, name: e.target.value})}
                         required
+                        disabled={createLoading}
                     />
                 </div>
 
@@ -851,9 +876,10 @@ export default function InventoryTable({ lastUpdated }) {
                         type="text" 
                         maxLength={150}
                         showCounter={true}
-                        className="input input-bordered w-full uppercase"
+                        className="input input-bordered w-full uppercase bg-slate-50 focus:bg-white"
                         value={newItemForm.location}
                         onChange={e => setNewItemForm({...newItemForm, location: e.target.value})}
+                        disabled={createLoading}
                     />
                 </div>
 
@@ -863,24 +889,26 @@ export default function InventoryTable({ lastUpdated }) {
                         <label className="label text-xs uppercase font-bold text-gray-500">Price (₱) *</label>
                         <LimitedInput 
                             type="number" step="0.01" min="0" maxLength={10}
-                            className="input input-bordered w-full" 
+                            className="input input-bordered w-full bg-slate-50 focus:bg-white" 
                             value={newItemForm.price}
                             placeholder="0"
                             onChange={e => setNewItemForm({...newItemForm, price: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
+                            disabled={createLoading}
                         />
                     </div>
                     <div className="form-control">
                         <label className="label text-xs uppercase font-bold text-gray-500">Cash Price (₱) *</label>
                         <LimitedInput 
                             type="number" step="0.01" min="0" maxLength={10}
-                            className="input input-bordered w-full border-emerald-200 focus:border-emerald-500" 
+                            className="input input-bordered w-full border-emerald-200 focus:border-emerald-500 bg-slate-50" 
                             value={newItemForm.cashPrice}
                             placeholder="0"
                             onChange={e => setNewItemForm({...newItemForm, cashPrice: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
                             required
+                            disabled={createLoading}
                         />
                     </div>
                 </div>
@@ -890,36 +918,53 @@ export default function InventoryTable({ lastUpdated }) {
                         <label className="label text-xs uppercase font-bold text-gray-500">Initial Stock</label>
                         <LimitedInput 
                             type="number" min="0" step="1" maxLength={10}
-                            className="input input-bordered w-full" 
+                            className="input input-bordered w-full bg-slate-50 focus:bg-white" 
                             value={newItemForm.initialStock}
                             placeholder="0"
                             onChange={e => setNewItemForm({...newItemForm, initialStock: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
+                            disabled={createLoading}
                         />
                     </div>
                     <div className="form-control">
-                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert Level *</label>
+                        <label className="label text-xs uppercase font-bold text-gray-500">Min. Stock Alert *</label>
                         <LimitedInput 
                             type="number" 
                             min="0"
                             step="1"
                             maxLength={10}
-                            className="input input-bordered w-full" 
+                            className="input input-bordered w-full bg-slate-50 focus:bg-white" 
                             value={newItemForm.minStockLevel}
                             onChange={e => setNewItemForm({...newItemForm, minStockLevel: e.target.value})}
                             onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
                             required
+                            disabled={createLoading}
                         />
                     </div>
                 </div>
 
-                <div className="modal-action mt-2">
-                    <button type="button" className="btn btn-ghost" onClick={() => {
-                        setIsAddModalOpen(false);
-                        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "", minStockLevel: "10", location: "", initialStock: "" });
-                    }}>Cancel</button>
-                    <button type="submit" className={`btn btn-primary ${createLoading ? 'loading' : ''}`}>
-                        Register Item
+                <div className="modal-action mt-2 pt-4 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        className="btn btn-ghost text-slate-500 normal-case" 
+                        disabled={createLoading} 
+                        onClick={() => {
+                            setIsAddModalOpen(false);
+                            setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", minStockLevel: "10", location: "", initialStock: "" });
+                        }}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit" 
+                        className="btn btn-primary px-8 normal-case min-w-[140px]" 
+                        disabled={createLoading}
+                    >
+                        {createLoading ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            "Register Item"
+                        )}
                     </button>
                 </div>
             </form>
