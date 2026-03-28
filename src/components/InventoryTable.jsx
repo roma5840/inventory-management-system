@@ -23,7 +23,7 @@ export default function InventoryTable({ lastUpdated }) {
 
   // Edit Modal State
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", price: "", cashPrice: "", unitCost: "", minStockLevel: "", accpacCode: "" });
+  const [editForm, setEditForm] = useState({ name: "", price: "", cashPrice: "", minStockLevel: "", accpacCode: "" });
   const [updateLoading, setUpdateLoading] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -35,7 +35,6 @@ export default function InventoryTable({ lastUpdated }) {
     name: "", 
     price: "", 
     cashPrice: "",
-    unitCost: "",
     minStockLevel: "10",
     location: "",
     initialStock: ""
@@ -73,7 +72,7 @@ export default function InventoryTable({ lastUpdated }) {
 
         showToast("Registration Success", `${newItemForm.name.toUpperCase()} added to catalog.`);
         setIsAddModalOpen(false);
-        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", unitCost: "", minStockLevel: "10", location: "", initialStock: "" });
+        setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", minStockLevel: "10", location: "", initialStock: "" });
         fetchInventory();
         
         await supabase.channel('app_updates').send({
@@ -186,7 +185,6 @@ export default function InventoryTable({ lastUpdated }) {
         name: product.name,
         price: product.price,
         cashPrice: product.cash_price ?? 0,
-        unitCost: product.unit_cost || 0,
         minStockLevel: product.minStockLevel,
         location: product.location || "",
         accpacCode: product.accpac_code || ""

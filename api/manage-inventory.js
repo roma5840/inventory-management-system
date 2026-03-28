@@ -71,7 +71,7 @@ export default async function handler(req, res) {
           name: sanitizedName,
           price: Number(payload.price) || 0,
           cash_price: Number(payload.cashPrice) || 0,
-          unit_cost: Number(payload.unitCost || 0),
+          unit_cost: 0, // Hardcoded: Preliminary unit costs are only accepted via CSV Import
           min_stock_level: Number(payload.minStockLevel) || 0,
           current_stock: Number(payload.initialStock) || 0, 
           location: sanitizedLocation,
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
           name: sanitizedName,
           price: Number(payload.price) || 0,
           cash_price: Number(payload.cashPrice) || 0,
-          unit_cost: Number(payload.unitCost) || 0,
+          // unit_cost intentionally excluded: It cannot be manually modified
           min_stock_level: Number(payload.minStockLevel) || 0,
           location: sanitizedLocation,
           accpac_code: sanitizedAccPac,
