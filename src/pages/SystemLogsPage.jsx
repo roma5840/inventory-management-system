@@ -15,6 +15,10 @@ export default function SystemLogsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 20;
 
+  // Import Details Modal State
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedImportLog, setSelectedImportLog] = useState(null);
+
   const tabs = [
     { id: 'STAFF', label: 'Staff Management' },
     { id: 'INVENTORY', label: 'Inventory Changes' },
@@ -141,7 +145,24 @@ export default function SystemLogsPage() {
       return <span>Deleted product <b className="text-slate-700">{log.entity_name}</b></span>;
     }
     if (log.action_type === 'IMPORT') {
-      return <span>Processed batch import: <b className="text-emerald-600">{log.new_values?.inserted || 0} inserted</b>, <b className="text-blue-600">{log.new_values?.updated || 0} updated</b>, <b className="text-slate-500">{log.new_values?.unchanged || 0} unchanged</b></span>;
+      const hasDetails = log.new_values?.insertedItems?.length > 0 || log.new_values?.updatedItems?.length > 0;
+      return (
+        <div className="flex flex-col items-start gap-2">
+          <span>Processed batch import: <b className="text-emerald-600">{log.new_values?.inserted || 0} inserted</b>, <b className="text-blue-600">{log.new_values?.updated || 0} updated</b>, <b className="text-slate-500">{log.new_values?.unchanged || 0} unchanged</b></span>
+          {hasDetails && (
+            <button 
+                onClick={() => {
+                    setSelectedImportLog(log);
+                    setShowImportModal(true);
+                }}
+                className="btn btn-xs bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded shadow-sm normal-case flex items-center gap-1 mt-1"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                View Details
+            </button>
+          )}
+        </div>
+      );
     }
 
     // Generic fallback for future proofing
@@ -256,6 +277,137 @@ export default function SystemLogsPage() {
           </div>
         </div>
       </main>
+
+      {/* Import Details Modal */}
+      {showImportModal && selectedImportLog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setShowImportModal(false)} 
+          />
+          
+          <div className="relative bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+            
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-xl text-slate-900">Import Batch Details</h3>
+                    </div>
+                    <p className="text-sm text-slate-500 font-medium">Breakdown of items created and updated during this batch</p>
+                </div>
+                <button 
+                    onClick={() => setShowImportModal(false)} 
+                    className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto custom-scrollbar p-6 space-y-8">
+                {/* Inserted Items */}
+                {selectedImportLog.new_values?.insertedItems?.length > 0 && (
+                    <div>
+                        <h4 className="text-md font-bold text-emerald-700 mb-3 flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                            Created Items ({selectedImportLog.new_values.insertedItems.length})
+                        </h4>
+                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                            <table className="table table-sm w-full border-separate border-spacing-0">
+                                <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
+                                    <tr>
+                                        <th className="py-3 pl-4">Barcode</th>
+                                        <th className="py-3">Product Name</th>
+                                        <th className="py-3">Unit Cost</th>
+                                        <th className="py-3">Price</th>
+                                        <th className="py-3">Cash Price</th>
+                                        <th className="py-3 pr-4 text-center">Initial Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 bg-white">
+                                    {selectedImportLog.new_values.insertedItems.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-emerald-50/30 transition-colors group">
+                                            <td className="pl-4 py-3">
+                                                <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors uppercase tracking-tighter">
+                                                    {item.barcode}
+                                                </code>
+                                            </td>
+                                            <td className="py-3 font-semibold text-sm text-slate-800">{item.name}</td>
+                                            <td className="py-3 text-slate-500 text-xs font-mono">₱{Number(item.unit_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-3 text-slate-600 text-xs font-mono">₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-3 text-emerald-600 text-xs font-mono font-medium">₱{Number(item.cash_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-3 pr-4 text-center font-bold text-slate-700">{item.current_stock}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Updated Items */}
+                {selectedImportLog.new_values?.updatedItems?.length > 0 && (
+                    <div>
+                        <h4 className="text-md font-bold text-blue-700 mb-3 flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Updated Items ({selectedImportLog.new_values.updatedItems.length})
+                        </h4>
+                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                            <table className="table table-sm w-full border-separate border-spacing-0">
+                                <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
+                                    <tr>
+                                        <th className="py-3 pl-4 w-[140px]">Barcode</th>
+                                        <th className="py-3 w-1/3">Product Name</th>
+                                        <th className="py-3 pr-4">Specific Changes</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 bg-white">
+                                    {selectedImportLog.new_values.updatedItems.map((itemPair, idx) => {
+                                        const { old: o, new: n } = itemPair;
+                                        const labels = {
+                                            name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
+                                            price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
+                                            min_stock_level: 'Min Stock Level', location: 'Location'
+                                        };
+                                        const changes = [];
+                                        Object.keys(labels).forEach(key => {
+                                            if (n[key] !== undefined && String(o[key]) !== String(n[key])) {
+                                                changes.push(
+                                                    <li key={key}>
+                                                        Changed {labels[key]} from <b className="text-slate-500">{o[key] || 'None'}</b> to <b className="text-blue-600">{n[key] || 'None'}</b>
+                                                    </li>
+                                                );
+                                            }
+                                        });
+
+                                        return (
+                                            <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                                                <td className="pl-4 py-3 align-top">
+                                                    <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 uppercase tracking-tighter whitespace-nowrap">
+                                                        {n.barcode || o.barcode}
+                                                    </code>
+                                                </td>
+                                                <td className="py-3 font-semibold text-sm text-slate-800 align-top leading-tight pr-4">
+                                                    {o.name}
+                                                </td>
+                                                <td className="py-3 pr-4 align-top">
+                                                    <ul className="text-xs space-y-1.5 list-disc pl-4 text-slate-600 leading-tight">
+                                                        {changes.length > 0 ? changes : <span className="italic text-slate-400">Merged (No modified fields tracked)</span>}
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

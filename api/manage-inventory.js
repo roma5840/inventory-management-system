@@ -166,6 +166,7 @@ export default async function handler(req, res) {
 
       const toInsert = [];
       const toUpdate = [];
+      const updateDetails = [];
 
       rows.forEach((row) => {
           let existing = null;
@@ -191,7 +192,6 @@ export default async function handler(req, res) {
 
           if (existing) {
               let needsUpdate = false;
-              // CRITICAL: We spread `existing` to provide all NOT NULL columns for Postgres Upsert
               const updatePayload = { ...existing, last_updated: new Date() };
 
               if (row.name && existing.name !== row.name.toUpperCase()) { needsUpdate = true; updatePayload.name = row.name.toUpperCase(); }
@@ -202,7 +202,10 @@ export default async function handler(req, res) {
               if (row.location !== undefined && row.location.toUpperCase() !== (existing.location || '')) { needsUpdate = true; updatePayload.location = row.location.toUpperCase(); }
               if (row.minStockLevel !== undefined && Number(row.minStockLevel) !== Number(existing.min_stock_level)) { needsUpdate = true; updatePayload.min_stock_level = Number(row.minStockLevel); }
 
-              if (needsUpdate) toUpdate.push(updatePayload);
+              if (needsUpdate) {
+                  toUpdate.push(updatePayload);
+                  updateDetails.push({ old: existing, new: updatePayload });
+              }
               else unchangedCount++;
           } else {
               toInsert.push({
@@ -238,7 +241,14 @@ export default async function handler(req, res) {
           else processErrors.push(`Bulk update failed: ${error.message}`);
       }
 
-      const importStats = { inserted: insertedCount, updated: updatedCount, unchanged: unchangedCount, errors: processErrors };
+      const importStats = { 
+          inserted: insertedCount, 
+          updated: updatedCount, 
+          unchanged: unchangedCount, 
+          errors: processErrors,
+          insertedItems: toInsert,
+          updatedItems: updateDetails
+      };
       await logAudit('IMPORT', 'BATCH_IMPORT', `CSV Chunk (${rows.length} items)`, null, importStats);
 
       return res.status(200).json({ success: true, importResult: importStats });
