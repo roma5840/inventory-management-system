@@ -151,21 +151,20 @@ export default function StudentPage() {
     setSaving(true);
 
     try {
-        const { error } = await supabase
-            .from('students')
-            .update({ 
-                name: editForm.name.toUpperCase(), 
-                course: editForm.course,
-                year_level: editForm.year_level.toUpperCase(),
-                last_updated: new Date()
-            })
-            .eq('student_id', editingStudent.student_id);
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const res = await fetch('/api/manage-students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'UPDATE', student_id: editingStudent.student_id, payload: editForm })
+        });
 
-        if (error) throw error;
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to update student");
         
         setStudents(prev => prev.map(s => 
             s.student_id === editingStudent.student_id 
-                ? { ...s, name: editForm.name.toUpperCase(), course: editForm.course, year_level: editForm.year_level.toUpperCase() } 
+                ? { ...s, name: editForm.name.toUpperCase(), course: editForm.course || null, year_level: editForm.year_level.toUpperCase() || null } 
                 : s
         ));
         
@@ -210,81 +209,46 @@ export default function StudentPage() {
 
           if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV headers: STUDENT ID, NAME");
 
-          // Handle Courses First
-          const uniqueCourses = [...new Set(cleanRows.map(d => d.course).filter(Boolean))];
-          if (uniqueCourses.length > 0) {
-             const courseInserts = uniqueCourses.map(c => ({ code: c }));
-             await supabase.from('courses').upsert(courseInserts, { onConflict: 'code' });
-             setAvailableCourses(prev => [...new Set([...prev, ...uniqueCourses])].sort());
-          }
-
           const BATCH_SIZE = 500;
-          let insertedCount = 0;
-          let updatedCount = 0;
-          let unchangedCount = 0;
-          const insertErrors = []; // Collect errors instead of throwing
+          let totalInserted = 0;
+          let totalUpdated = 0;
+          let totalUnchanged = 0;
+          const allErrors = [];
+
+          const { data: { session } } = await supabase.auth.getSession();
 
           for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
-            const batch = cleanRows.slice(i, i + BATCH_SIZE);
-            const batchIds = batch.map(r => r.student_id);
-
-            const { data: existingStudents, error: fetchError } = await supabase
-                .from('students')
-                .select('student_id, name, course, year_level')
-                .in('student_id', batchIds);
-                
-            if (fetchError) {
-                insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Fetch Failed: ${fetchError.message}`);
+            const chunk = cleanRows.slice(i, i + BATCH_SIZE);
+            
+            const res = await fetch('/api/manage-students', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+                body: JSON.stringify({ action: 'IMPORT', rows: chunk })
+            });
+            
+            const result = await res.json();
+            if (!res.ok) {
+                allErrors.push(`Chunk ${Math.floor(i/BATCH_SIZE) + 1} Error: ${result.error}`);
                 continue;
             }
 
-            const existingMap = new Map();
-            existingStudents.forEach(s => existingMap.set(s.student_id, s));
-
-            const toInsert = [];
-            const toUpdate = [];
-
-            batch.forEach(row => {
-                const existing = existingMap.get(row.student_id);
-                if (existing) {
-                    const hasChanged = 
-                        existing.name !== row.name || 
-                        existing.course !== row.course || 
-                        existing.year_level !== row.year_level;
-
-                    if (hasChanged) toUpdate.push({ ...row, last_updated: new Date() });
-                    else unchangedCount++;
-                } else {
-                    toInsert.push({ ...row, last_updated: new Date() });
-                }
-            });
-
-            if (toInsert.length > 0) {
-                const { error } = await supabase.from('students').insert(toInsert);
-                if (error) {
-                    insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Insert Failed: ${error.message}`);
-                } else {
-                    insertedCount += toInsert.length;
-                }
-            }
-
-            if (toUpdate.length > 0) {
-                const { error } = await supabase.from('students').upsert(toUpdate, { onConflict: 'student_id' });
-                if (error) {
-                    insertErrors.push(`Batch ${Math.floor(i/BATCH_SIZE) + 1} Update Failed: ${error.message}`);
-                } else {
-                    updatedCount += toUpdate.length;
-                }
-            }
+            totalInserted += result.importResult.inserted;
+            totalUpdated += result.importResult.updated;
+            totalUnchanged += result.importResult.unchanged;
+            if (result.importResult.errors) allErrors.push(...result.importResult.errors);
           }
 
           setImportResult({ 
-            inserted: insertedCount, 
-            updated: updatedCount, 
-            unchanged: unchangedCount,
-            errors: insertErrors 
+            inserted: totalInserted, 
+            updated: totalUpdated, 
+            unchanged: totalUnchanged,
+            errors: allErrors 
           });
           
+          // Refresh course list incase new ones were added
+          const { data: newCourses } = await supabase.from('courses').select('code').order('code');
+          if (newCourses) setAvailableCourses(newCourses.map(c => c.code));
+
           setIsImportModalOpen(false);
           
           await supabase.channel('app_updates').send({
@@ -295,11 +259,13 @@ export default function StudentPage() {
           setToast({ message: "Import Failed", subMessage: err.message, type: "error" });
         } finally {
           setImportLoading(false);
+          e.target.value = null;
         }
       },
       error: (error) => {
         setToast({ message: "Parsing Error", subMessage: error.message, type: "error" });
         setImportLoading(false);
+        e.target.value = null;
       }
     });
   };
@@ -311,16 +277,20 @@ export default function StudentPage() {
 
     try {
         const code = newCourseCode.trim().toUpperCase();
-        const { error } = await supabase.from('courses').insert([{ code }]);
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (error) {
-            if (error.code === '23505') setToast({ message: "Error", subMessage: "Course already exists.", type: "error" });
-            else throw error;
-        } else {
-            setAvailableCourses(prev => [...prev, code].sort());
-            setNewCourseCode("");
-            setToast({ message: "Course Added", subMessage: `${code} has been added.`, type: "success" });
-        }
+        const res = await fetch('/api/manage-students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'CREATE_COURSE', code })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to add course");
+
+        setAvailableCourses(prev => [...prev, code].sort());
+        setNewCourseCode("");
+        setToast({ message: "Course Added", subMessage: `${code} has been added.`, type: "success" });
     } catch (err) {
         setToast({ message: "Error adding course", subMessage: err.message, type: "error" });
     } finally {
@@ -332,12 +302,21 @@ export default function StudentPage() {
     if (!confirm(`Are you sure you want to delete ${codeToDelete}?`)) return;
     
     try {
-        const { error } = await supabase.from('courses').delete().eq('code', codeToDelete);
-        if (error) throw error;
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const res = await fetch('/api/manage-students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'DELETE_COURSE', code: codeToDelete })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to delete course");
+
         setAvailableCourses(prev => prev.filter(c => c !== codeToDelete));
         setToast({ message: "Course Deleted", type: "delete" });
     } catch (err) {
-        setToast({ message: "Action Failed", subMessage: "Course might be in use by students.", type: "error" });
+        setToast({ message: "Action Failed", subMessage: err.message, type: "error" });
     }
   };
 
@@ -522,81 +501,106 @@ export default function StudentPage() {
       {/* Edit Modal */}
       {editingStudent && (
         <div className="modal modal-open">
-            <div className="modal-box">
-                <h3 className="font-bold text-lg text-gray-700 border-b pb-2 mb-4">Edit Student Details</h3>
+          <div className="modal-box max-w-xl border border-slate-200 shadow-2xl p-0 overflow-hidden">
+            <div className="p-6 border-b bg-slate-50">
+                <h3 className="font-bold text-lg text-slate-800">Edit Student Details</h3>
+                <p className="text-xs text-slate-500 font-medium mt-1 uppercase tracking-wider">Modify student records and course assignment.</p>
+            </div>
+            
+            <form onSubmit={handleUpdate} className="p-6 flex flex-col gap-4">
                 
-                <form onSubmit={handleUpdate} className="flex flex-col gap-4">
-                    
-                    {/* Student ID - Read Only */}
+                {/* Student ID - Read Only */}
+                <div className="form-control w-full">
+                    <label className="label">
+                        <span className="label-text text-xs uppercase font-bold text-gray-500">Student ID *</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        value={editingStudent.student_id} 
+                        disabled 
+                        className="input input-bordered input-sm font-mono font-bold text-blue-800 bg-slate-50 w-full" 
+                    />
+                </div>
+                
+                {/* Name Input */}
+                <div className="form-control w-full">
+                    <label className="label">
+                        <span className="label-text text-xs uppercase font-bold text-gray-500">Full Name *</span>
+                    </label>
+                    <LimitedInput 
+                        type="text" 
+                        required
+                        maxLength={150}
+                        showCounter={true}
+                        className="input input-bordered w-full uppercase bg-slate-50 focus:bg-white" 
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                        disabled={saving}
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Course Dropdown */}
                     <div className="form-control w-full">
                         <label className="label">
-                            <span className="label-text text-xs uppercase font-bold text-gray-500">Student ID</span>
+                            <span className="label-text text-xs uppercase font-bold text-gray-500">Course</span>
                         </label>
-                        <input 
-                            type="text" 
-                            value={editingStudent.student_id} 
-                            disabled 
-                            className="input input-bordered w-full bg-gray-100 font-mono font-bold text-gray-500" 
-                        />
+                        <select 
+                            className="select select-bordered w-full h-auto min-h-[3rem] py-2 leading-tight whitespace-normal break-all max-w-full bg-slate-50 focus:bg-white"
+                            value={editForm.course}
+                            onChange={(e) => setEditForm({...editForm, course: e.target.value})}
+                            disabled={saving}
+                        >
+                            <option value="" disabled>Select Course</option>
+                            {availableCourses.map(c => (
+                                <option key={c} value={c}>
+                                    {c}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                    
-                    {/* Name Input */}
+
+                    {/* Year Input */}
                     <div className="form-control w-full">
                         <label className="label">
-                            <span className="label-text text-xs uppercase font-bold text-gray-500">Full Name</span>
+                            <span className="label-text text-xs uppercase font-bold text-gray-500">Year / Sem</span>
                         </label>
                         <LimitedInput 
                             type="text" 
-                            required
-                            maxLength={150}
-                            className="input input-bordered w-full font-semibold text-gray-700 uppercase" 
-                            value={editForm.name}
-                            onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                            maxLength={20}
+                            showCounter={true}
+                            className="input input-bordered w-full uppercase bg-slate-50 focus:bg-white" 
+                            value={editForm.year_level}
+                            onChange={(e) => setEditForm({...editForm, year_level: e.target.value})}
+                            placeholder="e.g. Y1S2"
+                            disabled={saving}
                         />
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Course Dropdown */}
-                        <div className="form-control w-full">
-                            <label className="label">
-                                <span className="label-text text-xs uppercase font-bold text-gray-500">Course</span>
-                            </label>
-                            <select 
-                                className="select select-bordered w-full h-auto min-h-[3rem] py-2 leading-tight whitespace-normal break-all max-w-full"
-                                value={editForm.course}
-                                onChange={(e) => setEditForm({...editForm, course: e.target.value})}
-                            >
-                                <option value="" disabled>Select Course</option>
-                                {availableCourses.map(c => (
-                                    <option key={c} value={c}>
-                                        {c}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Year Input */}
-                        <div className="form-control w-full">
-                            <label className="label">
-                                <span className="label-text text-xs uppercase font-bold text-gray-500">Year / Sem</span>
-                            </label>
-                            <LimitedInput 
-                                type="text" 
-                                maxLength={20}
-                                className="input input-bordered w-full uppercase" 
-                                value={editForm.year_level}
-                                onChange={(e) => setEditForm({...editForm, year_level: e.target.value})}
-                                placeholder="e.g. Y1S2"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="modal-action mt-6">
-                        <button type="button" onClick={() => setEditingStudent(null)} className="btn btn-ghost">Cancel</button>
-                        <button type="submit" className={`btn btn-primary ${saving ? 'loading' : ''}`}>Save Changes</button>
-                    </div>
-                </form>
-            </div>
+                <div className="modal-action mt-2 pt-4 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        onClick={() => setEditingStudent(null)} 
+                        className="btn btn-ghost text-slate-500 normal-case"
+                        disabled={saving}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit" 
+                        className="btn btn-primary px-8 normal-case min-w-[140px]" 
+                        disabled={saving}
+                    >
+                        {saving ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            "Save Changes"
+                        )}
+                    </button>
+                </div>
+            </form>
+          </div>
         </div>
       )}
 

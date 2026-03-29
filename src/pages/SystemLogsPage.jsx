@@ -82,8 +82,10 @@ export default function SystemLogsPage() {
       case 'CHANGE_ROLE': return <span className="text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Role Change</span>;
       case 'UPDATE_NAME': return <span className="text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Name Change</span>;
       case 'CREATE': return <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Created</span>;
+      case 'CREATE_COURSE': return <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">New Course</span>;
       case 'UPDATE': return <span className="text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Updated</span>;
       case 'DELETE': return <span className="text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Deleted</span>;
+      case 'DELETE_COURSE': return <span className="text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Course Deleted</span>;
       case 'IMPORT': return <span className="text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">Imported</span>;
       default: return <span className="text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">{actionType}</span>;
     }
@@ -112,13 +114,22 @@ export default function SystemLogsPage() {
       return <span>Permanently deleted user profile and system access.</span>;
     }
 
-    // --- INVENTORY LOGS ---
+    // --- INVENTORY & STUDENT LOGS ---
     if (log.action_type === 'CREATE') {
       return <span>Added new product <b className="text-slate-700">{log.entity_name}</b> ({log.new_values?.barcode})</span>;
     }
+    if (log.action_type === 'CREATE_COURSE') {
+      return <span>Registered new academic course <b className="text-emerald-700">{log.entity_name}</b></span>;
+    }
+    if (log.action_type === 'DELETE_COURSE') {
+      return <span>Permanently removed course <b className="text-rose-700">{log.entity_name}</b></span>;
+    }
     if (log.action_type === 'UPDATE') {
       const changes = [];
-      const labels = {
+      const isStudent = log.entity_type === 'STUDENTS';
+      const labels = isStudent ? {
+        name: 'Name', course: 'Course', year_level: 'Year Level'
+      } : {
         name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
         price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
         min_stock_level: 'Min Stock Level', location: 'Location'
@@ -128,7 +139,6 @@ export default function SystemLogsPage() {
         const oldVal = log.old_values?.[key];
         const newVal = log.new_values?.[key];
         
-        // Strict comparison to only log actual modifications
         if (newVal !== undefined && String(oldVal) !== String(newVal)) {
           changes.push(
             <li key={key}>
@@ -171,7 +181,6 @@ export default function SystemLogsPage() {
       );
     }
 
-    // Generic fallback for future proofing
     return (
       <div className="text-[10px] space-y-1 font-mono bg-slate-100 p-2 rounded border border-slate-200">
         {log.old_values && Object.keys(log.old_values).length > 0 && <div><span className="text-slate-400 select-none">Old:</span> {JSON.stringify(log.old_values)}</div>}
@@ -211,7 +220,7 @@ export default function SystemLogsPage() {
 
             {/* Content Area */}
             <div className="overflow-x-auto min-h-[450px]">
-              {['STUDENTS', 'SUPPLIERS'].includes(activeTab) ? (
+              {['SUPPLIERS'].includes(activeTab) ? (
                 <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
@@ -271,7 +280,7 @@ export default function SystemLogsPage() {
               )}
             </div>
 
-            {['STAFF', 'INVENTORY'].includes(activeTab) && (
+            {['STAFF', 'INVENTORY', 'STUDENTS'].includes(activeTab) && (
               <Pagination 
                 totalCount={totalCount}
                 itemsPerPage={ITEMS_PER_PAGE}
@@ -316,6 +325,7 @@ export default function SystemLogsPage() {
                 {selectedImportLog.new_values?.insertedItems?.length > 0 && (() => {
                     const createdItems = selectedImportLog.new_values.insertedItems;
                     const paginatedCreated = createdItems.slice((importCreatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importCreatedPage * IMPORT_ITEMS_PER_PAGE);
+                    const isStudent = selectedImportLog.entity_type === 'STUDENTS';
                     
                     return (
                         <div>
@@ -327,12 +337,12 @@ export default function SystemLogsPage() {
                                 <table className="table table-sm w-full border-separate border-spacing-0">
                                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
                                         <tr>
-                                            <th className="py-3 pl-4">Barcode</th>
-                                            <th className="py-3">Product Name</th>
-                                            <th className="py-3">Unit Cost</th>
-                                            <th className="py-3">Price</th>
-                                            <th className="py-3">Cash Price</th>
-                                            <th className="py-3 pr-4 text-center">Initial Stock</th>
+                                            <th className="py-3 pl-4">{isStudent ? 'Student ID' : 'Barcode'}</th>
+                                            <th className="py-3">{isStudent ? 'Name' : 'Product Name'}</th>
+                                            <th className="py-3">{isStudent ? 'Course' : 'Unit Cost'}</th>
+                                            <th className="py-3">{isStudent ? 'Year Level' : 'Price'}</th>
+                                            {!isStudent && <th className="py-3">Cash Price</th>}
+                                            {!isStudent && <th className="py-3 pr-4 text-center">Initial Stock</th>}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 bg-white">
@@ -340,14 +350,23 @@ export default function SystemLogsPage() {
                                             <tr key={idx} className="hover:bg-emerald-50/30 transition-colors group">
                                                 <td className="pl-4 py-3">
                                                     <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors uppercase tracking-tighter">
-                                                        {item.barcode}
+                                                        {isStudent ? item.student_id : item.barcode}
                                                     </code>
                                                 </td>
                                                 <td className="py-3 font-semibold text-sm text-slate-800">{item.name}</td>
-                                                <td className="py-3 text-slate-500 text-xs font-mono">₱{Number(item.unit_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                                <td className="py-3 text-slate-600 text-xs font-mono">₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                                <td className="py-3 text-emerald-600 text-xs font-mono font-medium">₱{Number(item.cash_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                                <td className="py-3 pr-4 text-center font-bold text-slate-700">{item.current_stock}</td>
+                                                {isStudent ? (
+                                                    <>
+                                                        <td className="py-3 text-slate-500 text-xs font-medium">{item.course || '—'}</td>
+                                                        <td className="py-3 text-slate-600 text-xs font-mono">{item.year_level || '—'}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="py-3 text-slate-500 text-xs font-mono">₱{Number(item.unit_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                        <td className="py-3 text-slate-600 text-xs font-mono">₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                        <td className="py-3 text-emerald-600 text-xs font-mono font-medium">₱{Number(item.cash_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                        <td className="py-3 pr-4 text-center font-bold text-slate-700">{item.current_stock}</td>
+                                                    </>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -369,6 +388,7 @@ export default function SystemLogsPage() {
                 {selectedImportLog.new_values?.updatedItems?.length > 0 && (() => {
                     const updatedItems = selectedImportLog.new_values.updatedItems;
                     const paginatedUpdated = updatedItems.slice((importUpdatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importUpdatedPage * IMPORT_ITEMS_PER_PAGE);
+                    const isStudent = selectedImportLog.entity_type === 'STUDENTS';
                     
                     return (
                         <div>
@@ -380,15 +400,17 @@ export default function SystemLogsPage() {
                                 <table className="table table-sm w-full border-separate border-spacing-0">
                                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
                                         <tr>
-                                            <th className="py-3 pl-4 w-[140px]">Barcode</th>
-                                            <th className="py-3 w-1/3">Product Name</th>
+                                            <th className="py-3 pl-4 w-[140px]">{isStudent ? 'Student ID' : 'Barcode'}</th>
+                                            <th className="py-3 w-1/3">{isStudent ? 'Name' : 'Product Name'}</th>
                                             <th className="py-3 pr-4">Specific Changes</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 bg-white">
                                         {paginatedUpdated.map((itemPair, idx) => {
                                             const { old: o, new: n } = itemPair;
-                                            const labels = {
+                                            const labels = isStudent ? {
+                                                name: 'Name', course: 'Course', year_level: 'Year Level'
+                                            } : {
                                                 name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
                                                 price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
                                                 min_stock_level: 'Min Stock Level', location: 'Location'
@@ -408,7 +430,7 @@ export default function SystemLogsPage() {
                                                 <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                                                     <td className="pl-4 py-3 align-top">
                                                         <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 uppercase tracking-tighter whitespace-nowrap">
-                                                            {n.barcode || o.barcode}
+                                                            {isStudent ? (n.student_id || o.student_id) : (n.barcode || o.barcode)}
                                                         </code>
                                                     </td>
                                                     <td className="py-3 font-semibold text-sm text-slate-800 align-top leading-tight pr-4">
