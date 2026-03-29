@@ -193,11 +193,25 @@ export default function StudentPage() {
 
     setImportLoading(true);
 
+    const REQUIRED_HEADERS = ["STUDENT ID", "NAME", "SEMESTER", "COURSE"];
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
         try {
+          const headers = results.meta.fields || [];
+          
+          const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+          const extraHeaders = headers.filter(h => !REQUIRED_HEADERS.includes(h));
+
+          if (missingHeaders.length > 0 || extraHeaders.length > 0) {
+              let errorMsg = "CSV Format Error. ";
+              if (missingHeaders.length > 0) errorMsg += `Missing/Invalid: [${missingHeaders.join(', ')}]. `;
+              if (extraHeaders.length > 0) errorMsg += `Unknown headers: [${extraHeaders.join(', ')}]. `;
+              throw new Error(errorMsg + "Please ensure exact match with the template (case-sensitive, exact spaces).");
+          }
+
           const cleanRows = results.data
             .filter(row => row['STUDENT ID'] && row['NAME'])
             .map(row => ({
@@ -207,7 +221,7 @@ export default function StudentPage() {
               year_level: row['SEMESTER'] ? row['SEMESTER'].trim().toUpperCase().slice(0, 20) : ''
             }));
 
-          if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV headers: STUDENT ID, NAME");
+          if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV contents.");
 
           const BATCH_SIZE = 500;
           let totalInserted = 0;
