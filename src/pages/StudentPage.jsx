@@ -35,6 +35,7 @@ export default function StudentPage() {
   // Bulk Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState("");
 
   const [toast, setToast] = useState(null);
   const [importResult, setImportResult] = useState(null);
@@ -196,6 +197,7 @@ export default function StudentPage() {
     if (!file) return;
 
     setImportLoading(true);
+    setImportProgress("Analyzing CSV file...");
 
     const REQUIRED_HEADERS = ["STUDENT ID", "NAME", "SEMESTER", "COURSE"];
 
@@ -236,6 +238,8 @@ export default function StudentPage() {
               ];
               return excelErrors.includes(upper);
           };
+
+          setImportProgress("Validating and cleaning rows...");
 
           const rawRows = rows.map((r, index) => {
               let rawId = sanitize(r['STUDENT ID']);
@@ -279,46 +283,37 @@ export default function StudentPage() {
           const cleanRows = Array.from(uniqueMap.values());
           const { data: { session } } = await supabase.auth.getSession();
 
-          // CONCURRENT BATCHING
+          // SEQUENTIAL BATCHING FOR STABILITY
           const CHUNK_SIZE = 500;
-          const MAX_CONCURRENT = 3; 
           let totalInserted = 0, totalUpdated = 0, totalUnchanged = 0;
           const allErrors = [...validationErrors];
           
-          // Generate single batch identifier for the database audit log Upsert
           const batchId = crypto.randomUUID();
+          const totalChunks = Math.ceil(cleanRows.length / CHUNK_SIZE);
 
-          const chunks = [];
           for (let i = 0; i < cleanRows.length; i += CHUNK_SIZE) {
-              chunks.push(cleanRows.slice(i, i + CHUNK_SIZE));
-          }
+              const currentChunkNum = Math.floor(i / CHUNK_SIZE) + 1;
+              const itemsProcessed = Math.min(i + CHUNK_SIZE, cleanRows.length);
+              setImportProgress(`Saving batch ${currentChunkNum} of ${totalChunks}... (${itemsProcessed} / ${cleanRows.length} students)`);
 
-          // Process chunks concurrently in batches of 3
-          for (let i = 0; i < chunks.length; i += MAX_CONCURRENT) {
-              const batch = chunks.slice(i, i + MAX_CONCURRENT);
-              const promises = batch.map(async (chunk, index) => {
-                  const res = await fetch('/api/manage-students', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-                      body: JSON.stringify({ action: 'IMPORT', rows: chunk, batch_id: batchId })
-                  });
-                  
-                  const result = await res.json();
-                  if (!res.ok) throw new Error(result.error || `Failed at chunk ${i + index + 1}`);
-                  return result.importResult;
-              });
-
-              // Send up to 3 batches (1500 rows) at the exact same time
-              const results = await Promise.all(promises);
+              const chunk = cleanRows.slice(i, i + CHUNK_SIZE);
               
-              results.forEach(res => {
-                  totalInserted += res.inserted;
-                  totalUpdated += res.updated;
-                  totalUnchanged += res.unchanged;
-                  if (res.errors) allErrors.push(...res.errors);
+              const res = await fetch('/api/manage-students', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+                  body: JSON.stringify({ action: 'IMPORT', rows: chunk, batch_id: batchId })
               });
+              
+              const result = await res.json();
+              if (!res.ok) throw new Error(result.error || `Failed processing batch ${currentChunkNum}`);
+
+              totalInserted += result.importResult.inserted;
+              totalUpdated += result.importResult.updated;
+              totalUnchanged += result.importResult.unchanged;
+              if (result.importResult.errors) allErrors.push(...result.importResult.errors);
           }
 
+          setImportProgress("Finalizing import...");
           setImportResult({ inserted: totalInserted, updated: totalUpdated, unchanged: totalUnchanged, errors: allErrors });
           
           // Refresh course list incase new ones were added
@@ -335,12 +330,14 @@ export default function StudentPage() {
           setToast({ message: "Import Failed", subMessage: err.message, type: "error" });
         } finally {
           setImportLoading(false);
+          setImportProgress("");
           e.target.value = null;
         }
       },
       error: (error) => {
         setToast({ message: "Parsing Error", subMessage: error.message, type: "error" });
         setImportLoading(false);
+        setImportProgress("");
         e.target.value = null;
       }
     });
@@ -786,7 +783,8 @@ export default function StudentPage() {
                   <span className="loading loading-spinner loading-lg text-primary"></span>
                   <div className="text-center">
                     <h3 className="font-bold text-lg text-gray-700">Importing Data...</h3>
-                    <p className="text-sm text-gray-500">Please do not close this window.</p>
+                    <p className="text-sm text-gray-500 mt-1 font-medium">{importProgress}</p>
+                    <p className="text-xs text-gray-400 mt-2">Please do not close or refresh this window.</p>
                   </div>
                </div>
             ) : (
@@ -795,7 +793,7 @@ export default function StudentPage() {
                 <h3 className="font-bold text-lg text-gray-700 mb-4">Import Student CSV</h3>
                 <p className="text-xs text-gray-500 mb-4">
                     CSV Format must contain headers: <strong>STUDENT ID, NAME, SEMESTER, COURSE</strong><br/>
-                    Existing IDs will be updated. New IDs will be added.
+                    Existing IDs will be updated. New IDs will be added. Large files may take up to a minute to process.
                 </p>
                 
                 <input 
