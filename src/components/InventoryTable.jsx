@@ -54,7 +54,7 @@ export default function InventoryTable({ lastUpdated }) {
     e.preventDefault();
     setCreateLoading(true);
 
-    if (!newItemForm.id || !newItemForm.name) {
+    if (!newItemForm.id?.trim() || !newItemForm.name?.trim()) {
         showToast("Validation Error", "Barcode and Name are required.", "error");
         setCreateLoading(false); return;
     }
@@ -62,16 +62,24 @@ export default function InventoryTable({ lastUpdated }) {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         
+        const payloadToSubmit = {
+            ...newItemForm,
+            id: newItemForm.id.trim(),
+            name: newItemForm.name.trim(),
+            accpacCode: newItemForm.accpacCode?.trim() || "",
+            location: newItemForm.location?.trim() || ""
+        };
+
         const res = await fetch('/api/manage-inventory', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ action: 'CREATE', payload: newItemForm })
+            body: JSON.stringify({ action: 'CREATE', payload: payloadToSubmit })
         });
         
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || "Failed to register product");
 
-        showToast("Registration Success", `${newItemForm.name.toUpperCase()} added to catalog.`);
+        showToast("Registration Success", `${payloadToSubmit.name.toUpperCase()} added to catalog.`);
         setIsAddModalOpen(false);
         setNewItemForm({ id: "", accpacCode: "", name: "", price: "", cashPrice: "", minStockLevel: "10", location: "", initialStock: "" });
         fetchInventory();
@@ -204,12 +212,19 @@ export default function InventoryTable({ lastUpdated }) {
 
     try {
         const { data: { session } } = await supabase.auth.getSession();
-        const payload = { ...editForm, barcode: editingProduct.id };
+        
+        const payloadToSubmit = { 
+            ...editForm, 
+            barcode: editingProduct.id.trim(),
+            name: editForm.name.trim(),
+            accpacCode: editForm.accpacCode?.trim() || "",
+            location: editForm.location?.trim() || ""
+        };
         
         const res = await fetch('/api/manage-inventory', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ action: 'UPDATE', internal_id: editingProduct.internal_id, payload })
+            body: JSON.stringify({ action: 'UPDATE', internal_id: editingProduct.internal_id, payload: payloadToSubmit })
         });
 
         const result = await res.json();

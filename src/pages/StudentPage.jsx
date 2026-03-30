@@ -158,10 +158,17 @@ export default function StudentPage() {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         
+        const payloadToSubmit = {
+            ...editForm,
+            name: editForm.name.trim(),
+            course: editForm.course?.trim() || "",
+            year_level: editForm.year_level?.trim() || ""
+        };
+
         const res = await fetch('/api/manage-students', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ action: 'UPDATE', student_id: editingStudent.student_id, payload: editForm })
+            body: JSON.stringify({ action: 'UPDATE', student_id: editingStudent.student_id, payload: payloadToSubmit })
         });
 
         const result = await res.json();
@@ -169,13 +176,13 @@ export default function StudentPage() {
         
         setStudents(prev => prev.map(s => 
             s.student_id === editingStudent.student_id 
-                ? { ...s, name: editForm.name.toUpperCase(), course: editForm.course || null, year_level: editForm.year_level.toUpperCase() || null } 
+                ? { ...s, name: payloadToSubmit.name.toUpperCase(), course: payloadToSubmit.course || null, year_level: payloadToSubmit.year_level.toUpperCase() || null } 
                 : s
         ));
         
         setToast({ 
             message: "Student Updated", 
-            subMessage: `${editForm.name}'s records have been saved.`, 
+            subMessage: `${payloadToSubmit.name}'s records have been saved.`, 
             type: "success" 
         });
 

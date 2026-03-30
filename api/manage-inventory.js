@@ -49,10 +49,10 @@ export default async function handler(req, res) {
   try {
     if (action === 'CREATE') {
       const { payload } = req.body;
-      const sanitizedId = payload.id.toUpperCase();
-      const sanitizedAccPac = payload.accpacCode ? payload.accpacCode.toUpperCase() : null;
-      const sanitizedName = payload.name.toUpperCase();
-      const sanitizedLocation = payload.location ? payload.location.toUpperCase() : "";
+      const sanitizedId = payload.id.trim().toUpperCase();
+      const sanitizedAccPac = payload.accpacCode ? payload.accpacCode.trim().toUpperCase() : null;
+      const sanitizedName = payload.name.trim().toUpperCase();
+      const sanitizedLocation = payload.location ? payload.location.trim().toUpperCase() : "";
 
       const { data: existing } = await supabaseAdmin
           .from('products')
@@ -92,9 +92,9 @@ export default async function handler(req, res) {
       if (fetchErr || !oldProduct) throw new Error("Product not found.");
 
       const sanitizedBarcode = payload.barcode.trim().toUpperCase();
-      const sanitizedName = payload.name.toUpperCase();
-      const sanitizedLocation = payload.location ? payload.location.toUpperCase() : "";
-      const sanitizedAccPac = payload.accpacCode ? payload.accpacCode.toUpperCase() : null;
+      const sanitizedName = payload.name.trim().toUpperCase();
+      const sanitizedLocation = payload.location ? payload.location.trim().toUpperCase() : "";
+      const sanitizedAccPac = payload.accpacCode ? payload.accpacCode.trim().toUpperCase() : null;
 
       const updates = {
           barcode: sanitizedBarcode, 

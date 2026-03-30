@@ -52,9 +52,9 @@ export default async function handler(req, res) {
       const { data: oldStudent, error: fetchErr } = await supabaseAdmin.from('students').select('*').eq('student_id', student_id).single();
       if (fetchErr || !oldStudent) throw new Error("Student not found.");
 
-      const sanitizedName = payload.name.toUpperCase();
-      const sanitizedCourse = payload.course ? payload.course.toUpperCase() : null;
-      const sanitizedYearLevel = payload.year_level ? payload.year_level.toUpperCase() : null;
+      const sanitizedName = payload.name.trim().toUpperCase();
+      const sanitizedCourse = payload.course ? payload.course.trim().toUpperCase() : null;
+      const sanitizedYearLevel = payload.year_level ? payload.year_level.trim().toUpperCase() : null;
 
       const updates = {
           name: sanitizedName,
