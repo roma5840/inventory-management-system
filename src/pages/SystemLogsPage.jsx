@@ -119,10 +119,10 @@ export default function SystemLogsPage() {
       return <span>Added new product <b className="text-slate-700">{log.entity_name}</b> ({log.new_values?.barcode})</span>;
     }
     if (log.action_type === 'CREATE_COURSE') {
-      return <span>Registered new academic course <b className="text-emerald-700">{log.entity_name}</b></span>;
+      return <span>Registered new academic course {log.entity_name}</span>;
     }
     if (log.action_type === 'DELETE_COURSE') {
-      return <span>Permanently removed course <b className="text-rose-700">{log.entity_name}</b></span>;
+      return <span>Permanently removed course {log.entity_name}</span>;
     }
     if (log.action_type === 'UPDATE') {
       const changes = [];
