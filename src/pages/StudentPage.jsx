@@ -212,52 +212,107 @@ export default function StudentPage() {
               throw new Error(errorMsg + "Please ensure exact match with the template (case-sensitive, exact spaces).");
           }
 
-          const cleanRows = results.data
-            .filter(row => row['STUDENT ID'] && row['NAME'])
-            .map(row => ({
-              student_id: row['STUDENT ID'].trim().slice(0, 50),
-              name: row['NAME'].trim().toUpperCase().slice(0, 150),
-              course: row['COURSE'] ? row['COURSE'].trim().toUpperCase().slice(0, 200) : '',
-              year_level: row['SEMESTER'] ? row['SEMESTER'].trim().toUpperCase().slice(0, 20) : ''
-            }));
+          const rows = results.data;
+          if (rows.length === 0) throw new Error("No data found in the CSV.");
 
-          if (cleanRows.length === 0) throw new Error("No valid data found. Check CSV contents.");
+          const validationErrors = [];
 
-          const BATCH_SIZE = 500;
-          let totalInserted = 0;
-          let totalUpdated = 0;
-          let totalUnchanged = 0;
-          const allErrors = [];
+          const sanitize = (str) => {
+              if (typeof str !== 'string') return str !== undefined && str !== null ? String(str).trim() : null;
+              const clean = str.trim();
+              return /^[=+\-@]/.test(clean) ? "'" + clean : clean;
+          };
 
+          const isExcelError = (val) => {
+              if (!val) return false;
+              const upper = String(val).trim().toUpperCase();
+              const excelErrors = [
+                  '#N/A', 'N/A', '#REF!', '#DIV/0!', '#VALUE!', 
+                  '#NAME?', '#NUM!', '#NULL!', '#CALC!', '#SPILL!', '-'
+              ];
+              return excelErrors.includes(upper);
+          };
+
+          const rawRows = rows.map((r, index) => {
+              let rawId = sanitize(r['STUDENT ID']);
+              const student_id = (!rawId || isExcelError(rawId)) ? null : rawId;
+              
+              let rawName = sanitize(r['NAME']);
+              const name = (!rawName || isExcelError(rawName)) ? null : rawName.toUpperCase();
+              
+              let rawSem = sanitize(r['SEMESTER']);
+              const year_level = (!rawSem || isExcelError(rawSem)) ? null : rawSem.toUpperCase();
+
+              let rawCourse = sanitize(r['COURSE']);
+              const course = (!rawCourse || isExcelError(rawCourse)) ? null : rawCourse.toUpperCase();
+
+              const rowId = student_id || `Row ${index + 2}`;
+              let rowValid = true;
+
+              if (!student_id) { validationErrors.push(`[${rowId}] Missing Student ID. Row Skipped.`); rowValid = false; }
+              else if (student_id.length > 50) { validationErrors.push(`[${rowId}] Student ID exceeds 50 characters.`); rowValid = false; }
+
+              if (!name) { validationErrors.push(`[${rowId}] Missing Name. Row Skipped.`); rowValid = false; }
+              else if (name.length > 150) { validationErrors.push(`[${rowId}] Name exceeds 150 characters.`); rowValid = false; }
+
+              if (course && course.length > 200) { validationErrors.push(`[${rowId}] Course exceeds 200 characters.`); rowValid = false; }
+              if (year_level && year_level.length > 20) { validationErrors.push(`[${rowId}] Semester/Year exceeds 20 characters.`); rowValid = false; }
+
+              if (!rowValid) return null;
+              return { student_id, name, course, year_level };
+          }).filter(Boolean);
+
+          if (rawRows.length === 0 && validationErrors.length === 0) throw new Error("Could not parse rows.");
+
+          const uniqueMap = new Map();
+          rawRows.forEach((r) => {
+              if (uniqueMap.has(r.student_id)) {
+                  validationErrors.push(`[${r.student_id}] Duplicate ID in CSV. Merged automatically.`);
+              }
+              uniqueMap.set(r.student_id, r);
+          });
+
+          const cleanRows = Array.from(uniqueMap.values());
           const { data: { session } } = await supabase.auth.getSession();
 
-          for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
-            const chunk = cleanRows.slice(i, i + BATCH_SIZE);
-            
-            const res = await fetch('/api/manage-students', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-                body: JSON.stringify({ action: 'IMPORT', rows: chunk })
-            });
-            
-            const result = await res.json();
-            if (!res.ok) {
-                allErrors.push(`Chunk ${Math.floor(i/BATCH_SIZE) + 1} Error: ${result.error}`);
-                continue;
-            }
+          // CONCURRENT BATCHING
+          const CHUNK_SIZE = 500;
+          const MAX_CONCURRENT = 3; 
+          let totalInserted = 0, totalUpdated = 0, totalUnchanged = 0;
+          const allErrors = [...validationErrors];
 
-            totalInserted += result.importResult.inserted;
-            totalUpdated += result.importResult.updated;
-            totalUnchanged += result.importResult.unchanged;
-            if (result.importResult.errors) allErrors.push(...result.importResult.errors);
+          const chunks = [];
+          for (let i = 0; i < cleanRows.length; i += CHUNK_SIZE) {
+              chunks.push(cleanRows.slice(i, i + CHUNK_SIZE));
           }
 
-          setImportResult({ 
-            inserted: totalInserted, 
-            updated: totalUpdated, 
-            unchanged: totalUnchanged,
-            errors: allErrors 
-          });
+          // Process chunks concurrently in batches of 3
+          for (let i = 0; i < chunks.length; i += MAX_CONCURRENT) {
+              const batch = chunks.slice(i, i + MAX_CONCURRENT);
+              const promises = batch.map(async (chunk, index) => {
+                  const res = await fetch('/api/manage-students', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+                      body: JSON.stringify({ action: 'IMPORT', rows: chunk })
+                  });
+                  
+                  const result = await res.json();
+                  if (!res.ok) throw new Error(result.error || `Failed at chunk ${i + index + 1}`);
+                  return result.importResult;
+              });
+
+              // Send up to 3 batches (1500 rows) at the exact same time
+              const results = await Promise.all(promises);
+              
+              results.forEach(res => {
+                  totalInserted += res.inserted;
+                  totalUpdated += res.updated;
+                  totalUnchanged += res.unchanged;
+                  if (res.errors) allErrors.push(...res.errors);
+              });
+          }
+
+          setImportResult({ inserted: totalInserted, updated: totalUpdated, unchanged: totalUnchanged, errors: allErrors });
           
           // Refresh course list incase new ones were added
           const { data: newCourses } = await supabase.from('courses').select('code').order('code');
