@@ -698,7 +698,12 @@ export default function StudentPage() {
                         <p className="text-xs text-slate-500 font-medium">Add or remove valid courses</p>
                     </div>
                     <button 
-                        onClick={() => !courseLoading && setShowCourseModal(false)} 
+                        onClick={() => {
+                            if (!courseLoading) {
+                                setShowCourseModal(false);
+                                setNewCourseCode("");
+                            }
+                        }} 
                         className={`btn btn-sm btn-circle btn-ghost ${courseLoading ? 'opacity-0' : ''}`}
                         disabled={courseLoading}
                     >
