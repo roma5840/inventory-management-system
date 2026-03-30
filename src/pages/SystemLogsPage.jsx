@@ -18,13 +18,23 @@ export default function SystemLogsPage() {
   // Import Details Modal State
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedImportLog, setSelectedImportLog] = useState(null);
-  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [fetchingLogId, setFetchingLogId] = useState(null); // Track specific ID for spinner
   const [importCreatedPage, setImportCreatedPage] = useState(1);
   const [importUpdatedPage, setImportUpdatedPage] = useState(1);
   const IMPORT_ITEMS_PER_PAGE = 20;
 
   const handleOpenImportModal = async (log) => {
-      setIsFetchingMetadata(true); 
+      // 1. Check Cache: If log already has metadata, just open modal
+      if (log.metadata) {
+          setSelectedImportLog(log);
+          setImportCreatedPage(1);
+          setImportUpdatedPage(1);
+          setShowImportModal(true);
+          return;
+      }
+
+      // 2. Fetch if not cached
+      setFetchingLogId(log.id);
       
       const { data, error } = await supabase
           .from('audit_logs')
@@ -32,7 +42,12 @@ export default function SystemLogsPage() {
           .eq('id', log.id)
           .single();
 
-      if (!error && data && data.metadata) {
+      if (!error && data?.metadata) {
+          // 3. Update the main logs state to "cache" this metadata
+          setLogs(prevLogs => prevLogs.map(l => 
+              l.id === log.id ? { ...l, metadata: data.metadata } : l
+          ));
+          
           setSelectedImportLog({ ...log, metadata: data.metadata });
           setImportCreatedPage(1); 
           setImportUpdatedPage(1); 
@@ -40,7 +55,7 @@ export default function SystemLogsPage() {
       } else {
           console.error("Failed to fetch import details", error);
       }
-      setIsFetchingMetadata(false);
+      setFetchingLogId(null);
   };
 
   const tabs = [
@@ -180,26 +195,23 @@ export default function SystemLogsPage() {
     }
     if (log.action_type === 'IMPORT') {
       const hasUpdates = (log.new_values?.inserted > 0) || (log.new_values?.updated > 0);
-      const isThisLogLoading = isFetchingMetadata && selectedImportLog?.id === log.id;
+      const isThisRowFetching = fetchingLogId === log.id;
 
       return (
         <div className="flex flex-col items-start gap-2">
           <span>Processed batch import: <b className="text-emerald-600">{log.new_values?.inserted || 0} inserted</b>, <b className="text-blue-600">{log.new_values?.updated || 0} updated</b>, <b className="text-slate-500">{log.new_values?.unchanged || 0} unchanged</b></span>
           {hasUpdates && (
             <button 
-                onClick={() => {
-                    setSelectedImportLog(log); // Set reference immediately for the spinner
-                    handleOpenImportModal(log);
-                }}
-                disabled={isFetchingMetadata}
+                onClick={() => handleOpenImportModal(log)}
+                disabled={fetchingLogId !== null}
                 className="btn btn-xs bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded shadow-sm normal-case flex items-center gap-1 mt-1"
             >
-                {isThisLogLoading ? (
+                {isThisRowFetching ? (
                     <span className="loading loading-spinner loading-xs"></span>
                 ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 )}
-                View Details
+                {log.metadata ? 'View Details' : 'Fetch & View Details'}
             </button>
           )}
         </div>
