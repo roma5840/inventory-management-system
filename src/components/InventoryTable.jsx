@@ -48,6 +48,7 @@ export default function InventoryTable({ lastUpdated }) {
 
   const [deletingProduct, setDeletingProduct] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState("");
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
@@ -304,6 +305,7 @@ export default function InventoryTable({ lastUpdated }) {
     if (!file) return;
 
     setImportLoading(true);
+    setImportProgress("Analyzing CSV file...");
 
     const REQUIRED_HEADERS = [
       "BARCODE", "ACCPAC ITEM CODE", "ITEM DESCRIPTION", 
@@ -364,6 +366,8 @@ export default function InventoryTable({ lastUpdated }) {
                 return isNaN(num) ? NaN : num;
             };
 
+            setImportProgress("Validating and cleaning rows...");
+
             const rawRows = rows.map((r, index) => {
                 let rawBarcode = sanitize(r['BARCODE']);
                 const barcode = (!rawBarcode || isExcelError(rawBarcode)) ? null : rawBarcode.toUpperCase();
@@ -419,15 +423,17 @@ export default function InventoryTable({ lastUpdated }) {
             const cleanRows = Array.from(uniqueMap.values());
             const { data: { session } } = await supabase.auth.getSession();
             
-            // FRONTEND BATCHING: Send 500 rows per API request to avoid Vercel Timeouts
             const CHUNK_SIZE = 500;
             let totalInserted = 0, totalUpdated = 0, totalUnchanged = 0;
             const allErrors = [...validationErrors];
-            
-            // Generate single batch identifier for the database audit log Upsert
             const batchId = crypto.randomUUID();
+            const totalChunks = Math.ceil(cleanRows.length / CHUNK_SIZE);
 
             for (let i = 0; i < cleanRows.length; i += CHUNK_SIZE) {
+                const currentChunkNum = Math.floor(i / CHUNK_SIZE) + 1;
+                const itemsProcessed = Math.min(i + CHUNK_SIZE, cleanRows.length);
+                setImportProgress(`Saving batch ${currentChunkNum} of ${totalChunks}... (${itemsProcessed} / ${cleanRows.length} items)`);
+
                 const chunk = cleanRows.slice(i, i + CHUNK_SIZE);
                 
                 const res = await fetch('/api/manage-inventory', {
@@ -437,7 +443,7 @@ export default function InventoryTable({ lastUpdated }) {
                 });
                 
                 const result = await res.json();
-                if (!res.ok) throw new Error(result.error || `Failed to process import at chunk ${Math.floor(i/CHUNK_SIZE) + 1}`);
+                if (!res.ok) throw new Error(result.error || `Failed processing batch ${currentChunkNum}`);
 
                 totalInserted += result.importResult.inserted;
                 totalUpdated += result.importResult.updated;
@@ -445,6 +451,7 @@ export default function InventoryTable({ lastUpdated }) {
                 if (result.importResult.errors) allErrors.push(...result.importResult.errors);
             }
 
+            setImportProgress("Finalizing import...");
             setImportResult({ inserted: totalInserted, updated: totalUpdated, unchanged: totalUnchanged, errors: allErrors });
             setIsImportModalOpen(false);
             fetchInventory();
@@ -453,12 +460,14 @@ export default function InventoryTable({ lastUpdated }) {
             showToast("Import Failed", err.message, "error");
         } finally {
             setImportLoading(false);
+            setImportProgress("");
             e.target.value = null; 
         }
       },
       error: (error) => {
         showToast("Parsing Error", error.message, "error");
         setImportLoading(false);
+        setImportProgress("");
         e.target.value = null;
       }
     });
@@ -983,7 +992,8 @@ export default function InventoryTable({ lastUpdated }) {
                   <span className="loading loading-spinner loading-lg text-primary"></span>
                   <div className="text-center">
                     <h3 className="font-bold text-lg text-gray-700">Importing Data...</h3>
-                    <p className="text-sm text-gray-500">Please do not close this window.</p>
+                    <p className="text-sm text-gray-500 mt-1 font-medium">{importProgress}</p>
+                    <p className="text-xs text-gray-400 mt-2">Please do not close or refresh this window.</p>
                   </div>
                </div>
             ) : (
@@ -991,7 +1001,7 @@ export default function InventoryTable({ lastUpdated }) {
                 <h3 className="font-bold text-lg text-gray-700 mb-4">Import Inventory CSV</h3>
                 <p className="text-xs text-gray-500 mb-4">
                     CSV Format headers: <strong>BARCODE, ACCPAC ITEM CODE, ITEM DESCRIPTION, COST, PRICE, CASH, LOCATION, INITIAL STOCK, MIN. STOCK ALERT LEVEL</strong><br/>
-                    Existing items will be updated. Missing barcodes will be auto-generated. Initial stock and cost only applies to new items.
+                    Existing items will be updated. Missing barcodes will be auto-generated. Large files may take up to a minute to process.
                 </p>
                 
                 <input 
