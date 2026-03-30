@@ -26,7 +26,8 @@ export default function Login() {
     try {
       await login(email, password, captchaToken);
     } catch (err) {
-      setError("Failed to sign in. Check email/password.");
+      // Use the specific error message thrown by the login function
+      setError(err.message || "Failed to sign in. Check email/password.");
       turnstileRef.current?.reset();
       setCaptchaToken("");
       setLoading(false); 
