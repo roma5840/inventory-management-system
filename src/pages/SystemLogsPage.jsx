@@ -22,11 +22,26 @@ export default function SystemLogsPage() {
   const [importUpdatedPage, setImportUpdatedPage] = useState(1);
   const IMPORT_ITEMS_PER_PAGE = 20;
 
-  const handleOpenImportModal = (log) => {
-      setSelectedImportLog(log);
-      setImportCreatedPage(1); // Reset page on new open
-      setImportUpdatedPage(1); // Reset page on new open
-      setShowImportModal(true);
+  const handleOpenImportModal = async (log) => {
+      setLoading(true); // Re-use main loading state briefly for the button click
+      
+      // Fetch ONLY the massive metadata column for this specific log
+      const { data, error } = await supabase
+          .from('audit_logs')
+          .select('metadata')
+          .eq('id', log.id)
+          .single();
+
+      if (!error && data && data.metadata) {
+          // Attach the fetched metadata to the log object so the modal can read it
+          setSelectedImportLog({ ...log, metadata: data.metadata });
+          setImportCreatedPage(1); 
+          setImportUpdatedPage(1); 
+          setShowImportModal(true);
+      } else {
+          console.error("Failed to fetch import details", error);
+      }
+      setLoading(false);
   };
 
   const tabs = [
@@ -47,9 +62,10 @@ export default function SystemLogsPage() {
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
+      // OMIT 'metadata' to prevent downloading megabytes of array data
       const { data, count, error } = await supabase
         .from('audit_logs')
-        .select('*', { count: 'exact' })
+        .select('id, timestamp, actor_id, actor_name, action_type, entity_type, entity_id, entity_name, old_values, new_values', { count: 'exact' })
         .eq('entity_type', activeTab)
         .order('timestamp', { ascending: false })
         .range(from, to);
@@ -164,16 +180,19 @@ export default function SystemLogsPage() {
       return <span>Deleted product <b className="text-slate-700">{log.entity_name}</b></span>;
     }
     if (log.action_type === 'IMPORT') {
-      const hasDetails = log.new_values?.insertedItems?.length > 0 || log.new_values?.updatedItems?.length > 0;
+      const hasUpdates = (log.new_values?.inserted > 0) || (log.new_values?.updated > 0);
       return (
         <div className="flex flex-col items-start gap-2">
           <span>Processed batch import: <b className="text-emerald-600">{log.new_values?.inserted || 0} inserted</b>, <b className="text-blue-600">{log.new_values?.updated || 0} updated</b>, <b className="text-slate-500">{log.new_values?.unchanged || 0} unchanged</b></span>
-          {hasDetails && (
+          {hasUpdates && (
             <button 
                 onClick={() => handleOpenImportModal(log)}
+                disabled={loading}
                 className="btn btn-xs bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded shadow-sm normal-case flex items-center gap-1 mt-1"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                {loading ? <span className="loading loading-spinner loading-xs"></span> : (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                )}
                 View Details
             </button>
           )}
@@ -322,8 +341,8 @@ export default function SystemLogsPage() {
             
             <div className="flex-1 overflow-auto custom-scrollbar p-6 space-y-8">
                 {/* Inserted Items */}
-                {selectedImportLog.new_values?.insertedItems?.length > 0 && (() => {
-                    const createdItems = selectedImportLog.new_values.insertedItems;
+                {selectedImportLog.metadata?.insertedItems?.length > 0 && (() => {
+                    const createdItems = selectedImportLog.metadata.insertedItems;
                     const paginatedCreated = createdItems.slice((importCreatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importCreatedPage * IMPORT_ITEMS_PER_PAGE);
                     const isStudent = selectedImportLog.entity_type === 'STUDENTS';
                     
@@ -385,8 +404,8 @@ export default function SystemLogsPage() {
                 })()}
 
                 {/* Updated Items */}
-                {selectedImportLog.new_values?.updatedItems?.length > 0 && (() => {
-                    const updatedItems = selectedImportLog.new_values.updatedItems;
+                {selectedImportLog.metadata?.updatedItems?.length > 0 && (() => {
+                    const updatedItems = selectedImportLog.metadata.updatedItems;
                     const paginatedUpdated = updatedItems.slice((importUpdatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importUpdatedPage * IMPORT_ITEMS_PER_PAGE);
                     const isStudent = selectedImportLog.entity_type === 'STUDENTS';
                     

@@ -152,6 +152,7 @@ export default async function handler(req, res) {
           p_batch_id: batch_id,
           p_actor_id: user.id,
           p_actor_name: callerProfile.full_name || user.email,
+          p_entity_type: 'STUDENTS', // Use 'INVENTORY' or 'SUPPLIERS' in other APIs
           p_entity_name: `Student CSV Bulk Import`,
           p_inserted: insertedCount,
           p_updated: updatedCount,
