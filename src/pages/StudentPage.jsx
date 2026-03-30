@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination";
 import LimitedInput from "../components/LimitedInput";
 import Toast from "../components/Toast";
 import { useNavigate } from "react-router-dom";
+import DeleteModal from "../components/DeleteModal";
 
 export default function StudentPage() {
   const { userRole } = useAuth();
@@ -37,6 +38,9 @@ export default function StudentPage() {
 
   const [toast, setToast] = useState(null);
   const [importResult, setImportResult] = useState(null);
+
+  const [deletingCourse, setDeletingCourse] = useState(null);
+  const [deleteCourseLoading, setDeleteCourseLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -367,8 +371,13 @@ export default function StudentPage() {
     }
   };
 
-  const handleDeleteCourse = async (codeToDelete) => {
-    if (!confirm(`Are you sure you want to delete ${codeToDelete}?`)) return;
+  const handleDeleteCourse = (code) => {
+    setDeletingCourse(code);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!deletingCourse) return;
+    setDeleteCourseLoading(true);
     
     try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -376,16 +385,19 @@ export default function StudentPage() {
         const res = await fetch('/api/manage-students', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ action: 'DELETE_COURSE', code: codeToDelete })
+            body: JSON.stringify({ action: 'DELETE_COURSE', code: deletingCourse })
         });
 
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || "Failed to delete course");
 
-        setAvailableCourses(prev => prev.filter(c => c !== codeToDelete));
+        setAvailableCourses(prev => prev.filter(c => c !== deletingCourse));
         setToast({ message: "Course Deleted", type: "delete" });
+        setDeletingCourse(null);
     } catch (err) {
         setToast({ message: "Action Failed", subMessage: err.message, type: "error" });
+    } finally {
+        setDeleteCourseLoading(false);
     }
   };
 
@@ -676,13 +688,22 @@ export default function StudentPage() {
       {/* Course Management Modal */}
       {showCourseModal && (
         <div className="modal modal-open">
-            <div className="modal-box border border-slate-200 shadow-2xl p-0 overflow-hidden">
+            {/* Overlay to catch clicks outside while loading */}
+            <div 
+                className={`modal-box border border-slate-200 shadow-2xl p-0 overflow-hidden bg-white ${courseLoading ? 'pointer-events-none select-none' : ''}`}
+            >
                 <div className="p-6 border-b bg-slate-50 flex justify-between items-center">
                     <div>
                         <h3 className="font-bold text-lg text-slate-800">Manage Courses</h3>
                         <p className="text-xs text-slate-500 font-medium">Add or remove valid courses</p>
                     </div>
-                    <button onClick={() => setShowCourseModal(false)} className="btn btn-sm btn-circle btn-ghost">✕</button>
+                    <button 
+                        onClick={() => !courseLoading && setShowCourseModal(false)} 
+                        className={`btn btn-sm btn-circle btn-ghost ${courseLoading ? 'opacity-0' : ''}`}
+                        disabled={courseLoading}
+                    >
+                        ✕
+                    </button>
                 </div>
 
                 <div className="p-6 space-y-6">
@@ -690,14 +711,23 @@ export default function StudentPage() {
                         <LimitedInput 
                             type="text" 
                             maxLength={200}
-                            showCounter={true}
-                            placeholder="Enter Course" 
-                            className="input input-bordered w-full uppercase font-semibold h-11"
+                            showCounter={!courseLoading}
+                            placeholder={courseLoading ? "Processing..." : "Enter Course"}
+                            className="input input-bordered w-full uppercase font-semibold h-11 disabled:bg-slate-100 disabled:text-slate-400"
                             value={newCourseCode}
                             onChange={(e) => setNewCourseCode(e.target.value)}
+                            disabled={courseLoading}
                         />
-                        <button type="submit" disabled={courseLoading || !newCourseCode.trim()} className="btn btn-primary h-11 px-6">
-                            {courseLoading ? "..." : "Add"}
+                        <button 
+                            type="submit" 
+                            disabled={courseLoading || !newCourseCode.trim()} 
+                            className="btn btn-primary h-11 px-6 min-w-[100px]"
+                        >
+                            {courseLoading ? (
+                                <span className="flex items-center gap-2">
+                                    <span className="loading loading-spinner loading-xs"></span>
+                                </span>
+                            ) : "Add"}
                         </button>
                     </form>
 
@@ -711,13 +741,13 @@ export default function StudentPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {availableCourses.map(code => (
-                                    <tr key={code} className="hover:bg-slate-50/50 group transition-colors">
+                                    <tr key={code} className={`hover:bg-slate-50/50 group transition-colors ${courseLoading ? 'opacity-50' : ''}`}>
                                         <td className="font-bold text-slate-700 text-sm py-3">{code}</td>
                                         <td className="text-right py-3">
                                             <button 
                                                 onClick={() => handleDeleteCourse(code)}
-                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors tooltip tooltip-left"
-                                                data-tip="Delete Course"
+                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                                                disabled={courseLoading}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -827,6 +857,16 @@ export default function StudentPage() {
             </div>
         </div>
       )}
+
+      <DeleteModal 
+          isOpen={!!deletingCourse}
+          onClose={() => setDeletingCourse(null)}
+          onConfirm={confirmDeleteCourse}
+          title="Delete Course"
+          itemName={deletingCourse}
+          warningText="This action cannot be undone. The system will BLOCK this deletion if the course is currently assigned to any student. You must reassign or remove all students linked to this course before it can be wiped from the database."
+          isLoading={deleteCourseLoading}
+      />
 
       {/* Notifications */}
       {toast && (
