@@ -423,6 +423,9 @@ export default function InventoryTable({ lastUpdated }) {
             const CHUNK_SIZE = 500;
             let totalInserted = 0, totalUpdated = 0, totalUnchanged = 0;
             const allErrors = [...validationErrors];
+            
+            // Generate single batch identifier for the database audit log Upsert
+            const batchId = crypto.randomUUID();
 
             for (let i = 0; i < cleanRows.length; i += CHUNK_SIZE) {
                 const chunk = cleanRows.slice(i, i + CHUNK_SIZE);
@@ -430,7 +433,7 @@ export default function InventoryTable({ lastUpdated }) {
                 const res = await fetch('/api/manage-inventory', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-                    body: JSON.stringify({ action: 'IMPORT', rows: chunk })
+                    body: JSON.stringify({ action: 'IMPORT', rows: chunk, batch_id: batchId })
                 });
                 
                 const result = await res.json();

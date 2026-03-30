@@ -139,7 +139,9 @@ export default async function handler(req, res) {
     }
     
     else if (action === 'IMPORT') {
-      const { rows } = req.body;
+      const { rows, batch_id } = req.body;
+      if (!batch_id) throw new Error("Missing batch_id for batch import.");
+      
       let insertedCount = 0;
       let updatedCount = 0;
       let unchangedCount = 0;
@@ -249,7 +251,23 @@ export default async function handler(req, res) {
           insertedItems: toInsert,
           updatedItems: updateDetails
       };
-      await logAudit('IMPORT', 'BATCH_IMPORT', `CSV Chunk (${rows.length} items)`, null, importStats);
+
+      // Atomically upsert the audit log via RPC to merge all chunks into one row
+      const { error: rpcError } = await supabaseAdmin.rpc('append_import_log', {
+          p_batch_id: batch_id,
+          p_actor_id: user.id,
+          p_actor_name: callerProfile.full_name || user.email,
+          p_entity_type: 'INVENTORY',
+          p_entity_name: `Inventory CSV Bulk Import`,
+          p_inserted: insertedCount,
+          p_updated: updatedCount,
+          p_unchanged: unchangedCount,
+          p_errors: processErrors,
+          p_inserted_items: toInsert,
+          p_updated_items: updateDetails
+      });
+
+      if (rpcError) console.error("Audit Log Append Error:", rpcError);
 
       return res.status(200).json({ success: true, importResult: importStats });
     }
