@@ -153,14 +153,24 @@ export default async function handler(req, res) {
       const batchAccPacs = rows.map(r => r.accpac).filter(Boolean);
       const batchNames = rows.filter(r => !r.barcode && !r.accpac).map(r => r.name).filter(Boolean);
 
-      // Parallel Fetching for massive speed boost
-      const [resB, resA, resN] = await Promise.all([
-          batchBarcodes.length > 0 ? supabaseAdmin.from('products').select('*').in('barcode', batchBarcodes) : { data: [] },
-          batchAccPacs.length > 0 ? supabaseAdmin.from('products').select('*').in('accpac_code', batchAccPacs) : { data: [] },
-          batchNames.length > 0 ? supabaseAdmin.from('products').select('*').in('name', batchNames) : { data: [] }
-      ]);
+      const existingItems = [];
+      const FETCH_CHUNK = 100; // Safe length against URL query limits
 
-      const existingItems = [...(resB.data || []), ...(resA.data || []), ...(resN.data || [])];
+      const fetchInChunks = async (column, items) => {
+          for (let i = 0; i < items.length; i += FETCH_CHUNK) {
+              const chunk = items.slice(i, i + FETCH_CHUNK);
+              const { data, error } = await supabaseAdmin.from('products').select('*').in(column, chunk);
+              if (error) throw new Error(`Fetch error on ${column}: ${error.message}`);
+              if (data) existingItems.push(...data);
+          }
+      };
+
+      // Parallel Fetching separated into safe URI chunks
+      await Promise.all([
+          batchBarcodes.length > 0 ? fetchInChunks('barcode', batchBarcodes) : Promise.resolve(),
+          batchAccPacs.length > 0 ? fetchInChunks('accpac_code', batchAccPacs) : Promise.resolve(),
+          batchNames.length > 0 ? fetchInChunks('name', batchNames) : Promise.resolve()
+      ]);
 
       const existingByBarcode = new Map(existingItems.filter(i => i.barcode).map(i => [i.barcode.toUpperCase(), i]));
       const existingByAccPac = new Map(existingItems.filter(i => i.accpac_code).map(i => [i.accpac_code.toUpperCase(), i]));
@@ -226,11 +236,13 @@ export default async function handler(req, res) {
       });
 
       if (toInsert.length > 0) {
-          const { error } = await supabaseAdmin.from('products').insert(toInsert);
-          if (!error) insertedCount = toInsert.length;
-          else {
+          const { error } = await supabaseAdmin.from('products').upsert(toInsert, { onConflict: 'barcode', ignoreDuplicates: true });
+          if (!error) {
+              insertedCount = toInsert.length;
+          } else {
+              processErrors.push(`Bulk insert fallback triggered: ${error.message}`);
               for (const item of toInsert) {
-                  const { error: e } = await supabaseAdmin.from('products').insert(item);
+                  const { error: e } = await supabaseAdmin.from('products').upsert(item, { onConflict: 'barcode', ignoreDuplicates: true });
                   if (!e) insertedCount++;
                   else processErrors.push(`Insert failed for ${item.name}: ${e.message}`);
               }
@@ -252,7 +264,7 @@ export default async function handler(req, res) {
           updatedItems: updateDetails
       };
 
-      // Atomically upsert the audit log via RPC to merge all chunks into one row
+      // Atomically upsert the audit log via RPC
       const { error: rpcError } = await supabaseAdmin.rpc('append_import_log', {
           p_batch_id: batch_id,
           p_actor_id: user.id,

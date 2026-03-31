@@ -79,19 +79,31 @@ export default async function handler(req, res) {
       let unchangedCount = 0;
       const processErrors = [];
 
-      // 1. Process and Insert Courses First to satisfy Foreign Keys
+      // 1. Process and Insert Courses First to satisfy Foreign Keys (Safe chunking)
       const uniqueCourses = [...new Set(rows.map(r => r.course).filter(Boolean))];
       if (uniqueCourses.length > 0) {
-        const coursePayload = uniqueCourses.map(c => ({ code: c }));
-        await supabaseAdmin.from('courses').upsert(coursePayload, { onConflict: 'code' });
+          const coursePayload = uniqueCourses.map(c => ({ code: c }));
+          // Chunk courses just in case there are hundreds of unique courses
+          for (let i = 0; i < coursePayload.length; i += 100) {
+              await supabaseAdmin.from('courses').upsert(coursePayload.slice(i, i + 100), { onConflict: 'code' });
+          }
       }
 
-      // 2. Fetch Existing Students for Comparison
+      // 2. Fetch Existing Students for Comparison (Safe chunking to avoid 414 URI Too Long)
       const batchIds = rows.map(r => r.student_id);
-      const { data: existingStudents } = await supabaseAdmin
-          .from('students')
-          .select('student_id, name, course, year_level')
-          .in('student_id', batchIds);
+      const existingStudents = [];
+      const FETCH_CHUNK = 100;
+      
+      for (let i = 0; i < batchIds.length; i += FETCH_CHUNK) {
+          const chunk = batchIds.slice(i, i + FETCH_CHUNK);
+          const { data, error } = await supabaseAdmin
+              .from('students')
+              .select('student_id, name, course, year_level')
+              .in('student_id', chunk);
+              
+          if (error) throw new Error(`Fetch error: ${error.message}`);
+          if (data) existingStudents.push(...data);
+      }
 
       const existingMap = new Map((existingStudents || []).map(s => [s.student_id, s]));
 
@@ -127,7 +139,8 @@ export default async function handler(req, res) {
       });
 
       if (toInsert.length > 0) {
-          const { error } = await supabaseAdmin.from('students').insert(toInsert);
+          // Use upsert with ignoreDuplicates to prevent single-row constraint failures from blocking the whole chunk
+          const { error } = await supabaseAdmin.from('students').upsert(toInsert, { onConflict: 'student_id', ignoreDuplicates: true });
           if (!error) insertedCount = toInsert.length;
           else processErrors.push(`Bulk insert failed: ${error.message}`);
       }
@@ -147,12 +160,12 @@ export default async function handler(req, res) {
           updatedItems: updateDetails
       };
       
-      // 3. Atomically upsert the audit log via RPC to merge all chunks into one row
+      // 3. Atomically upsert the audit log via RPC
       const { error: rpcError } = await supabaseAdmin.rpc('append_import_log', {
           p_batch_id: batch_id,
           p_actor_id: user.id,
           p_actor_name: callerProfile.full_name || user.email,
-          p_entity_type: 'STUDENTS', // Use 'INVENTORY' or 'SUPPLIERS' in other APIs
+          p_entity_type: 'STUDENTS',
           p_entity_name: `Student CSV Bulk Import`,
           p_inserted: insertedCount,
           p_updated: updatedCount,

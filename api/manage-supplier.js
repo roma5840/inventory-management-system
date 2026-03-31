@@ -118,12 +118,24 @@ export default async function handler(req, res) {
       const processErrors = [];
 
       const batchNames = rows.map(r => r.name).filter(Boolean);
+      let existingRecords = [];
 
-      const { data: existingRecords } = batchNames.length > 0 
-          ? await supabaseAdmin.from('suppliers').select('*').in('name', batchNames) 
-          : { data: [] };
+      // FIX: Fetch existing records in smaller chunks to avoid 414 URI Too Long limits
+      if (batchNames.length > 0) {
+          const FETCH_CHUNK = 100;
+          for (let i = 0; i < batchNames.length; i += FETCH_CHUNK) {
+              const chunkNames = batchNames.slice(i, i + FETCH_CHUNK);
+              const { data, error } = await supabaseAdmin
+                  .from('suppliers')
+                  .select('*')
+                  .in('name', chunkNames);
+              
+              if (error) throw new Error(`Fetch error: ${error.message}`);
+              if (data) existingRecords.push(...data);
+          }
+      }
 
-      const existingByName = new Map((existingRecords || []).map(i => [i.name.toUpperCase(), i]));
+      const existingByName = new Map(existingRecords.map(i => [i.name.toUpperCase(), i]));
 
       const toInsert = [];
       const toUpdate = [];
@@ -156,11 +168,14 @@ export default async function handler(req, res) {
       });
 
       if (toInsert.length > 0) {
-          const { error } = await supabaseAdmin.from('suppliers').insert(toInsert);
-          if (!error) insertedCount = toInsert.length;
-          else {
+          // FIX: Use upsert with ignoreDuplicates to avoid bulk failure on sneaky duplicates
+          const { error } = await supabaseAdmin.from('suppliers').upsert(toInsert, { onConflict: 'name', ignoreDuplicates: true });
+          if (!error) {
+              insertedCount = toInsert.length;
+          } else {
+              processErrors.push(`Bulk insert fallback triggered: ${error.message}`);
               for (const item of toInsert) {
-                  const { error: e } = await supabaseAdmin.from('suppliers').insert(item);
+                  const { error: e } = await supabaseAdmin.from('suppliers').upsert(item, { onConflict: 'name', ignoreDuplicates: true });
                   if (!e) insertedCount++;
                   else processErrors.push(`Insert failed for ${item.name}: ${e.message}`);
               }
