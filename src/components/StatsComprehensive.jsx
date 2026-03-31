@@ -11,10 +11,11 @@ export default function StatsComprehensive({ lastUpdated }) {
   const LOW_STOCK_PER_PAGE = 30;
 
   const [dateRange, setDateRange] = useState(() => {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
+    // Force Philippine timezone calculation for default dates
+    const phDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const yyyy = phDate.getFullYear();
+    const mm = String(phDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(phDate.getDate()).padStart(2, '0');
     return {
       start: `${yyyy}-${mm}-01`,
       end: `${yyyy}-${mm}-${dd}`
@@ -80,8 +81,9 @@ export default function StatsComprehensive({ lastUpdated }) {
   useEffect(() => {
     const fetchMetrics = async () => {
       setLoading(true);
-      const startIso = new Date(`${dateRange.start}T00:00:00`).toISOString();
-      const endIso = new Date(`${dateRange.end}T23:59:59.999`).toISOString();
+      // Append +08:00 to strictly enforce Philippine Time bounds before converting to UTC
+      const startIso = new Date(`${dateRange.start}T00:00:00+08:00`).toISOString();
+      const endIso = new Date(`${dateRange.end}T23:59:59.999+08:00`).toISOString();
 
       const { data: stats, error } = await supabase.rpc('get_period_stats', {
         start_date: startIso,
