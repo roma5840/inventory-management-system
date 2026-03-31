@@ -144,21 +144,35 @@ export default function SupplierPage() {
 
     setImportLoading(true);
 
+    const REQUIRED_HEADERS = ["INFO", "SUPPLIER"];
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       beforeFirstChunk: (chunk) => {
         const lines = chunk.split('\n');
         const headerIndex = lines.findIndex(line => 
-            line.toUpperCase().includes('SUPPLIER') || 
+            line.toUpperCase().includes('SUPPLIER') && 
             line.toUpperCase().includes('INFO')
         );
         return headerIndex > -1 ? lines.slice(headerIndex).join('\n') : chunk;
       },
       complete: async (results) => {
         try {
+            const headers = results.meta.fields || [];
+
+            const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+            const extraHeaders = headers.filter(h => !REQUIRED_HEADERS.includes(h));
+
+            if (missingHeaders.length > 0 || extraHeaders.length > 0) {
+                let errorMsg = "CSV Format Error. ";
+                if (missingHeaders.length > 0) errorMsg += `Missing/Invalid: [${missingHeaders.join(', ')}]. `;
+                if (extraHeaders.length > 0) errorMsg += `Unknown headers: [${extraHeaders.join(', ')}]. `;
+                throw new Error(errorMsg + "Please ensure exact match with the template (case-sensitive, exact spaces).");
+            }
+
             const rows = results.data;
-            if (rows.length === 0) throw new Error("No data found or invalid header.");
+            if (rows.length === 0) throw new Error("No data found in the CSV.");
 
             const validationErrors = [];
 
@@ -169,40 +183,24 @@ export default function SupplierPage() {
             };
 
             const rawRows = rows.map((r, index) => {
-                const keys = Object.keys(r);
-                const getVal = (search) => {
-                    const key = keys.find(k => k.toUpperCase().includes(search));
-                    return key ? sanitize(r[key]) : null;
-                };
-
-                let rawName = getVal('SUPPLIER');
+                let rawName = sanitize(r['SUPPLIER']);
                 const name = (!rawName || rawName.toUpperCase() === '#N/A' || rawName.toUpperCase() === 'N/A') ? null : rawName.toUpperCase();
                 
-                let rawInfo = getVal('INFO');
+                let rawInfo = sanitize(r['INFO']);
                 const contact_info = (!rawInfo || rawInfo.toUpperCase() === '#N/A' || rawInfo.toUpperCase() === 'N/A') ? null : rawInfo;
 
                 const rowId = name || `Row ${index + 2}`;
                 let rowValid = true;
 
-                if (!name) {
-                    validationErrors.push(`[${rowId}] Missing Supplier Name. Row Skipped.`);
-                    rowValid = false;
-                } else if (name.length > 150) {
-                    validationErrors.push(`[${rowId}] Name exceeds 150 characters.`);
-                    rowValid = false;
-                }
-                if (contact_info && contact_info.length > 300) {
-                    validationErrors.push(`[${rowId}] Info/Contact exceeds 300 characters.`);
-                    rowValid = false;
-                }
+                if (!name) { validationErrors.push(`[${rowId}] Missing Supplier Name. Row Skipped.`); rowValid = false; }
+                else if (name.length > 150) { validationErrors.push(`[${rowId}] Name exceeds 150 characters.`); rowValid = false; }
+                if (contact_info && contact_info.length > 300) { validationErrors.push(`[${rowId}] Info/Contact exceeds 300 characters.`); rowValid = false; }
 
                 if (!rowValid) return null;
                 return { name, contact_info };
             }).filter(Boolean);
 
-            if (rawRows.length === 0 && validationErrors.length === 0) {
-                throw new Error("Could not parse columns. Ensure 'SUPPLIER' header exists.");
-            }
+            if (rawRows.length === 0 && validationErrors.length === 0) throw new Error("Could not parse rows.");
 
             const uniqueMap = new Map();
             rawRows.forEach((r) => {
@@ -217,98 +215,32 @@ export default function SupplierPage() {
             });
 
             const cleanRows = Array.from(uniqueMap.values());
-            const BATCH_SIZE = 300;
-            let insertedCount = 0;
-            let updatedCount = 0;
-            let unchangedCount = 0;
-            const processErrors = [...validationErrors];
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            const CHUNK_SIZE = 500;
+            let totalInserted = 0, totalUpdated = 0, totalUnchanged = 0;
+            const allErrors = [...validationErrors];
+            const batchId = crypto.randomUUID();
 
-            for (let i = 0; i < cleanRows.length; i += BATCH_SIZE) {
-                const batch = cleanRows.slice(i, i + BATCH_SIZE);
-                const batchNames = batch.map(r => r.name).filter(Boolean);
-
-                let existingItems = [];
-                if (batchNames.length > 0) {
-                    const { data, error } = await supabase.from('suppliers').select('*').in('name', batchNames);
-                    if (error) throw error;
-                    if (data) existingItems.push(...data);
-                }
-
-                const existingByName = new Map();
-                existingItems.forEach(item => existingByName.set(item.name.toUpperCase(), item));
-
-                const toInsert = [];
-                const toUpdate = [];
-
-                batch.forEach((row) => {
-                    const existing = existingByName.get(row.name);
-
-                    if (existing) {
-                        let needsUpdate = false;
-                        const updatePayload = { id: existing.id };
-
-                        if (row.contact_info && existing.contact_info !== row.contact_info) {
-                            needsUpdate = true;
-                            updatePayload.contact_info = row.contact_info;
-                            if (existing.contact_info) {
-                                processErrors.push(`[${row.name}] Info updated from '${existing.contact_info}' to '${row.contact_info}'`);
-                            }
-                        }
-
-                        if (needsUpdate) {
-                            toUpdate.push(updatePayload);
-                        } else {
-                            unchangedCount++;
-                        }
-                    } else {
-                        toInsert.push({
-                            name: row.name,
-                            contact_info: row.contact_info || null
-                        });
-                    }
+            for (let i = 0; i < cleanRows.length; i += CHUNK_SIZE) {
+                const chunk = cleanRows.slice(i, i + CHUNK_SIZE);
+                
+                const res = await fetch('/api/manage-supplier', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+                    body: JSON.stringify({ action: 'IMPORT', rows: chunk, batch_id: batchId })
                 });
+                
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || `Failed processing batch`);
 
-                if (toInsert.length > 0) {
-                    const { error: insError } = await supabase.from('suppliers').insert(toInsert);
-                    if (insError) {
-                        for (const item of toInsert) {
-                            const { error: singleErr } = await supabase.from('suppliers').insert(item);
-                            if (singleErr) {
-                                processErrors.push(`[${item.name}] Insert Failed: ${singleErr.message}`);
-                            } else {
-                                insertedCount++;
-                            }
-                        }
-                    } else {
-                        insertedCount += toInsert.length;
-                    }
-                }
-
-                if (toUpdate.length > 0) {
-                    const updatePromises = toUpdate.map(async (item) => {
-                        const { id, ...fieldsToUpdate } = item;
-                        const { error } = await supabase.from('suppliers').update(fieldsToUpdate).eq('id', id);
-                        if (error) throw new Error(`[${item.name || 'Update'}] Failed: ${error.message}`);
-                        return true;
-                    });
-
-                    const results = await Promise.allSettled(updatePromises);
-                    results.forEach(res => {
-                        if (res.status === 'fulfilled') {
-                            updatedCount++;
-                        } else {
-                            processErrors.push(res.reason.message);
-                        }
-                    });
-                }
+                totalInserted += result.importResult.inserted;
+                totalUpdated += result.importResult.updated;
+                totalUnchanged += result.importResult.unchanged;
+                if (result.importResult.errors) allErrors.push(...result.importResult.errors);
             }
 
-            setImportResult({ 
-                inserted: insertedCount, 
-                updated: updatedCount, 
-                unchanged: unchangedCount,
-                errors: processErrors 
-            });
+            setImportResult({ inserted: totalInserted, updated: totalUpdated, unchanged: totalUnchanged, errors: allErrors });
             setIsImportModalOpen(false);
             fetchSuppliers();
 
@@ -333,26 +265,32 @@ export default function SupplierPage() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from('suppliers').insert([{
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const payloadToSubmit = {
         name: newName.trim().toUpperCase(),
         contact_info: newContact.trim()
-      }]);
+      };
 
-      if (error) {
-        if (error.code === '23505') showToast("Duplicate Error", "Supplier already exists.", "error");
-        else throw error;
-      } else {
-        setNewName("");
-        setNewContact("");
-        setIsAddModalOpen(false); // Close modal on success
-        showToast("Supplier Registered", "New vendor added to the system.");
-        
-        await supabase.channel('app_updates').send({
-            type: 'broadcast', event: 'inventory_update', payload: {} 
-        });
+      const res = await fetch('/api/manage-supplier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action: 'CREATE', payload: payloadToSubmit })
+      });
 
-        fetchSuppliers();
-      }
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to register supplier");
+
+      setNewName("");
+      setNewContact("");
+      setIsAddModalOpen(false);
+      showToast("Supplier Registered", "New vendor added to the system.");
+      
+      await supabase.channel('app_updates').send({
+          type: 'broadcast', event: 'inventory_update', payload: {} 
+      });
+
+      fetchSuppliers();
     } catch (err) {
       showToast("Registration Failed", err.message, "error");
     } finally {
@@ -372,26 +310,29 @@ export default function SupplierPage() {
     setIsSaving(true);
 
     try {
-        const { error } = await supabase
-            .from('suppliers')
-            .update({
-                name: editName.trim().toUpperCase(),
-                contact_info: editContact.trim()
-            })
-            .eq('id', editingSupplier.id);
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const payloadToSubmit = {
+            name: editName.trim().toUpperCase(),
+            contact_info: editContact.trim()
+        };
 
-        if (error) {
-            if (error.code === '23505') showToast("Update Error", "Supplier name already exists.", "error");
-            else throw error;
-        } else {
-            showToast("Update Successful", "Supplier details updated.");
-            await supabase.channel('app_updates').send({
-                type: 'broadcast', event: 'inventory_update', payload: {} 
-            });
+        const res = await fetch('/api/manage-supplier', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'UPDATE', id: editingSupplier.id, payload: payloadToSubmit })
+        });
 
-            setEditingSupplier(null);
-            fetchSuppliers();
-        }
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to update supplier");
+
+        showToast("Update Successful", "Supplier details updated.");
+        await supabase.channel('app_updates').send({
+            type: 'broadcast', event: 'inventory_update', payload: {} 
+        });
+
+        setEditingSupplier(null);
+        fetchSuppliers();
     } catch (err) {
         showToast("Update Failed", err.message, "error");
     } finally {
@@ -403,8 +344,16 @@ export default function SupplierPage() {
     if (!deletingSupplier?.id) return;
     setDeleteLoading(true);
     try {
-        const { error } = await supabase.from('suppliers').delete().eq('id', deletingSupplier.id);
-        if (error) throw error;
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const res = await fetch('/api/manage-supplier', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ action: 'DELETE', id: deletingSupplier.id })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to delete supplier");
         
         showToast("Supplier Removed", `${deletingSupplier.name} deleted successfully.`, "delete");
         await supabase.channel('app_updates').send({
@@ -414,8 +363,7 @@ export default function SupplierPage() {
         setDeletingSupplier(null);
         fetchSuppliers();
     } catch (err) {
-        const msg = err.code === '23503' ? "Cannot delete supplier with active transaction history." : err.message;
-        showToast("Delete Failed", msg, "error");
+        showToast("Delete Failed", err.message, "error");
     } finally {
         setDeleteLoading(false);
     }

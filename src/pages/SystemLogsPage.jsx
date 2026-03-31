@@ -144,9 +144,10 @@ export default function SystemLogsPage() {
       return <span>Permanently deleted user profile and system access.</span>;
     }
 
-    // --- INVENTORY & STUDENT LOGS ---
+    // --- INVENTORY, STUDENTS & SUPPLIERS LOGS ---
     if (log.action_type === 'CREATE') {
-      return <span>Added new product <b className="text-slate-700">{log.entity_name}</b> ({log.new_values?.barcode})</span>;
+      const isSupplier = log.entity_type === 'SUPPLIERS';
+      return <span>Added new {isSupplier ? 'supplier' : 'product'} <b className="text-slate-700">{log.entity_name}</b> {log.new_values?.barcode ? `(${log.new_values.barcode})` : ''}</span>;
     }
     if (log.action_type === 'CREATE_COURSE') {
       return <span>Registered new academic course {log.entity_name}</span>;
@@ -157,8 +158,11 @@ export default function SystemLogsPage() {
     if (log.action_type === 'UPDATE') {
       const changes = [];
       const isStudent = log.entity_type === 'STUDENTS';
+      const isSupplier = log.entity_type === 'SUPPLIERS';
       const labels = isStudent ? {
         name: 'Name', course: 'Course', year_level: 'Year Level'
+      } : isSupplier ? {
+        name: 'Name', contact_info: 'Contact Info'
       } : {
         name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
         price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
@@ -191,7 +195,8 @@ export default function SystemLogsPage() {
       );
     }
     if (log.action_type === 'DELETE') {
-      return <span>Deleted product <b className="text-slate-700">{log.entity_name}</b></span>;
+      const isSupplier = log.entity_type === 'SUPPLIERS';
+      return <span>Deleted {isSupplier ? 'supplier' : 'product'} <b className="text-slate-700">{log.entity_name}</b></span>;
     }
     if (log.action_type === 'IMPORT') {
       const hasUpdates = (log.new_values?.inserted > 0) || (log.new_values?.updated > 0);
@@ -257,23 +262,6 @@ export default function SystemLogsPage() {
 
             {/* Content Area */}
             <div className="overflow-x-auto min-h-[450px]">
-              {['SUPPLIERS'].includes(activeTab) ? (
-                <div className="flex flex-col items-center justify-center h-[400px] text-slate-400">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    viewBox="0 0 16 16" 
-                    className="w-12 h-12 mb-4 opacity-50 fill-current"
-                  >
-                    <path 
-                      fillRule="evenodd" 
-                      clipRule="evenodd" 
-                      d="M16,8 C16,12.4183 12.4183,16 8,16 C3.58172,16 0,12.4183 0,8 C0,3.58172 3.58172,0 8,0 C12.4183,0 16,3.58172 16,8 Z M9,5 C9,5.55228 8.55229,6 8,6 C7.44772,6 7,5.55228 7,5 C7,4.44772 7.44772,4 8,4 C8.55229,4 9,4.44772 9,5 Z M8,7 C7.44772,7 7,7.44772 7,8 L7,11 C7,11.5523 7.44772,12 8,12 C8.55229,12 9,11.5523 9,11 L9,8 C9,7.44772 8.55229,7 8,7 Z" 
-                    />
-                  </svg>
-                  <p className="font-semibold text-sm">Logging for {tabs.find(t => t.id === activeTab)?.label} is Not Available</p>
-                  <p className="text-xs mt-1">This feature is planned for future enhancement and is not included in the current release.</p>
-                </div>
-              ) : (
                 <table className="table w-full">
                   <thead>
                     <tr className="bg-slate-50/80 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
@@ -314,10 +302,9 @@ export default function SystemLogsPage() {
                     )}
                   </tbody>
                 </table>
-              )}
             </div>
 
-            {['STAFF', 'INVENTORY', 'STUDENTS'].includes(activeTab) && (
+            {['STAFF', 'INVENTORY', 'STUDENTS', 'SUPPLIERS'].includes(activeTab) && (
               <Pagination 
                 totalCount={totalCount}
                 itemsPerPage={ITEMS_PER_PAGE}
@@ -363,6 +350,7 @@ export default function SystemLogsPage() {
                     const createdItems = selectedImportLog.metadata.insertedItems;
                     const paginatedCreated = createdItems.slice((importCreatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importCreatedPage * IMPORT_ITEMS_PER_PAGE);
                     const isStudent = selectedImportLog.entity_type === 'STUDENTS';
+                    const isSupplier = selectedImportLog.entity_type === 'SUPPLIERS';
                     
                     return (
                         <div>
@@ -374,29 +362,29 @@ export default function SystemLogsPage() {
                                 <table className="table table-sm w-full border-separate border-spacing-0">
                                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
                                         <tr>
-                                            <th className="py-3 pl-4">{isStudent ? 'Student ID' : 'Barcode'}</th>
-                                            <th className="py-3">{isStudent ? 'Name' : 'Product Name'}</th>
-                                            <th className="py-3">{isStudent ? 'Course' : 'Unit Cost'}</th>
-                                            <th className="py-3">{isStudent ? 'Year Level' : 'Price'}</th>
-                                            {!isStudent && <th className="py-3">Cash Price</th>}
-                                            {!isStudent && <th className="py-3 pr-4 text-center">Initial Stock</th>}
+                                            <th className="py-3 pl-4">{isStudent ? 'Student ID' : isSupplier ? 'Supplier Name' : 'Barcode'}</th>
+                                            <th className="py-3">{isStudent ? 'Name' : isSupplier ? 'Contact Info' : 'Product Name'}</th>
+                                            {!isSupplier && <th className="py-3">{isStudent ? 'Course' : 'Unit Cost'}</th>}
+                                            {!isSupplier && <th className="py-3">{isStudent ? 'Year Level' : 'Price'}</th>}
+                                            {!isStudent && !isSupplier && <th className="py-3">Cash Price</th>}
+                                            {!isStudent && !isSupplier && <th className="py-3 pr-4 text-center">Initial Stock</th>}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 bg-white">
                                         {paginatedCreated.map((item, idx) => (
                                             <tr key={idx} className="hover:bg-emerald-50/30 transition-colors group">
                                                 <td className="pl-4 py-3">
-                                                    <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors uppercase tracking-tighter">
-                                                        {isStudent ? item.student_id : item.barcode}
+                                                    <code className={`text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors tracking-tighter ${!isSupplier ? 'uppercase' : ''}`}>
+                                                        {isStudent ? item.student_id : isSupplier ? item.name : item.barcode}
                                                     </code>
                                                 </td>
-                                                <td className="py-3 font-semibold text-sm text-slate-800">{item.name}</td>
+                                                <td className="py-3 font-semibold text-sm text-slate-800">{isSupplier ? (item.contact_info || '—') : item.name}</td>
                                                 {isStudent ? (
                                                     <>
                                                         <td className="py-3 text-slate-500 text-xs font-medium">{item.course || '—'}</td>
                                                         <td className="py-3 text-slate-600 text-xs font-mono">{item.year_level || '—'}</td>
                                                     </>
-                                                ) : (
+                                                ) : isSupplier ? null : (
                                                     <>
                                                         <td className="py-3 text-slate-500 text-xs font-mono">₱{Number(item.unit_cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                                         <td className="py-3 text-slate-600 text-xs font-mono">₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
@@ -426,6 +414,7 @@ export default function SystemLogsPage() {
                     const updatedItems = selectedImportLog.metadata.updatedItems;
                     const paginatedUpdated = updatedItems.slice((importUpdatedPage - 1) * IMPORT_ITEMS_PER_PAGE, importUpdatedPage * IMPORT_ITEMS_PER_PAGE);
                     const isStudent = selectedImportLog.entity_type === 'STUDENTS';
+                    const isSupplier = selectedImportLog.entity_type === 'SUPPLIERS';
                     
                     return (
                         <div>
@@ -437,8 +426,8 @@ export default function SystemLogsPage() {
                                 <table className="table table-sm w-full border-separate border-spacing-0">
                                     <thead className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500">
                                         <tr>
-                                            <th className="py-3 pl-4 w-[140px]">{isStudent ? 'Student ID' : 'Barcode'}</th>
-                                            <th className="py-3 w-1/3">{isStudent ? 'Name' : 'Product Name'}</th>
+                                            <th className="py-3 pl-4 w-[140px]">{isStudent ? 'Student ID' : isSupplier ? 'Supplier Name' : 'Barcode'}</th>
+                                            <th className="py-3 w-1/3">{isStudent ? 'Name' : isSupplier ? 'Previous Info' : 'Product Name'}</th>
                                             <th className="py-3 pr-4">Specific Changes</th>
                                         </tr>
                                     </thead>
@@ -447,6 +436,8 @@ export default function SystemLogsPage() {
                                             const { old: o, new: n } = itemPair;
                                             const labels = isStudent ? {
                                                 name: 'Name', course: 'Course', year_level: 'Year Level'
+                                            } : isSupplier ? {
+                                                name: 'Name', contact_info: 'Contact Info'
                                             } : {
                                                 name: 'Name', barcode: 'Barcode', accpac_code: 'AccPac Code',
                                                 price: 'Price', cash_price: 'Cash Price', unit_cost: 'Unit Cost',
@@ -466,12 +457,12 @@ export default function SystemLogsPage() {
                                             return (
                                                 <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                                                     <td className="pl-4 py-3 align-top">
-                                                        <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 uppercase tracking-tighter whitespace-nowrap">
-                                                            {isStudent ? (n.student_id || o.student_id) : (n.barcode || o.barcode)}
+                                                        <code className={`text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 tracking-tighter whitespace-nowrap ${!isSupplier ? 'uppercase' : ''}`}>
+                                                            {isStudent ? (n.student_id || o.student_id) : isSupplier ? (n.name || o.name) : (n.barcode || o.barcode)}
                                                         </code>
                                                     </td>
                                                     <td className="py-3 font-semibold text-sm text-slate-800 align-top leading-tight pr-4">
-                                                        {o.name}
+                                                        {isSupplier ? (o.contact_info || '—') : o.name}
                                                     </td>
                                                     <td className="py-3 pr-4 align-top">
                                                         <ul className="text-xs space-y-1.5 list-disc pl-4 text-slate-600 leading-tight">
