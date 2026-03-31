@@ -1040,6 +1040,17 @@ export default function TransactionForm({ onSuccess }) {
     setReturnLookupRef(val);
   };
 
+  // Pure visual calculation for the Total Bar. Does not mutate the queue state.
+  const queueTotal = queue.reduce((sum, item) => {
+    let unitValue = 0;
+    if (['RECEIVING', 'PULL_OUT'].includes(headerData.type)) {
+      unitValue = parseFloat(item.unitCost) || 0;
+    } else {
+      unitValue = parseFloat(headerData.transactionMode === 'CASH' ? item.cashPrice : item.price) || 0;
+    }
+    return sum + (unitValue * (parseInt(item.qty, 10) || 0));
+  }, 0);
+
   return (
     <div className="card w-full max-w-none bg-base-100 shadow-xl border border-gray-200 p-0 overflow-hidden">
   
@@ -1500,8 +1511,9 @@ export default function TransactionForm({ onSuccess }) {
                 )}
             </div>
 
-            {/* === SECTION 3: QUEUE TABLE === */}
-            <div className="flex-1 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-inner min-h-[150px] max-h-[300px] custom-scrollbar">
+        {/* === SECTION 3: QUEUE TABLE + TOTAL BAR === */}
+        <div className="flex flex-col flex-1 min-h-[150px] max-h-[350px] bg-white border border-slate-200 rounded-xl shadow-inner overflow-hidden">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <table className="table table-xs w-full table-pin-rows">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
@@ -1558,6 +1570,20 @@ export default function TransactionForm({ onSuccess }) {
                     </tbody>
                 </table>
             </div>
+
+            {/* TOTAL BAR - Strictly Visual */}
+            {queue.length > 0 && headerData.transactionMode !== 'TRANSMITTAL' && (
+                <div className="bg-slate-100 border-t border-slate-200 px-4 py-2.5 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Batch Total</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-[10px] font-bold text-slate-400">₱</span>
+                        <span className="text-lg font-black text-slate-800 tabular-nums">
+                            {queueTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                </div>
+            )}
+        </div>
 
             {/* === SECTION 4: FOOTER (Confirm) === */}
             <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col gap-3">
