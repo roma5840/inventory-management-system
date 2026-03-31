@@ -399,14 +399,14 @@ export default function SupplierPage() {
       <Sidebar />
       
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        <div className="p-8 space-y-8 max-w-[1200px] mx-auto w-full">
+        <div className="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
             {/* Page Header */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">SUPPLIERS</h1>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Manage vendor profiles for inventory receiving and procurement.</p>
             </div>
 
-            <div className="card bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">    
 
             {/* Action Bar (Search & Import) */}
             <div className="p-6 border-b border-slate-200 flex flex-col xl:flex-row justify-between items-center bg-white rounded-t-xl gap-4">
