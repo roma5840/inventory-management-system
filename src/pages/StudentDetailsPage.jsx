@@ -27,7 +27,7 @@ export default function StudentDetailsPage() {
       fetchMasterData();
       fetchTransactions();
     }
-  }, [id, currentPage]);
+  }, [id, currentPage, userRole]);
 
   const fetchMasterData = async () => {
     try {
@@ -35,8 +35,11 @@ export default function StudentDetailsPage() {
       if (stuError) throw stuError;
       setStudent(stu);
 
-      const { data: st, error: stError } = await supabase.rpc('get_student_period_stats', { target_student_id: id });
-      if (!stError && st) setStats(st);
+      // Only fetch stats if user has permission
+      if (['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+          const { data: st, error: stError } = await supabase.rpc('get_student_period_stats', { target_student_id: id });
+          if (!stError && st) setStats(st);
+      }
     } catch (err) {
       console.error(err);
       alert("Error loading student details.");
@@ -126,18 +129,20 @@ export default function StudentDetailsPage() {
                             </div>
                         </div>
 
-                        <div className="stats shadow-none bg-slate-50 border border-slate-200 rounded-xl flex-shrink-0">
-                            <div className="stat place-items-center">
-                                <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Net Items Held</div>
-                                <div className="stat-value text-2xl text-slate-700">{stats.net_items}</div>
-                            </div>
-                            <div className="stat place-items-center">
-                                <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Total Value</div>
-                                <div className="stat-value text-xl text-slate-700 font-bold font-mono">
-                                    ₱{stats.total_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                            <div className="stats shadow-none bg-slate-50 border border-slate-200 rounded-xl flex-shrink-0">
+                                <div className="stat place-items-center">
+                                    <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Net Items Held</div>
+                                    <div className="stat-value text-2xl text-slate-700">{stats.net_items}</div>
+                                </div>
+                                <div className="stat place-items-center">
+                                    <div className="stat-title text-[10px] uppercase font-bold text-slate-400">Total Value</div>
+                                    <div className="stat-value text-xl text-slate-700 font-bold font-mono">
+                                        ₱{stats.total_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
