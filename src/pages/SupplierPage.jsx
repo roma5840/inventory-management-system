@@ -21,6 +21,7 @@ export default function SupplierPage() {
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState("");
   const [importResult, setImportResult] = useState(null);
 
   // Edit State
@@ -143,6 +144,7 @@ export default function SupplierPage() {
     if (!file) return;
 
     setImportLoading(true);
+    setImportProgress("Analyzing CSV file...");
 
     const REQUIRED_HEADERS = ["INFO", "SUPPLIER"];
 
@@ -182,6 +184,8 @@ export default function SupplierPage() {
                 return /^[=+\-@]/.test(clean) ? "'" + clean : clean;
             };
 
+            setImportProgress("Validating and cleaning rows...");
+
             const rawRows = rows.map((r, index) => {
                 let rawName = sanitize(r['SUPPLIER']);
                 const name = (!rawName || rawName.toUpperCase() === '#N/A' || rawName.toUpperCase() === 'N/A') ? null : rawName.toUpperCase();
@@ -206,9 +210,21 @@ export default function SupplierPage() {
             rawRows.forEach((r) => {
                 if (uniqueMap.has(r.name)) {
                     const existing = uniqueMap.get(r.name);
-                    if (!existing.contact_info && r.contact_info) existing.contact_info = r.contact_info;
+                    if (r.contact_info) {
+                        if (!existing.contact_info) {
+                            existing.contact_info = r.contact_info;
+                            validationErrors.push(`[${r.name}] CSV Duplicate Merged: Added contact info.`);
+                        } else if (!existing.contact_info.includes(r.contact_info)) {
+                            // Intelligent merging: Append new distinct contact info
+                            existing.contact_info = `${existing.contact_info} // ${r.contact_info}`;
+                            validationErrors.push(`[${r.name}] CSV Duplicate Merged: Appended new contact info.`);
+                        } else {
+                            validationErrors.push(`[${r.name}] CSV Duplicate Skipped: Identical row.`);
+                        }
+                    } else {
+                        validationErrors.push(`[${r.name}] CSV Duplicate Skipped: No new info.`);
+                    }
                     uniqueMap.set(r.name, existing);
-                    validationErrors.push(`[${r.name}] CSV Duplicate Merged.`);
                 } else {
                     uniqueMap.set(r.name, r);
                 }
@@ -221,8 +237,13 @@ export default function SupplierPage() {
             let totalInserted = 0, totalUpdated = 0, totalUnchanged = 0;
             const allErrors = [...validationErrors];
             const batchId = crypto.randomUUID();
+            const totalChunks = Math.ceil(cleanRows.length / CHUNK_SIZE);
 
             for (let i = 0; i < cleanRows.length; i += CHUNK_SIZE) {
+                const currentChunkNum = Math.floor(i / CHUNK_SIZE) + 1;
+                const itemsProcessed = Math.min(i + CHUNK_SIZE, cleanRows.length);
+                setImportProgress(`Saving batch ${currentChunkNum} of ${totalChunks}... (${itemsProcessed} / ${cleanRows.length} items)`);
+
                 const chunk = cleanRows.slice(i, i + CHUNK_SIZE);
                 
                 const res = await fetch('/api/manage-supplier', {
@@ -232,7 +253,7 @@ export default function SupplierPage() {
                 });
                 
                 const result = await res.json();
-                if (!res.ok) throw new Error(result.error || `Failed processing batch`);
+                if (!res.ok) throw new Error(result.error || `Failed processing batch ${currentChunkNum}`);
 
                 totalInserted += result.importResult.inserted;
                 totalUpdated += result.importResult.updated;
@@ -240,6 +261,7 @@ export default function SupplierPage() {
                 if (result.importResult.errors) allErrors.push(...result.importResult.errors);
             }
 
+            setImportProgress("Finalizing import...");
             setImportResult({ inserted: totalInserted, updated: totalUpdated, unchanged: totalUnchanged, errors: allErrors });
             setIsImportModalOpen(false);
             fetchSuppliers();
@@ -248,12 +270,14 @@ export default function SupplierPage() {
             showToast("Import Failed", err.message, "error");
         } finally {
             setImportLoading(false);
+            setImportProgress("");
             e.target.value = null;
         }
       },
       error: (error) => {
         showToast("Parsing Error", error.message, "error");
         setImportLoading(false);
+        setImportProgress("");
         e.target.value = null;
       }
     });
@@ -620,7 +644,8 @@ export default function SupplierPage() {
                   <span className="loading loading-spinner loading-lg text-primary"></span>
                   <div className="text-center">
                     <h3 className="font-bold text-lg text-gray-700">Importing Data...</h3>
-                    <p className="text-sm text-gray-500">Please do not close this window.</p>
+                    <p className="text-sm text-gray-500 mt-1 font-medium">{importProgress}</p>
+                    <p className="text-xs text-gray-400 mt-2">Please do not close or refresh this window.</p>
                   </div>
                </div>
             ) : (
@@ -628,7 +653,7 @@ export default function SupplierPage() {
                 <h3 className="font-bold text-lg text-gray-700 mb-4">Import Supplier CSV</h3>
                 <p className="text-xs text-gray-500 mb-4">
                     CSV Format headers: <strong>INFO, SUPPLIER</strong><br/>
-                    Supplier Name is the primary identifier. Matching names will update contact info if different.
+                    Supplier Name is the primary identifier. Matching names will update contact info if different. Large files may take up to a minute to process.
                 </p>
                 
                 <input 
