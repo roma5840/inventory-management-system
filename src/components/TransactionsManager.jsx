@@ -10,7 +10,18 @@ export default function TransactionsManager() {
   const [loading, setLoading] = useState(true);
   
   // Filters
-  const [dateFilter, setDateFilter] = useState("7DAYS"); 
+  const [dateRange, setDateRange] = useState(() => {
+    // Determine the current date specifically in Philippine Time (GMT+8)
+    const phDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const yyyy = phDate.getFullYear();
+    const mm = String(phDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(phDate.getDate()).padStart(2, '0');
+    return {
+      start: `${yyyy}-${mm}-01`, // Start of current month PH time
+      end: `${yyyy}-${mm}-${dd}`   // Today PH time
+    };
+  });
+
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [modeFilter, setModeFilter] = useState("ALL"); 
   const [searchRef, setSearchRef] = useState(""); // Debounced value used for fetching
@@ -51,7 +62,7 @@ export default function TransactionsManager() {
     const fetchOptions = { ignore: false };
     fetchTransactions(fetchOptions);
     return () => { fetchOptions.ignore = true; };
-  }, [currentPage, dateFilter, typeFilter, modeFilter, searchRef]);
+  }, [currentPage, dateRange, typeFilter, modeFilter, searchRef]);
 
   // Helper to build the base query based on filters
   const buildQuery = (tableName = 'vw_transaction_headers', selectFields = '*') => {
@@ -61,17 +72,14 @@ export default function TransactionsManager() {
         .select(selectFields, { count: 'exact' })
         .order('timestamp', { ascending: false });
 
-    // 1. Date Filter
-    const now = new Date();
-    if (dateFilter === "TODAY") {
-        const startOfDay = new Date(now.setHours(0,0,0,0)).toISOString();
-        query = query.gte('timestamp', startOfDay);
-    } else if (dateFilter === "7DAYS") {
-        const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7)).toISOString();
-        query = query.gte('timestamp', sevenDaysAgo);
-    } else if (dateFilter === "30DAYS") {
-        const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30)).toISOString();
-        query = query.gte('timestamp', thirtyDaysAgo);
+    // 1. Date Range Filter (Enforcing GMT+8 / Philippine Time parsing)
+    if (dateRange.start && dateRange.end) {
+        // Appending +08:00 guarantees the Date object treats 00:00:00 as PH time 
+        // before converting it to UTC (which Supabase uses for Timestamps).
+        const startIso = new Date(`${dateRange.start}T00:00:00+08:00`).toISOString();
+        const endIso = new Date(`${dateRange.end}T23:59:59.999+08:00`).toISOString();
+        
+        query = query.gte('timestamp', startIso).lte('timestamp', endIso);
     }
 
     // 2. Type Filter
@@ -236,7 +244,7 @@ export default function TransactionsManager() {
         const worksheet = XLSX.utils.json_to_sheet(excelRows);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
-        const fname = `TransHistory_${typeFilter}_${dateFilter}_${new Date().toISOString().slice(0,10)}.xlsx`;
+        const fname = `TransHistory_${typeFilter}_${dateRange.start}_to_${dateRange.end}.xlsx`;
         XLSX.writeFile(workbook, fname);
     } catch (err) {
         console.error("Export failed:", err);
@@ -260,22 +268,22 @@ export default function TransactionsManager() {
             {/* Filter Controls Group */}
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
                 
-                {/* Date Segmented Pill */}
-                <div className="flex bg-slate-100 p-1 rounded-lg">
-                    {[
-                        { label: 'Today', val: 'TODAY' },
-                        { label: '7 Days', val: '7DAYS' },
-                        { label: '30 Days', val: '30DAYS' },
-                        { label: 'All', val: 'ALL' }
-                    ].map(opt => (
-                        <button 
-                            key={opt.val}
-                            onClick={() => { setDateFilter(opt.val); setCurrentPage(1); }}
-                            className={`px-3 py-1 text-[11px] uppercase tracking-widest font-bold rounded-md transition-all ${dateFilter === opt.val ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
+                {/* Custom Date Range Picker */}
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1.5 px-3 h-8">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">Period:</span>
+                    <input 
+                        type="date" 
+                        className="bg-transparent text-xs font-bold text-slate-600 outline-none border-none p-0 w-[100px] sm:w-28 focus:ring-0"
+                        value={dateRange.start}
+                        onChange={(e) => { setDateRange(prev => ({ ...prev, start: e.target.value })); setCurrentPage(1); }}
+                    />
+                    <span className="text-slate-300 mx-0.5 sm:mx-1">—</span>
+                    <input 
+                        type="date" 
+                        className="bg-transparent text-xs font-bold text-slate-600 outline-none border-none p-0 w-[100px] sm:w-28 focus:ring-0"
+                        value={dateRange.end}
+                        onChange={(e) => { setDateRange(prev => ({ ...prev, end: e.target.value })); setCurrentPage(1); }}
+                    />
                 </div>
 
                 {/* Dropdowns */}
@@ -319,7 +327,7 @@ export default function TransactionsManager() {
                  </div>
                  <input 
                   type="text" 
-                  placeholder="Search Name, No, Supplier..." 
+                  placeholder="Search Name, Student No, Supplier..." 
                   className="input input-sm w-full pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs rounded-lg h-8"
                   value={localSearch}
                   onChange={e => setLocalSearch(e.target.value)}
