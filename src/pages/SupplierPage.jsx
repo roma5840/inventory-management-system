@@ -539,23 +539,25 @@ export default function SupplierPage() {
       {/* === REGISTER NEW SUPPLIER MODAL === */}
       {isAddModalOpen && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
-            <h3 className="font-bold text-lg text-gray-700 mb-4">
-                Register New Supplier
-            </h3>
+          <div className="modal-box max-w-xl border border-slate-200 shadow-2xl p-0 overflow-hidden">
+            <div className="p-6 border-b bg-slate-50">
+                <h3 className="font-bold text-lg text-slate-800">Register New Supplier</h3>
+                <p className="text-xs text-slate-500 font-medium mt-1 uppercase tracking-wider">Add a new vendor to the directory.</p>
+            </div>
             
-            <form onSubmit={handleAdd} className="flex flex-col gap-4">
+            <form onSubmit={handleAdd} className="p-6 flex flex-col gap-4">
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">Supplier Name *</label>
                     <LimitedInput 
                         type="text" 
                         maxLength={150}
                         showCounter={true}
-                        className="input input-bordered w-full uppercase" 
+                        className="input input-bordered w-full uppercase bg-slate-50 focus:bg-white" 
                         placeholder="FULL COMPANY NAME"
                         value={newName}
                         onChange={e => setNewName(e.target.value)}
                         required
+                        disabled={isSubmitting}
                     />
                 </div>
 
@@ -565,21 +567,37 @@ export default function SupplierPage() {
                         as="textarea"
                         maxLength={300}
                         showCounter={true}
-                        className="textarea textarea-bordered w-full min-h-[100px]" 
+                        className="textarea textarea-bordered w-full min-h-[100px] bg-slate-50 focus:bg-white" 
                         placeholder="Phone, Email, or Physical Address"
                         value={newContact}
                         onChange={e => setNewContact(e.target.value)}
+                        disabled={isSubmitting}
                     />
                 </div>
 
-                <div className="modal-action mt-2">
-                    <button type="button" className="btn btn-ghost" onClick={() => {
-                        setIsAddModalOpen(false);
-                        setNewName("");
-                        setNewContact("");
-                    }}>Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className={`btn btn-primary ${isSubmitting ? 'loading' : ''}`}>
-                        {isSubmitting ? "Adding..." : "Add Supplier"}
+                <div className="modal-action mt-2 pt-4 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        className="btn btn-ghost text-slate-500 normal-case" 
+                        onClick={() => {
+                            setIsAddModalOpen(false);
+                            setNewName("");
+                            setNewContact("");
+                        }}
+                        disabled={isSubmitting}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting} 
+                        className="btn btn-primary px-8 normal-case min-w-[140px]"
+                    >
+                        {isSubmitting ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            "Add Supplier"
+                        )}
                     </button>
                 </div>
             </form>
@@ -590,22 +608,24 @@ export default function SupplierPage() {
       {/* Edit Modal (Matches Register Modal UI/UX) */}
     {editingSupplier && (
         <div className="modal modal-open">
-        <div className="modal-box max-w-lg">
-            <h3 className="font-bold text-lg text-gray-700 mb-4">
-                Update Supplier Details
-            </h3>
+          <div className="modal-box max-w-xl border border-slate-200 shadow-2xl p-0 overflow-hidden">
+            <div className="p-6 border-b bg-slate-50">
+                <h3 className="font-bold text-lg text-slate-800">Update Supplier Details</h3>
+                <p className="text-xs text-slate-500 font-medium mt-1 uppercase tracking-wider">Modify existing vendor information.</p>
+            </div>
             
-            <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+            <form onSubmit={handleUpdate} className="p-6 flex flex-col gap-4">
                 <div className="form-control">
                     <label className="label text-xs uppercase font-bold text-gray-500">Supplier Name *</label>
                     <LimitedInput 
                         type="text" 
                         maxLength={150}
                         showCounter={true}
-                        className="input input-bordered w-full uppercase font-medium" 
+                        className="input input-bordered w-full uppercase font-medium bg-slate-50 focus:bg-white" 
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
                         required
+                        disabled={isSaving}
                     />
                 </div>
 
@@ -615,23 +635,37 @@ export default function SupplierPage() {
                         as="textarea"
                         maxLength={300}
                         showCounter={true}
-                        className="textarea textarea-bordered w-full min-h-[100px]" 
+                        className="textarea textarea-bordered w-full min-h-[100px] bg-slate-50 focus:bg-white" 
                         placeholder="Phone, Email, or Physical Address"
                         value={editContact}
                         onChange={e => setEditContact(e.target.value)}
+                        disabled={isSaving}
                     />
                 </div>
 
-                <div className="modal-action mt-2">
-                    <button type="button" className="btn btn-ghost" onClick={() => setEditingSupplier(null)}>
+                <div className="modal-action mt-2 pt-4 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        className="btn btn-ghost text-slate-500 normal-case" 
+                        onClick={() => setEditingSupplier(null)}
+                        disabled={isSaving}
+                    >
                         Cancel
                     </button>
-                    <button type="submit" disabled={isSaving} className={`btn btn-primary ${isSaving ? 'loading' : ''}`}>
-                        {isSaving ? "Saving..." : "Save Changes"}
+                    <button 
+                        type="submit" 
+                        disabled={isSaving} 
+                        className="btn btn-primary px-8 normal-case min-w-[140px]"
+                    >
+                        {isSaving ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            "Save Changes"
+                        )}
                     </button>
                 </div>
             </form>
-        </div>
+          </div>
         </div>
     )}
     
