@@ -1546,7 +1546,7 @@ export default function TransactionForm({ onSuccess }) {
                             <th className="py-3 text-slate-500 tracking-tighter">BARCODE</th>
                             <th className="py-3 text-slate-500 tracking-tighter">QTY</th>
                             {['RECEIVING', 'PULL_OUT'].includes(headerData.type) && <th className="py-3 text-orange-600 tracking-tighter uppercase">Cost</th>}
-                            {headerData.type !== 'RECEIVING' && headerData.transactionMode !== 'TRANSMITTAL' && <th className="py-3 text-slate-500 tracking-tighter uppercase">Price</th>}
+                            {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) && headerData.transactionMode !== 'TRANSMITTAL' && <th className="py-3 text-slate-500 tracking-tighter uppercase">Price</th>}
                             <th className="py-3 text-right text-slate-500"></th>
                         </tr>
                     </thead>
@@ -1576,7 +1576,7 @@ export default function TransactionForm({ onSuccess }) {
                                             ₱{Number(item.unitCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                     )}
-                                    {headerData.type !== 'RECEIVING' && headerData.transactionMode !== 'TRANSMITTAL' && (
+                                    {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) && headerData.transactionMode !== 'TRANSMITTAL' && (
                                         <td className="font-mono text-[11px] text-slate-700 font-bold">
                                             ₱{Number(
                                                 (['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type) && headerData.transactionMode === 'CASH') 
