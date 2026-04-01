@@ -42,7 +42,6 @@ export default function TransactionForm({ onSuccess }) {
     transactionMode: "",
     supplier: "", 
     remarks: "",
-    reason: "",       
     referenceNo: "",
     transmittalNo: "",
     department: "",
@@ -59,13 +58,15 @@ export default function TransactionForm({ onSuccess }) {
 
   // CURRENT SCAN STATE (The Active Input Line)
   const [currentScan, setCurrentScan] = useState({
+    internalId: "",
     barcode: "",
+    itemName: "",
     qty: 1,
     price: "",
+    cashPrice: "",
     unitCost: "",
-    itemName: "",     
-    category: "TEXTBOOK", 
-    location: "", 
+    accpacCode: "", 
+    location: "" 
   });
   
   const [successMsg, setSuccessMsg] = useState("");
@@ -559,7 +560,7 @@ export default function TransactionForm({ onSuccess }) {
       setIsNewStudent(null);
       setIsNewSupplier(null);
       setCurrentScan({
-        barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
+        internalId: "", barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", accpacCode: "", itemName: "", location: "" 
       });
       if(barcodeRef.current) barcodeRef.current.focus();
 
@@ -930,7 +931,7 @@ export default function TransactionForm({ onSuccess }) {
     setIsNewItem(null);
     
     setCurrentScan({
-        internalId: "", barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", accpacCode: "" 
+        internalId: "", barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", accpacCode: "", itemName: "", location: "" 
     });
     
     // Intelligent Initial Focus
