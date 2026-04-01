@@ -5,7 +5,6 @@ import { useAuth } from "../context/AuthContext";
 
 export default function LowStockAlert({ refreshTrigger }) {
     const { userRole } = useAuth();
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return null;
     const LOW_STOCK_PER_PAGE = 30;
 
     // Card state
@@ -20,6 +19,9 @@ export default function LowStockAlert({ refreshTrigger }) {
 
     // 1. Fetch total count & top 3 for the preview card
     useEffect(() => {
+        // Safe early exit inside the hook: prevents database calls for non-admins
+        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return; 
+
         const fetchInitialData = async () => {
             // Get Total Count
             const { data: countData } = await supabase.rpc('get_low_stock_count');
@@ -30,11 +32,13 @@ export default function LowStockAlert({ refreshTrigger }) {
             if (previewData) setPreviewItems(previewData);
         };
         fetchInitialData();
-    }, [refreshTrigger]);
+    }, [refreshTrigger, userRole]);
 
     // 2. Fetch full paginated list when modal is open
     useEffect(() => {
         if (!showModal) return;
+        // Safe early exit inside the hook
+        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return; 
 
         const fetchDetailedLowStock = async () => {
             setModalLoading(true);
@@ -52,8 +56,10 @@ export default function LowStockAlert({ refreshTrigger }) {
         };
 
         fetchDetailedLowStock();
-    }, [showModal, modalPage, refreshTrigger]);
+    }, [showModal, modalPage, refreshTrigger, userRole]);
 
+    // Role Guard & Empty State Guard (Placed SAFELY below all hooks)
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return null;
     if (previewItems.length === 0) return null;
 
     return (
