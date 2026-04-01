@@ -227,6 +227,7 @@ export default function StudentDetailsPage() {
                                                         <div className="px-6 py-5 border-l-4 border-indigo-200">
                                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                                 <div className="space-y-3">
+                                                                    <div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Student Snapshot</span><span className="text-xs font-bold text-slate-700">{first.course || 'N/A'} • {first.year_level || 'N/A'}</span></div>
                                                                     <div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Encoded By</span><span className="text-xs font-bold text-slate-700">{first.staff_name}</span></div>
                                                                     {first.released_by && !isReturn && <div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Released By</span><span className="text-xs font-bold text-slate-700">{first.released_by}</span></div>}
                                                                     {first.received_by && isReturn && <div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Received By</span><span className="text-xs font-bold text-slate-700">{first.received_by}</span></div>}
