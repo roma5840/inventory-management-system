@@ -1063,10 +1063,10 @@ export default function TransactionForm({ onSuccess }) {
     {/* TRANSACTION TYPE SELECTOR - ENHANCED NAVIGATION */}
     <div className="p-3 bg-slate-100/80 flex gap-2 border-b border-slate-200">
     {[
-        { id: 'RECEIVING', label: 'Receiving', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/20", inactiveClass: "border-emerald-200 text-emerald-700 hover:bg-emerald-50" },
-        { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-rose-600 text-white shadow-md ring-2 ring-rose-500/20", inactiveClass: "border-rose-200 text-rose-700 hover:bg-rose-50" },
-        { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-sky-600 text-white shadow-md ring-2 ring-sky-500/20", inactiveClass: "border-sky-200 text-sky-700 hover:bg-sky-50" },
-        { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-amber-600 text-white shadow-md ring-2 ring-amber-500/20", inactiveClass: "border-amber-200 text-amber-700 hover:bg-amber-50" },
+        { id: 'RECEIVING', label: 'Receiving', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/20", inactiveClass: "border-emerald-500/40 text-emerald-700 bg-white hover:border-emerald-500" },
+        { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-rose-600 text-white shadow-md ring-2 ring-rose-500/20", inactiveClass: "border-rose-500/40 text-rose-700 bg-white hover:border-rose-500" },
+        { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-sky-600 text-white shadow-md ring-2 ring-sky-500/20", inactiveClass: "border-sky-500/40 text-sky-700 bg-white hover:border-sky-500" },
+        { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-amber-600 text-white shadow-md ring-2 ring-amber-500/20", inactiveClass: "border-amber-500/40 text-amber-700 bg-white hover:border-amber-500" },
     ]
     .filter(btn => btn.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
     .map((btn) => (
@@ -1076,8 +1076,8 @@ export default function TransactionForm({ onSuccess }) {
             onClick={() => handleSwitchType(btn.id, btn.mode || "")}
             className={`flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border-2 transition-all duration-200 group
                 ${headerData.type === btn.id 
-                    ? btn.activeClass
-                    : `bg-white border-transparent shadow-sm ${btn.inactiveClass}`}
+                    ? `${btn.activeClass} border-transparent`
+                    : `shadow-sm ${btn.inactiveClass}`}
             `}
         >
             <span className={`text-[10px] font-black uppercase tracking-wider ${headerData.type === btn.id ? 'text-white' : ''}`}>
