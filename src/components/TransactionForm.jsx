@@ -1060,32 +1060,34 @@ export default function TransactionForm({ onSuccess }) {
   return (
     <div className="card w-full max-w-none bg-base-100 shadow-xl border border-gray-200 p-0 overflow-hidden">
   
-    {/* TRANSACTION TYPE SELECTOR - ENHANCED NAVIGATION */}
-    <div className="p-3 bg-slate-100/80 flex gap-2 border-b border-slate-200">
-    {[
-        { id: 'RECEIVING', label: 'Receiving', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/20", inactiveClass: "border-emerald-500/40 text-emerald-700 bg-white hover:border-emerald-500" },
-        { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-rose-600 text-white shadow-md ring-2 ring-rose-500/20", inactiveClass: "border-rose-500/40 text-rose-700 bg-white hover:border-rose-500" },
-        { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-sky-600 text-white shadow-md ring-2 ring-sky-500/20", inactiveClass: "border-sky-500/40 text-sky-700 bg-white hover:border-sky-500" },
-        { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-amber-600 text-white shadow-md ring-2 ring-amber-500/20", inactiveClass: "border-amber-500/40 text-amber-700 bg-white hover:border-amber-500" },
-    ]
-    .filter(btn => btn.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
-    .map((btn) => (
-        <button
-            key={btn.id}
-            type="button"
-            onClick={() => handleSwitchType(btn.id, btn.mode || "")}
-            className={`flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border-2 transition-all duration-200 group
-                ${headerData.type === btn.id 
-                    ? `${btn.activeClass} border-transparent`
-                    : `shadow-sm ${btn.inactiveClass}`}
-            `}
-        >
-            <span className={`text-[10px] font-black uppercase tracking-wider ${headerData.type === btn.id ? 'text-white' : ''}`}>
-                {btn.label}
-            </span>
-        </button>
-    ))}
-    </div>
+    {/* TRANSACTION TYPE SELECTOR - ENHANCED NAVIGATION (HIDDEN ON LANDING) */}
+    {headerData.type && (
+      <div className="p-3 bg-slate-100/80 flex gap-2 border-b border-slate-200">
+      {[
+          { id: 'RECEIVING', label: 'Receiving', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/20", inactiveClass: "border-emerald-500/40 text-emerald-700 bg-white hover:border-emerald-500" },
+          { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-rose-600 text-white shadow-md ring-2 ring-rose-500/20", inactiveClass: "border-rose-500/40 text-rose-700 bg-white hover:border-rose-500" },
+          { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-sky-600 text-white shadow-md ring-2 ring-sky-500/20", inactiveClass: "border-sky-500/40 text-sky-700 bg-white hover:border-sky-500" },
+          { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-amber-600 text-white shadow-md ring-2 ring-amber-500/20", inactiveClass: "border-amber-500/40 text-amber-700 bg-white hover:border-amber-500" },
+      ]
+      .filter(btn => btn.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
+      .map((btn) => (
+          <button
+              key={btn.id}
+              type="button"
+              onClick={() => handleSwitchType(btn.id, btn.mode || "")}
+              className={`flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border-2 transition-all duration-200 group
+                  ${headerData.type === btn.id 
+                      ? `${btn.activeClass} border-transparent`
+                      : `shadow-sm ${btn.inactiveClass}`}
+              `}
+          >
+              <span className={`text-[10px] font-black uppercase tracking-wider ${headerData.type === btn.id ? 'text-white' : ''}`}>
+                  {btn.label}
+              </span>
+          </button>
+      ))}
+      </div>
+    )}
 
       {/* CONDITIONAL FORM AREA */}
       <div className="p-6 bg-slate-50 min-h-[450px] flex flex-col">
@@ -1099,10 +1101,10 @@ export default function TransactionForm({ onSuccess }) {
                 
                 <div className="grid grid-cols-2 gap-4">
                     {[
-                        { id: 'RECEIVING', label: 'Receive Stock', desc: 'Add to inventory', color: 'emerald', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
-                        { id: 'ISSUANCE', label: 'Issue Items', mode: 'CHARGED', desc: 'Issue to recipients', color: 'rose', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
-                        { id: 'ISSUANCE_RETURN', label: 'Return Items', desc: 'Process stock returns', color: 'sky', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
-                        { id: 'PULL_OUT', label: 'Pull Out', desc: 'Remove from shelf', color: 'amber', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] }
+                        { id: 'ISSUANCE', label: 'ISSUANCE', mode: 'CHARGED', desc: 'Issue to recipients', color: 'rose', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'ISSUANCE_RETURN', label: 'RETURN', desc: 'Process stock returns', color: 'sky', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'RECEIVING', label: 'RECEIVING', desc: 'Add to inventory', color: 'emerald', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'PULL_OUT', label: 'PULL OUT', desc: 'Remove from shelf', color: 'amber', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] }
                     ]
                     .filter(opt => opt.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
                     .map(opt => (
