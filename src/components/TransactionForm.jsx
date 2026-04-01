@@ -1090,9 +1090,9 @@ export default function TransactionForm({ onSuccess }) {
     )}
 
       {/* CONDITIONAL FORM AREA */}
-      <div className="p-6 bg-slate-50 min-h-[450px] flex flex-col">
+      <div className="p-6 bg-slate-50 min-h-[580px] flex flex-col">
         {!headerData.type ? (
-          <div className="flex-1 flex flex-col items-center justify-center animate-fade-in">
+        <div className="flex-1 flex flex-col items-center justify-center animate-fade-in">
             <div className="max-w-md w-full text-center space-y-6">
                 <div>
                     <h3 className="text-slate-800 text-xl font-black uppercase tracking-tight">TRANSACTION</h3>
@@ -1101,28 +1101,40 @@ export default function TransactionForm({ onSuccess }) {
                 
                 <div className="grid grid-cols-2 gap-4">
                     {[
-                        { id: 'ISSUANCE', label: 'ISSUANCE', mode: 'CHARGED', desc: 'Issue to recipients', color: 'rose', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
-                        { id: 'ISSUANCE_RETURN', label: 'RETURN', desc: 'Process stock returns', color: 'sky', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
-                        { id: 'RECEIVING', label: 'RECEIVING', desc: 'Add to inventory', color: 'emerald', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
-                        { id: 'PULL_OUT', label: 'PULL OUT', desc: 'Remove from shelf', color: 'amber', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] }
+                        { 
+                            id: 'ISSUANCE', label: 'ISSUANCE', mode: 'CHARGED', desc: 'Issue items to a student or department', color: 'rose', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'],
+                            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                        },
+                        { 
+                            id: 'ISSUANCE_RETURN', label: 'RETURN', desc: 'Take back previously issued items', color: 'sky', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'],
+                            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                        },
+                        { 
+                            id: 'RECEIVING', label: 'RECEIVING', desc: 'Add incoming stock to inventory', color: 'emerald', allowedRoles: ['ADMIN', 'SUPER_ADMIN'],
+                            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859M12 3v8.25m0 0l-3-3m3 3l3-3" /></svg>
+                        },
+                        { 
+                            id: 'PULL_OUT', label: 'PULL OUT', desc: 'Remove items from the shelf', color: 'amber', allowedRoles: ['ADMIN', 'SUPER_ADMIN'],
+                            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        }
                     ]
                     .filter(opt => opt.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
                     .map(opt => (
                         <button 
                             key={opt.id}
                             onClick={() => handleSwitchType(opt.id, opt.mode || "")}
-                            className={`p-4 rounded-2xl bg-white border-2 border-slate-100 hover:border-${opt.color}-400 hover:shadow-xl hover:shadow-${opt.color}-100 transition-all text-left group`}
+                            className={`p-4 rounded-2xl bg-${opt.color}-50 border-2 border-${opt.color}-200 hover:bg-${opt.color}-100 hover:border-${opt.color}-400 hover:shadow-lg hover:shadow-${opt.color}-100 hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 transition-all duration-150 text-left group`}
                         >
-                            <div className={`w-8 h-8 rounded-lg bg-${opt.color}-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                                <div className={`w-2 h-2 rounded-full bg-${opt.color}-500`}></div>
+                            <div className={`w-9 h-9 rounded-xl bg-${opt.color}-100 border border-${opt.color}-200 flex items-center justify-center mb-3 text-${opt.color}-600 group-hover:bg-${opt.color}-200 group-hover:scale-110 transition-all duration-150`}>
+                                {opt.icon}
                             </div>
-                            <div className="font-black text-xs uppercase text-slate-700 tracking-wide">{opt.label}</div>
-                            <div className="text-[10px] text-slate-400 leading-tight mt-1">{opt.desc}</div>
+                            <div className={`font-black text-xs uppercase text-${opt.color}-800 tracking-wide`}>{opt.label}</div>
+                            <div className={`text-[10px] text-${opt.color}-600/70 leading-tight mt-1`}>{opt.desc}</div>
                         </button>
                     ))}
                 </div>
             </div>
-          </div>
+        </div>
         ) : (
           <div className="animate-fade-in-down flex flex-col gap-4 h-full">
             
