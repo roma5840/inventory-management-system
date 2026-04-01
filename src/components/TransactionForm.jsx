@@ -1099,8 +1099,8 @@ export default function TransactionForm({ onSuccess }) {
                 
                 <div className="grid grid-cols-2 gap-4">
                     {[
-                        { id: 'RECEIVING', label: 'Receive Stock', desc: 'Add new inventory', color: 'emerald', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
-                        { id: 'ISSUANCE', label: 'Issue Items', mode: 'CHARGED', desc: 'Distribute to students', color: 'rose', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'RECEIVING', label: 'Receive Stock', desc: 'Add to inventory', color: 'emerald', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'ISSUANCE', label: 'Issue Items', mode: 'CHARGED', desc: 'Issue to recipients', color: 'rose', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
                         { id: 'ISSUANCE_RETURN', label: 'Return Items', desc: 'Process stock returns', color: 'sky', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
                         { id: 'PULL_OUT', label: 'Pull Out', desc: 'Remove from shelf', color: 'amber', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] }
                     ]
