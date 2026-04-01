@@ -1231,53 +1231,44 @@ export default function TransactionForm({ onSuccess }) {
                                         {isNewStudent === true && <span className="text-[9px] font-bold text-rose-500 animate-pulse bg-rose-50 px-1 rounded border border-rose-100">NO RECORD</span>}
                                         {isNewStudent === false && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 uppercase tracking-tighter">Verified</span>}
                                     </label>
-                                    <LimitedInput 
-                                        id="studentIdInput" 
-                                        maxLength={50}
-                                        className={`w-full h-9 px-3 rounded-lg border text-sm font-mono transition-all outline-none
-                                            ${isNewStudent === true ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 focus:border-blue-500'}
-                                            ${isNewStudent === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : ''}
-                                            ${headerData.type === 'ISSUANCE_RETURN' ? 'bg-slate-100 text-slate-400' : 'bg-white'}
-                                        `}
-                                        placeholder="Search ID..."
-                                        value={headerData.studentId} 
-                                        onChange={e => { if(isNewStudent !== null) setIsNewStudent(null); setHeaderData({...headerData, studentId: e.target.value}); }}
-                                        readOnly={headerData.type === 'ISSUANCE_RETURN'}
-                                    />
+                                    {headerData.type === 'ISSUANCE_RETURN' ? (
+                                        <div className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-100 flex items-center text-sm font-mono text-slate-500">
+                                            {headerData.studentId || "---"}
+                                        </div>
+                                    ) : (
+                                        <LimitedInput 
+                                            id="studentIdInput" 
+                                            maxLength={50}
+                                            className={`w-full h-9 px-3 rounded-lg border text-sm font-mono transition-all outline-none
+                                                ${isNewStudent === true ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 focus:border-blue-500'}
+                                                ${isNewStudent === false ? 'border-emerald-300 bg-emerald-50/30 text-emerald-900 font-bold' : 'bg-white'}
+                                            `}
+                                            placeholder="Search ID..."
+                                            value={headerData.studentId} 
+                                            onChange={e => { if(isNewStudent !== null) setIsNewStudent(null); setHeaderData({...headerData, studentId: e.target.value}); }}
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="md:col-span-4">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Full Name</label>
-                                    <input 
-                                        type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold uppercase disabled:text-slate-500"
-                                        placeholder="Name will autofill"
-                                        value={headerData.studentName}
-                                        onChange={e => setHeaderData({...headerData, studentName: e.target.value})} 
-                                    />
+                                    <div className="w-full min-h-[36px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-100/50 flex items-center text-xs font-bold uppercase text-slate-700 leading-tight">
+                                        {headerData.studentName || <span className="text-slate-400 italic font-normal">---</span>}
+                                    </div>
                                 </div>
 
                                 <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Course</label>
-                                    <input 
-                                        type="text" 
-                                        disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase disabled:text-slate-500"
-                                        placeholder="e.g. BSCS"
-                                        value={headerData.course}
-                                        onChange={e => setHeaderData({...headerData, course: e.target.value})} 
-                                    />
+                                    <div className="w-full min-h-[36px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-100/50 text-[10px] font-semibold uppercase text-slate-600 leading-normal break-words">
+                                        {headerData.course || "---"}
+                                    </div>
                                 </div>
 
                                 <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Year/Sem</label>
-                                    <input 
-                                        type="text" disabled={['ISSUANCE', 'ISSUANCE_RETURN'].includes(headerData.type)}
-                                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs uppercase"
-                                        placeholder="Y1S1"
-                                        value={headerData.yearLevel}
-                                        onChange={e => setHeaderData({...headerData, yearLevel: e.target.value})} 
-                                    />
+                                    <div className="w-full min-h-[36px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-100/50 flex items-center text-xs uppercase text-slate-600">
+                                        {headerData.yearLevel || "---"}
+                                    </div>
                                 </div>
 
                                 <div className="md:col-span-2">
