@@ -6,6 +6,8 @@ import TransactionForm from "../components/TransactionForm";
 import TransactionHistory from "../components/TransactionHistory";
 import ReceiptLookup from "../components/ReceiptLookup";
 import StatsComprehensive from "../components/StatsComprehensive"; 
+import QuickStockCheck from "../components/QuickStockCheck";
+import LowStockAlert from "../components/LowStockAlert";
 import Sidebar from "../components/Sidebar";
 
 export default function DashboardPage() {
@@ -43,39 +45,12 @@ export default function DashboardPage() {
               </div>
 
               {/* Right: Quick Tools */}
-              <div className="xl:col-span-4 space-y-6">
+              <div className="xl:col-span-4 flex flex-col gap-6">
+                <QuickStockCheck />
+                
                 <ReceiptLookup />
                 
-                {/* Help & Guide Card */}
-                <div className="card bg-white border border-slate-200 shadow-sm p-6">
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="bg-blue-50 p-2 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-blue-600">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Operational Guide</h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">1</span>
-                      <p className="text-[12px] text-slate-600 leading-relaxed">Select Transaction Type at the top of the form.</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">2</span>
-                      <p className="text-[12px] text-slate-600 leading-relaxed">Scan Barcode or Input Item Name.</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">3</span>
-                      <p className="text-[12px] text-slate-600 leading-relaxed">Adjust Qty and press Enter to add to the batch list.</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">4</span>
-                      <p className="text-[12px] text-slate-600 leading-relaxed">Click Confirm Batch once all items are listed to save the transaction.</p>
-                    </div>
-                  </div>
-                </div>
+                <LowStockAlert refreshTrigger={refreshTrigger} />
               </div>
 
               {/* Bottom: Activity Log (Full Width for Table readability) */}

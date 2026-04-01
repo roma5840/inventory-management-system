@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import Pagination from "./Pagination"; // Import added
 
 export default function StatsComprehensive({ lastUpdated }) {
   const { userRole } = useAuth();
   if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return null;
 
   const SHOW_SENSITIVE_METRICS = false; 
-  const LOW_STOCK_PER_PAGE = 30;
 
   const [dateRange, setDateRange] = useState(() => {
     // Force Philippine timezone calculation for default dates
@@ -30,52 +28,6 @@ export default function StatsComprehensive({ lastUpdated }) {
   });
 
   const [loading, setLoading] = useState(false);
-
-  // --- Low Stock States ---
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [showLowStockModal, setShowLowStockModal] = useState(false);
-  const [modalData, setModalData] = useState([]);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalPage, setModalPage] = useState(1);
-
-  // 1. LIGHTWEIGHT COUNT: Uses server-side RPC to avoid fetching the whole table
-  // Requires: get_low_stock_count() SQL function
-  useEffect(() => {
-    const fetchFullCatalogCount = async () => {
-        const { data, error } = await supabase.rpc('get_low_stock_count');
-        
-        if (!error && typeof data === 'number') {
-            setLowStockCount(data);
-        }
-    };
-    
-    fetchFullCatalogCount();
-  }, [lastUpdated]);
-
-  // 2. DETAILED FETCH: Uses server-side RPC for pagination
-  // Requires: get_low_stock_list(limit_val, offset_val) SQL function
-  useEffect(() => {
-    if (!showLowStockModal) return;
-
-    const fetchDetailedLowStock = async () => {
-        setModalLoading(true);
-        
-        const { data, error } = await supabase.rpc('get_low_stock_list', {
-            limit_val: LOW_STOCK_PER_PAGE,
-            offset_val: (modalPage - 1) * LOW_STOCK_PER_PAGE
-        });
-
-        if (!error && data) {
-            setModalData(data);
-        } else {
-            setModalData([]);
-        }
-        
-        setModalLoading(false);
-    };
-
-    fetchDetailedLowStock();
-  }, [showLowStockModal, modalPage, lastUpdated]);
 
   // General Metrics Fetch
   useEffect(() => {
@@ -154,16 +106,6 @@ export default function StatsComprehensive({ lastUpdated }) {
                            ₱ {fmt(box.val)}
                         </div>
                     )}
-                    
-                    {box.active && lowStockCount > 0 && (
-                       <button 
-                         onClick={() => { setModalPage(1); setShowLowStockModal(true); }}
-                         className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-full shadow-lg shadow-rose-900/40 transition-all active:scale-95"
-                       >
-                         <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                         <span className="text-[10px] font-bold uppercase tracking-tight">{lowStockCount} Low</span>
-                       </button>
-                    )}
                 </div>
                 {i < arr.length - 1 && (
                     <div className="text-slate-300 hidden md:block shrink-0">
@@ -175,109 +117,6 @@ export default function StatsComprehensive({ lastUpdated }) {
             </div>
           ))}
       </div>
-
-      {showLowStockModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          {/* Backdrop - Fixed to cover entire screen regardless of parent positioning */}
-          <div 
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
-            onClick={() => setShowLowStockModal(false)} 
-          />
-          
-          {/* Modal Container */}
-          <div className="relative bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-            
-            {/* Header */}
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-xl text-slate-900">Critical Stock Report</h3>
-                    </div>
-                    <p className="text-sm text-slate-500 font-medium">Inventory items at or below minimum alert levels</p>
-                </div>
-                <button 
-                    onClick={() => setShowLowStockModal(false)} 
-                    className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            
-            {/* Table Area */}
-            <div className="flex-1 overflow-auto custom-scrollbar">
-                <table className="table table-md w-full border-separate border-spacing-0">
-                    <thead className="sticky top-0 z-20">
-                        <tr className="bg-slate-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
-                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 pl-6">Barcode</th>
-                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4">Product Name</th>
-                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4">Location</th>
-                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 text-center">Min</th>
-                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 text-center">Current</th>
-                            <th className="bg-slate-50 text-[10px] uppercase tracking-widest font-black text-slate-500 py-4 text-center pr-6">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {modalLoading ? (
-                            <tr>
-                                <td colSpan="6" className="py-20">
-                                    <div className="flex flex-col items-center justify-center gap-3">
-                                        <span className="loading loading-spinner loading-lg text-slate-300"></span>
-                                    </div>
-                                </td>
-                            </tr>
-                        ) : modalData.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center py-20 text-slate-400 font-medium">No critical items found.</td></tr>
-                        ) : (
-                            modalData.map(item => (
-                                <tr key={item.internal_id} className="hover:bg-blue-50/30 transition-colors group">
-                                    <td className="pl-6 py-4">
-                                        <code className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-600 group-hover:bg-white transition-colors uppercase tracking-tighter">
-                                            {item.barcode}
-                                        </code>
-                                    </td>
-                                    <td className="py-4">
-                                        <div className="font-bold text-sm text-slate-800 leading-tight">{item.name}</div>
-                                    </td>
-                                    <td className="py-4">
-                                        <span className="text-xs font-semibold text-slate-500">{item.location || '—'}</span>
-                                    </td>
-                                    <td className="py-4 text-center font-mono text-xs text-slate-400 font-bold">{item.min_stock_level}</td>
-                                    <td className="py-4 text-center">
-                                        <span className="text-sm font-black text-rose-600 tabular-nums">{item.current_stock}</span>
-                                    </td>
-                                    <td className="py-4 pr-6 text-center">
-                                      {item.current_stock <= 0 ? (
-                                          <span className="text-[10px] font-bold uppercase text-slate-300 tracking-tight">
-                                              Out of Stock
-                                          </span>
-                                      ) : (
-                                          <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-tight">
-                                              Critical Level
-                                          </span>
-                                      )}
-                                  </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Footer / Pagination */}
-            <div className="bg-slate-50 border-t border-slate-100 p-4">
-                <Pagination 
-                    totalCount={lowStockCount}
-                    itemsPerPage={LOW_STOCK_PER_PAGE}
-                    currentPage={modalPage}
-                    onPageChange={(p) => setModalPage(p)}
-                    loading={modalLoading}
-                />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

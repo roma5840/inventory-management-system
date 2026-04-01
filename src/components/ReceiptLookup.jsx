@@ -185,27 +185,30 @@ export default function ReceiptLookup() {
   return (
     <>
       {/* SEARCH CARD */}
-      <div className="card w-full bg-white shadow-xl mt-6 p-6 border border-blue-100">
-         <h3 className="card-title text-gray-700 mb-2 text-sm uppercase tracking-wide flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-blue-600">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            Receipt / BIS Lookup
-         </h3>
-         <form onSubmit={handleSearch} className="flex flex-col gap-2">
-            <LimitedInput 
-              type="text" 
-              maxLength={50}
-              className="input input-sm input-bordered w-full font-mono uppercase" 
-              placeholder="ENTER BIS NO. (e.g. 1) or REF-..." 
-              value={searchRef}
-              onChange={handleInputChange}
-            />
-            <button type="submit" disabled={loading} className="btn btn-sm btn-outline btn-info w-full">
-                {loading ? "Searching..." : "Find Receipt"}
-            </button>
-         </form>
-         {error && <p className="text-xs text-red-500 mt-2 font-bold text-center">{error}</p>}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 relative overflow-hidden mt-0">
+          <div className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+              </div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Receipt Lookup</h3>
+          </div>
+          <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Search by BIS Number or Reference ID to reprint slips or process returns.</p>
+          <form onSubmit={handleSearch} className="flex flex-col gap-2">
+              <LimitedInput 
+                type="text" 
+                maxLength={50}
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-mono font-bold uppercase outline-none focus:border-blue-400 focus:bg-white transition-all" 
+                placeholder="e.g. BIS-9024..." 
+                value={searchRef}
+                onChange={handleInputChange}
+              />
+              <button type="submit" disabled={loading} className="w-full h-10 rounded-lg bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider hover:bg-slate-800 shadow-md shadow-slate-900/10 transition-colors">
+                  {loading ? "SEARCHING..." : "FIND RECEIPT"}
+              </button>
+          </form>
+          {error && <p className="text-[10px] text-rose-500 mt-2 font-bold text-center uppercase tracking-wider">{error}</p>}
       </div>
 
       {/* DISAMBIGUATION MODAL (Wider container and wrap-protection) */}
