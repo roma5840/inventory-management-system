@@ -62,9 +62,10 @@ export default function LowStockAlert({ refreshTrigger }) {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col flex-1 max-h-[350px]">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-rose-50/50 rounded-t-2xl">
                     <div className="flex items-center gap-2">
-                        <div className="relative w-2 h-2">
-                            <div className="absolute inset-0 bg-rose-500 rounded-full animate-ping opacity-75"></div>
-                            <div className="relative w-2 h-2 bg-rose-500 rounded-full"></div>
+                        <div className="w-6 h-6 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
                         </div>
                         <h3 className="text-xs font-black uppercase tracking-widest text-rose-800">Critical Stock</h3>
                     </div>

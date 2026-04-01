@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
 export default function QuickStockCheck() {
@@ -7,10 +7,69 @@ export default function QuickStockCheck() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Dropdown state
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  const inputRef = useRef(null);
+
+  // Auto-clear when switching modes
+  const handleSwitchMode = (newMode) => {
+      setMode(newMode);
+      setQuery('');
+      setResult(null);
+      setSuggestions([]);
+      setShowDropdown(false);
+      setActiveIndex(-1);
+      if (inputRef.current) inputRef.current.focus();
+  };
+
+  // Debounced search for partial name matching
+  useEffect(() => {
+      if (mode !== 'NAME' || !query.trim()) {
+          setSuggestions([]);
+          return;
+      }
+
+      // Don't search if the query perfectly matches an existing result name
+      if (result && result.length > 0 && result[0].name.toUpperCase() === query.trim().toUpperCase()) {
+          return;
+      }
+
+      const timer = setTimeout(async () => {
+          const safeVal = query.trim().replace(/"/g, '""');
+          const { data } = await supabase.from('products')
+              .select('name, barcode, current_stock, location')
+              .ilike('name', `%${safeVal}%`)
+              .order('name')
+              .limit(30);
+          
+          if (data) setSuggestions(data);
+      }, 250);
+
+      return () => clearTimeout(timer);
+  }, [query, mode, result]);
+
+  const selectSuggestion = (prod) => {
+      setQuery(prod.name);
+      setShowDropdown(false);
+      setResult([prod]); // Instantly show result without a secondary network call
+  };
+
   const handleCheck = async () => {
     if (!query.trim()) return;
+    
+    // If user hit enter while highlighting a dropdown item
+    if (showDropdown && activeIndex >= 0 && suggestions[activeIndex]) {
+        selectSuggestion(suggestions[activeIndex]);
+        return;
+    }
+
     setLoading(true);
     setResult(null);
+    setShowDropdown(false);
+
     try {
       const safeVal = query.trim().replace(/"/g, '""');
       let q = supabase.from('products').select('name, barcode, current_stock, location');
@@ -18,11 +77,11 @@ export default function QuickStockCheck() {
       if (mode === 'BARCODE') {
           q = q.eq('barcode', safeVal);
       } else {
-          // Substring match for broader lookup
-          q = q.ilike('name', `%${safeVal}%`).limit(5); 
+          // Fallback if they click "Check" without selecting from dropdown
+          q = q.ilike('name', `%${safeVal}%`); 
       }
       
-      const { data, error } = await q;
+      const { data, error } = await q.limit(1); // Just show the top exact match
       if (!error && data) setResult(data);
     } catch (err) {
       console.error(err);
@@ -31,8 +90,36 @@ export default function QuickStockCheck() {
     }
   };
 
+  const handleKeyDown = (e) => {
+      if (mode === 'NAME' && showDropdown && suggestions.length > 0) {
+          if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setActiveIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : prev));
+          } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setActiveIndex(prev => (prev > 0 ? prev - 1 : 0));
+          } else if (e.key === 'Enter') {
+              e.preventDefault();
+              handleCheck();
+          } else if (e.key === 'Escape') {
+              setShowDropdown(false);
+          }
+      } else if (e.key === 'Enter') {
+          e.preventDefault();
+          handleCheck();
+      }
+  };
+
+  // Auto-scroll dropdown
+  useEffect(() => {
+      if (showDropdown && activeIndex >= 0) {
+          const activeEl = document.getElementById(`qs-option-${activeIndex}`);
+          if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+  }, [activeIndex, showDropdown]);
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 relative overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 relative overflow-visible">
         <div className="flex items-center gap-2 mb-3">
             <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-600 flex items-center justify-center">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -47,16 +134,25 @@ export default function QuickStockCheck() {
         </p>
 
         <div className="flex gap-1 mb-3 bg-slate-100 p-1 rounded-lg">
-            <button type="button" onClick={() => setMode('NAME')} className={`flex-1 text-[9px] font-bold uppercase py-1.5 rounded-md transition-all ${mode==='NAME'?'bg-white shadow-sm text-amber-600':'text-slate-500 hover:text-slate-700'}`}>Item Name</button>
-            <button type="button" onClick={() => setMode('BARCODE')} className={`flex-1 text-[9px] font-bold uppercase py-1.5 rounded-md transition-all ${mode==='BARCODE'?'bg-white shadow-sm text-amber-600':'text-slate-500 hover:text-slate-700'}`}>Barcode</button>
+            <button type="button" onClick={() => handleSwitchMode('NAME')} className={`flex-1 text-[9px] font-bold uppercase py-1.5 rounded-md transition-all ${mode==='NAME'?'bg-white shadow-sm text-amber-600':'text-slate-500 hover:text-slate-700'}`}>Item Name</button>
+            <button type="button" onClick={() => handleSwitchMode('BARCODE')} className={`flex-1 text-[9px] font-bold uppercase py-1.5 rounded-md transition-all ${mode==='BARCODE'?'bg-white shadow-sm text-amber-600':'text-slate-500 hover:text-slate-700'}`}>Barcode</button>
         </div>
 
-        <div className="flex gap-2 mb-2">
+        <div className="flex gap-2 mb-2 relative">
             <input 
+              ref={inputRef}
               type="text" 
               value={query} 
-              onChange={e => setQuery(e.target.value.toUpperCase())} 
-              onKeyDown={e => e.key === 'Enter' && handleCheck()} 
+              onChange={e => {
+                  setQuery(e.target.value.toUpperCase());
+                  if (mode === 'NAME') {
+                      setShowDropdown(true);
+                      setActiveIndex(0);
+                  }
+              }} 
+              onKeyDown={handleKeyDown}
+              onFocus={() => { if(mode === 'NAME' && query) setShowDropdown(true); }}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
               placeholder={mode === 'BARCODE' ? "SCAN BARCODE..." : "SEARCH PART OF NAME..."} 
               className="flex-1 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs font-mono font-bold uppercase outline-none focus:border-amber-400 focus:bg-white transition-all w-full min-w-0" 
             />
@@ -67,6 +163,27 @@ export default function QuickStockCheck() {
             >
                 {loading ? '...' : 'Check'}
             </button>
+
+            {/* Autocomplete Dropdown */}
+            {mode === 'NAME' && showDropdown && suggestions.length > 0 && (
+                <ul className="absolute z-[100] top-[calc(100%+4px)] left-0 right-16 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5 custom-scrollbar">
+                    {suggestions.map((prod, index) => (
+                        <li key={index} 
+                            id={`qs-option-${index}`}
+                            className={`px-3 py-2 cursor-pointer border-b border-slate-50 last:border-0 hover:bg-amber-50 transition-colors flex flex-col
+                                ${index === activeIndex ? 'bg-amber-50' : ''}`}
+                            onMouseDown={() => selectSuggestion(prod)}
+                        >
+                            <span className={`text-[10px] font-bold truncate ${index === activeIndex ? 'text-amber-700' : 'text-slate-700'}`} title={prod.name}>
+                                {prod.name || "UNNAMED ITEM"}
+                            </span>
+                            <span className={`font-mono text-[9px] font-semibold ${index === activeIndex ? 'text-amber-500' : 'text-slate-400'}`}>
+                                {prod.barcode}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
 
         {result && result.length === 0 && (
