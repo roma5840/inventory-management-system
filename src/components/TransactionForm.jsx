@@ -1484,7 +1484,11 @@ export default function TransactionForm({ onSuccess }) {
                                         <LimitedInput 
                                             id="unitCostInput" type="number" min="0" step="0.01" maxLength={10}
                                             readOnly={headerData.type !== 'RECEIVING'} 
-                                            className="w-full h-10 px-3 rounded-lg border-2 border-orange-100 bg-orange-50 font-mono font-bold text-orange-800 focus:border-orange-400 outline-none"
+                                            className={`w-full h-10 px-3 rounded-lg border font-mono font-bold outline-none transition-all
+                                                ${headerData.type === 'PULL_OUT' 
+                                                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                                                    : 'bg-orange-50 border-orange-100 text-orange-800 focus:border-orange-400 border-2'
+                                                }`}
                                             value={currentScan.unitCost}
                                             onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
                                             onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) ? e.preventDefault() : handleKeyDown(e)}
