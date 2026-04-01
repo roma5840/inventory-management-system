@@ -1054,37 +1054,66 @@ export default function TransactionForm({ onSuccess }) {
   return (
     <div className="card w-full max-w-none bg-base-100 shadow-xl border border-gray-200 p-0 overflow-hidden">
   
-    {/* TRANSACTION TYPE SELECTOR - REDESIGN */}
-        <div className="p-1.5 bg-slate-100/50 flex border-b border-slate-200">
-        {[
-            { id: 'RECEIVING', label: 'Receiving', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
-            { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
-            { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
-            { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
-        ]
-        .filter(btn => btn.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
-        .map((btn) => (
-            <button
+    {/* TRANSACTION TYPE SELECTOR - ENHANCED NAVIGATION */}
+    <div className="p-3 bg-slate-100/80 flex gap-2 border-b border-slate-200">
+    {[
+        { id: 'RECEIVING', label: 'Receiving', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/20", inactiveClass: "border-emerald-200 text-emerald-700 hover:bg-emerald-50" },
+        { id: 'ISSUANCE', label: 'Issuance', mode: 'CHARGED', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-rose-600 text-white shadow-md ring-2 ring-rose-500/20", inactiveClass: "border-rose-200 text-rose-700 hover:bg-rose-50" },
+        { id: 'ISSUANCE_RETURN', label: 'Return', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'], activeClass: "bg-sky-600 text-white shadow-md ring-2 ring-sky-500/20", inactiveClass: "border-sky-200 text-sky-700 hover:bg-sky-50" },
+        { id: 'PULL_OUT', label: 'Pull Out', allowedRoles: ['ADMIN', 'SUPER_ADMIN'], activeClass: "bg-amber-600 text-white shadow-md ring-2 ring-amber-500/20", inactiveClass: "border-amber-200 text-amber-700 hover:bg-amber-50" },
+    ]
+    .filter(btn => btn.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
+    .map((btn) => (
+        <button
             key={btn.id}
             type="button"
             onClick={() => handleSwitchType(btn.id, btn.mode || "")}
-            className={`flex-1 py-3 px-2 rounded text-[11px] font-bold uppercase tracking-widest transition-all
+            className={`flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border-2 transition-all duration-200 group
                 ${headerData.type === btn.id 
-                ? "bg-white text-slate-900 shadow-sm border border-slate-300/50" 
-                : "text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"}
+                    ? btn.activeClass
+                    : `bg-white border-transparent shadow-sm ${btn.inactiveClass}`}
             `}
-            >
-            {btn.label}
-            </button>
-        ))}
-        </div>
+        >
+            <span className={`text-[10px] font-black uppercase tracking-wider ${headerData.type === btn.id ? 'text-white' : ''}`}>
+                {btn.label}
+            </span>
+        </button>
+    ))}
+    </div>
 
       {/* CONDITIONAL FORM AREA */}
-      <div className="p-6 bg-slate-50 min-h-[400px] flex flex-col">
+      <div className="p-6 bg-slate-50 min-h-[450px] flex flex-col">
         {!headerData.type ? (
-          <div className="text-center text-gray-400 py-10">
-            <h4 className="text-sm font-bold uppercase tracking-widest mb-1">Awaiting Action</h4>
-            <p className="text-xs">Select a transaction type above to begin.</p>
+          <div className="flex-1 flex flex-col items-center justify-center animate-fade-in">
+            <div className="max-w-md w-full text-center space-y-6">
+                <div>
+                    <h3 className="text-slate-800 text-xl font-black uppercase tracking-tight">TRANSACTION</h3>
+                    <p className="text-slate-500 text-sm">Select a transaction flow to begin processing items.</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    {[
+                        { id: 'RECEIVING', label: 'Receive Stock', desc: 'Add new inventory', color: 'emerald', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'ISSUANCE', label: 'Issue Items', mode: 'CHARGED', desc: 'Distribute to students', color: 'rose', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'ISSUANCE_RETURN', label: 'Return Items', desc: 'Process stock returns', color: 'sky', allowedRoles: ['EMPLOYEE', 'ADMIN', 'SUPER_ADMIN'] },
+                        { id: 'PULL_OUT', label: 'Pull Out', desc: 'Remove from shelf', color: 'amber', allowedRoles: ['ADMIN', 'SUPER_ADMIN'] }
+                    ]
+                    .filter(opt => opt.allowedRoles.includes(userRole || currentUser?.role || 'EMPLOYEE'))
+                    .map(opt => (
+                        <button 
+                            key={opt.id}
+                            onClick={() => handleSwitchType(opt.id, opt.mode || "")}
+                            className={`p-4 rounded-2xl bg-white border-2 border-slate-100 hover:border-${opt.color}-400 hover:shadow-xl hover:shadow-${opt.color}-100 transition-all text-left group`}
+                        >
+                            <div className={`w-8 h-8 rounded-lg bg-${opt.color}-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                                <div className={`w-2 h-2 rounded-full bg-${opt.color}-500`}></div>
+                            </div>
+                            <div className="font-black text-xs uppercase text-slate-700 tracking-wide">{opt.label}</div>
+                            <div className="text-[10px] text-slate-400 leading-tight mt-1">{opt.desc}</div>
+                        </button>
+                    ))}
+                </div>
+            </div>
           </div>
         ) : (
           <div className="animate-fade-in-down flex flex-col gap-4 h-full">
@@ -1092,16 +1121,36 @@ export default function TransactionForm({ onSuccess }) {
             {/* === SECTION 1: HEADER (Context) === */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative">
                 <div className="absolute top-0 left-0 w-1 h-full bg-slate-400 opacity-20"></div>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                        Transaction Context
-                    </h3>
-                    <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${headerData.type === 'RECEIVING' ? 'bg-emerald-100 text-emerald-700' : headerData.type === 'ISSUANCE' ? 'bg-rose-100 text-rose-700' : headerData.type === 'PULL_OUT' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'}`}>
-                            {headerData.type}
-                        </span>
+                
+                {/* Process Mode Selector - Relocated to Top Left for Issuance */}
+                {headerData.type === 'ISSUANCE' && (
+                    <div className="flex flex-col mb-6 border-b border-slate-50 pb-4">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Process Mode</label>
+                        <div className="inline-flex self-start p-1 bg-slate-100 rounded-xl border border-slate-200">
+                            {[
+                                { id: 'CHARGED', label: 'Charged' },
+                                { id: 'CASH', label: 'Cash' },
+                                { id: 'SIP', label: 'SIP' },
+                                { id: 'TRANSMITTAL', label: 'Transmittal', adminOnly: true }
+                            ]
+                            .filter(m => !m.adminOnly || ['ADMIN', 'SUPER_ADMIN'].includes(userRole || currentUser?.role))
+                            .map((mode) => (
+                                <button
+                                    key={mode.id}
+                                    type="button"
+                                    onClick={() => handleSwitchType(headerData.type, mode.id)}
+                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all
+                                        ${headerData.transactionMode === mode.id 
+                                            ? "bg-white text-blue-700 shadow-sm ring-1 ring-black/5" 
+                                            : "text-slate-400 hover:text-slate-600"}
+                                    `}
+                                >
+                                    {mode.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-3">
                     {!['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? (
@@ -1167,20 +1216,6 @@ export default function TransactionForm({ onSuccess }) {
                                         onChange={e => setHeaderData({...headerData, chargeTo: e.target.value})} 
                                     />
                                 </div>
-                                {headerData.type === 'ISSUANCE' && (
-                                    <div className="md:col-span-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Trans. Mode</label>
-                                        <select className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-blue-700" 
-                                            value={headerData.transactionMode} onChange={e => handleSwitchType(headerData.type, e.target.value)}>
-                                            <option value="CHARGED">Charged</option>
-                                            <option value="CASH">Cash</option>
-                                            <option value="SIP">SIP</option>
-                                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole || currentUser?.role) && (
-                                                <option value="TRANSMITTAL">Transmittal</option>
-                                            )}
-                                        </select>
-                                    </div>
-                                )}
                             </>
                         ) : (
                             <>
@@ -1251,21 +1286,6 @@ export default function TransactionForm({ onSuccess }) {
                                         onChange={e => setHeaderData({...headerData, [headerData.type === 'ISSUANCE_RETURN' ? 'receivedBy' : 'releasedBy']: e.target.value})} 
                                     />
                                 </div>
-
-                                {headerData.type === 'ISSUANCE' && (
-                                    <div className="md:col-span-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Trans. Mode</label>
-                                        <select className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-blue-700" 
-                                            value={headerData.transactionMode} onChange={e => handleSwitchType(headerData.type, e.target.value)}>
-                                            <option value="CHARGED">Charged</option>
-                                            <option value="CASH">Cash</option>
-                                            <option value="SIP">SIP</option>
-                                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole || currentUser?.role) && (
-                                                <option value="TRANSMITTAL">Transmittal</option>
-                                            )}
-                                        </select>
-                                    </div>
-                                )}
                             </>
                         )
                     ) : (
