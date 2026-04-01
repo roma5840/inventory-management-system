@@ -176,7 +176,7 @@ export default function TransactionForm({ onSuccess }) {
       } else {
         setIsNewItem(true); 
         setCurrentScan(prev => ({ 
-             ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: ""
+             ...prev, internalId: "", itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: ""
         })); 
         setShowProductDropdown(false);
       }
@@ -216,6 +216,7 @@ export default function TransactionForm({ onSuccess }) {
             setIsNewItem(false);
             setCurrentScan(prev => ({
                 ...prev,
+                internalId: exactMatch.internal_id,
                 itemName: exactMatch.name || "",
                 price: exactMatch.price || 0,
                 cashPrice: exactMatch.cash_price || 0,
@@ -225,10 +226,10 @@ export default function TransactionForm({ onSuccess }) {
             }));
         } else if (data.length === 0) {
             setIsNewItem(true);
-            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "" })); 
+            setCurrentScan(prev => ({ ...prev, internalId: "", itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "" })); 
         } else {
             setIsNewItem(null);
-            setCurrentScan(prev => ({ ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "" }));
+            setCurrentScan(prev => ({ ...prev, internalId: "", itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "" }));
         }
       }
     } catch (err) {
@@ -368,12 +369,15 @@ export default function TransactionForm({ onSuccess }) {
     // Reset Scanner Input
     setCurrentScan(prev => ({
       ...prev,
+      internalId: "",
       barcode: "",
       qty: 1,
       price: "",
+      cashPrice: "",
       unitCost: "", 
       itemName: "",
-      location: ""
+      location: "",
+      accpacCode: ""
     }));
     
     setIsNewItem(null); 
@@ -605,7 +609,7 @@ export default function TransactionForm({ onSuccess }) {
       setIsNewItem(null);
       setProductSuggestions([]);
       setCurrentScan(prev => ({
-        ...prev, itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "", qty: 1
+        ...prev, internalId: "", itemName: "", price: "", cashPrice: "", unitCost: "", location: "", accpacCode: "", qty: 1
       }));
       return;
     }
@@ -619,6 +623,7 @@ export default function TransactionForm({ onSuccess }) {
         setIsNewItem(false);
         setCurrentScan(prev => ({
             ...prev,
+            internalId: exactMatch.internal_id,
             itemName: exactMatch.name || "",
             price: exactMatch.price || 0,
             cashPrice: exactMatch.cash_price || 0,
@@ -925,7 +930,7 @@ export default function TransactionForm({ onSuccess }) {
     setIsNewItem(null);
     
     setCurrentScan({
-        barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", 
+        internalId: "", barcode: "", qty: 1, price: "", cashPrice: "", unitCost: "", itemName: "", category: "TEXTBOOK", location: "", accpacCode: "" 
     });
     
     // Intelligent Initial Focus
