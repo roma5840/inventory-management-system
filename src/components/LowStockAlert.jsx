@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import Pagination from "./Pagination";
+import { useAuth } from "../context/AuthContext";
 
 export default function LowStockAlert({ refreshTrigger }) {
+    const { userRole } = useAuth();
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) return null;
     const LOW_STOCK_PER_PAGE = 30;
 
     // Card state
