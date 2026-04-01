@@ -1478,31 +1478,33 @@ export default function TransactionForm({ onSuccess }) {
 
                             {/* 2. Cost / Price */}
                             <div className="col-span-3">
-                                {['RECEIVING', 'PULL_OUT'].includes(headerData.type) ? (
+                                {headerData.type === 'RECEIVING' ? (
                                     <>
                                         <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1 block">Unit Cost</label>
                                         <LimitedInput 
                                             id="unitCostInput" type="number" min="0" step="0.01" maxLength={10}
-                                            readOnly={headerData.type !== 'RECEIVING'} 
-                                            className={`w-full h-10 px-3 rounded-lg border font-mono font-bold outline-none transition-all
-                                                ${headerData.type === 'PULL_OUT' 
-                                                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
-                                                    : 'bg-orange-50 border-orange-100 text-orange-800 focus:border-orange-400 border-2'
-                                                }`}
+                                            className="w-full h-10 px-3 rounded-lg border-2 font-mono font-bold outline-none transition-all bg-orange-50 border-orange-100 text-orange-800 focus:border-orange-400"
                                             value={currentScan.unitCost}
                                             onChange={e => setCurrentScan({...currentScan, unitCost: e.target.value})}
                                             onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) ? e.preventDefault() : handleKeyDown(e)}
                                         />
                                     </>
+                                ) : headerData.type === 'PULL_OUT' ? (
+                                    <>
+                                        <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1 block">Unit Cost</label>
+                                        <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm overflow-hidden cursor-not-allowed">
+                                            ₱{Number(currentScan.unitCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </div>
+                                    </>
                                 ) : (
                                     <>
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Price</label>
-                                        <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm overflow-hidden">
+                                        <div className="h-10 px-3 rounded-lg bg-slate-100 border border-slate-200 flex items-center font-mono font-bold text-slate-600 text-sm overflow-hidden cursor-not-allowed">
                                             ₱{Number(
                                                 (headerData.type === 'ISSUANCE' && headerData.transactionMode === 'CASH') 
                                                 ? (currentScan.cashPrice || 0) 
                                                 : (currentScan.price || 0)
-                                            ).toFixed(2)}
+                                            ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </div>
                                     </>
                                 )}
