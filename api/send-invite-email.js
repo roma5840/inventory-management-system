@@ -72,7 +72,7 @@ export default async function handler(req, res) {
           
           <div style="background-color: #1B2D4F; padding: 40px 30px; text-align: center; border-bottom: 4px solid #C8A96E;">
             <p style="color: #C8A96E; margin: 0 0 15px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; font-weight: 500;">
-              UPANG Bookstore Inventory Management System
+              University of Pangasinan Business Center
             </p>
             <h1 style="color: #F5EFDF; margin: 0; font-size: 24px; font-family: 'Playfair Display', Georgia, serif; font-weight: 600; line-height: 1.2;">
               Inventory &amp;<br/>Issuance Portal
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
     `;
 
     await transporter.sendMail({
-      from: `"UPANG Bookstore System" <${process.env.GMAIL_USER}>`,
+      from: `"UPANG Business Center" <${process.env.GMAIL_USER}>`,
       to: cleanEmail,
       subject: "Required: Account Registration & Authorization",
       html: htmlTemplate

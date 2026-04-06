@@ -69,7 +69,7 @@ export default function Sidebar() {
       {/* HEADER */}
       {!isCollapsed ? (
         <div className="relative p-[24px_20px_20px] border-b border-white/5 shrink-0">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-slate-400 font-bold mb-1.5">UPANG Bookstore</div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-slate-400 font-bold mb-1.5">UPANG Business Center</div>
           <div className="font-['Playfair_Display',serif] text-[17px] font-semibold text-white leading-[1.25]">Inventory &amp;<br/>Issuance Portal</div>
           
           <button 

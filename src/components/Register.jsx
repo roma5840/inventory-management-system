@@ -105,7 +105,7 @@ export default function Register() {
             </g>
           </svg>
           <div className="relative z-10 text-center text-white flex flex-col items-center h-full justify-center">
-            <div className="text-[10px] tracking-[0.2em] uppercase text-[#C8A96E] font-medium mb-6">UPANG Bookstore Inventory Management System</div>
+            <div className="text-[10px] tracking-[0.2em] uppercase text-[#C8A96E] font-medium mb-6">University of Pangasinan Business Center</div>
             <div className="w-20 h-20 rounded-full border-[1.5px] border-[#C8A96E]/40 flex items-center justify-center mx-auto mb-5">
               <div className="w-[60px] h-[60px] rounded-full border border-[#C8A96E]/60 flex items-center justify-center">
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
